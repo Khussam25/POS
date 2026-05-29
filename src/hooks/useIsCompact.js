@@ -1,31 +1,45 @@
 import { useState, useEffect } from 'react'
-import { useIsMobile } from './useIsMobile'
-
-/** Tablets and phones — stacked POS / Settings layouts. */
-export const COMPACT_BREAKPOINT = 1104
 
 const PHONE_MAX = 768
+const NARROW_MAX = 1280
 
-export function useIsCompact() {
-  return useIsMobile(COMPACT_BREAKPOINT)
+function detectLayoutMode() {
+  if (typeof window === 'undefined') return 'desktop'
+  const w = window.innerWidth
+  const touch = window.matchMedia('(pointer: coarse)').matches
+  if (w < PHONE_MAX) return 'phone'
+  // iPads and tablets often report >1104px wide; touch detection catches them
+  if (w < NARROW_MAX || touch) return 'tablet'
+  return 'desktop'
+}
+
+export function useLayoutMode() {
+  const [mode, setMode] = useState(detectLayoutMode)
+
+  useEffect(() => {
+    const update = () => setMode(detectLayoutMode())
+    window.addEventListener('resize', update)
+    const touchMq = window.matchMedia('(pointer: coarse)')
+    touchMq.addEventListener('change', update)
+    return () => {
+      window.removeEventListener('resize', update)
+      touchMq.removeEventListener('change', update)
+    }
+  }, [])
+
+  return mode
 }
 
 export function useIsPhone() {
-  return useIsMobile(PHONE_MAX)
+  return useLayoutMode() === 'phone'
 }
 
-/** Tablet only (768px – 1103px): sidebar toggle, no bottom nav bar. */
 export function useIsTablet() {
-  const query = `(min-width: ${PHONE_MAX}px) and (max-width: ${COMPACT_BREAKPOINT - 1}px)`
-  const [isTablet, setIsTablet] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia(query).matches
-  )
-  useEffect(() => {
-    const mq = window.matchMedia(query)
-    const handler = e => setIsTablet(e.matches)
-    setIsTablet(mq.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [query])
-  return isTablet
+  return useLayoutMode() === 'tablet'
+}
+
+/** Phone or tablet — stacked POS, drawer/tablet sidebar. */
+export function useIsCompact() {
+  const mode = useLayoutMode()
+  return mode === 'phone' || mode === 'tablet'
 }

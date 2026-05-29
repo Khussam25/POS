@@ -10,6 +10,18 @@ const SETTINGS_CLOUD_FIELDS = [
   'vatRate', 'vatEnabled', 'receiptHeader', 'receiptFooter', 'storeLogo',
 ]
 
+function friendlySyncError(err) {
+  const code = err?.code || ''
+  const msg = err?.message || String(err)
+  if (code === 'permission-denied' || msg.includes('permission')) {
+    return 'Cloud sync blocked: publish Firestore rules in Firebase Console (Build → Firestore → Rules → Publish).'
+  }
+  if (code === 'unavailable' || msg.includes('offline')) {
+    return 'Cloud sync offline. Check internet connection and try again.'
+  }
+  return `Cloud sync error: ${msg}`
+}
+
 function settingsForCloud(settings) {
   const out = {}
   for (const field of SETTINGS_CLOUD_FIELDS) {
@@ -57,9 +69,6 @@ export function persistLocal(store) {
 
 function storeSignature(store) {
   return JSON.stringify({
-    products: store.products?.length,
-    sales: store.sales?.length,
-    expenses: store.expenses?.length,
     employees: store.employees,
     settings: store.settings,
   })
@@ -69,7 +78,8 @@ let applyingRemote = false
 let pushTimer = null
 let pendingPush = null
 let lastAppliedSig = ''
-let lastLocalPushAt = 0
+let onSyncErrorHandler = null
+let onSyncOkHandler = null
 
 export function cancelPendingCloudPush() {
   if (pushTimer) clearTimeout(pushTimer)
@@ -90,28 +100,30 @@ function applyRemoteStore(store, onRemoteUpdate) {
   onRemoteUpdate(store)
   lastAppliedSig = sig
   applyingRemote = false
+  onSyncOkHandler?.()
   return true
 }
 
-/** Fetch latest store document from Firestore (call on focus / opening Settings or Employees). */
+/** Fetch latest store document from Firestore. */
 export async function pullCloudStore() {
   const db = getFirestore(app)
   const ref = doc(db, ...STORE_REF)
   try {
     const snap = await getDoc(ref)
-    if (!snap.exists()) return null
-    return unpackPayload(snap.data())
+    if (!snap.exists()) {
+      return { store: null, missing: true, error: null }
+    }
+    return { store: unpackPayload(snap.data()), missing: false, error: null }
   } catch (err) {
-    console.warn('Cloud pull failed:', err)
-    return null
+    const error = friendlySyncError(err)
+    onSyncErrorHandler?.(error)
+    return { store: null, missing: false, error }
   }
 }
 
-/**
- * Real-time sync so desktop, phone, and tablet share the same store data.
- * Requires Firestore rules that allow authenticated users to read/write stores/main.
- */
-export function startCloudSync({ onRemoteUpdate }) {
+export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
+  onSyncErrorHandler = onSyncError ?? null
+  onSyncOkHandler = onSyncOk ?? null
   const db = getFirestore(app)
   const ref = doc(db, ...STORE_REF)
 
@@ -123,12 +135,12 @@ export function startCloudSync({ onRemoteUpdate }) {
         if (store) applyRemoteStore(store, onRemoteUpdate)
       } else {
         const local = getStore()
-        lastLocalPushAt = Date.now()
         await setDoc(ref, packPayload(local))
         lastAppliedSig = storeSignature(local)
+        onSyncOkHandler?.()
       }
     } catch (err) {
-      console.warn('Cloud sync bootstrap failed (offline?):', err)
+      onSyncError?.(friendlySyncError(err))
     }
   }
 
@@ -138,18 +150,19 @@ export function startCloudSync({ onRemoteUpdate }) {
     ref,
     snap => {
       if (!snap.exists()) return
-      // Ignore echo from our own write for a short window
-      if (Date.now() - lastLocalPushAt < 1500) return
+      if (snap.metadata.hasPendingWrites) return
       const store = unpackPayload(snap.data())
       if (!store) return
       applyRemoteStore(store, onRemoteUpdate)
     },
-    err => console.warn('Cloud sync listener error:', err)
+    err => onSyncError?.(friendlySyncError(err))
   )
 
   return () => {
     unsub()
     cancelPendingCloudPush()
+    onSyncErrorHandler = null
+    onSyncOkHandler = null
   }
 }
 
@@ -160,10 +173,12 @@ function flushPush() {
   const ref = doc(db, ...STORE_REF)
   const payload = pendingPush
   pendingPush = null
-  lastLocalPushAt = Date.now()
   setDoc(ref, payload, { merge: true })
-    .then(() => { lastAppliedSig = storeSignature(getStore()) })
-    .catch(err => console.warn('Cloud sync push failed:', err))
+    .then(() => {
+      lastAppliedSig = storeSignature(getStore())
+      onSyncOkHandler?.()
+    })
+    .catch(err => onSyncErrorHandler?.(friendlySyncError(err)))
 }
 
 export function scheduleCloudPush(partialStore) {

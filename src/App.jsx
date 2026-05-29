@@ -73,6 +73,9 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [googleError, setGoogleError] = useState(null)
   const [saveError, setSaveError] = useState(null)
+  const [syncError, setSyncError] = useState(null)
+  const [lastSyncedAt, setLastSyncedAt] = useState(null)
+  const [syncing, setSyncing] = useState(false)
   const [data, setData] = useState(() => getStore())
   const [dataRevision, setDataRevision] = useState(0)
   const syncStarted = useRef(false)
@@ -101,13 +104,26 @@ export default function App() {
   }, [applyStoreFromRemote])
 
   const refreshData = useCallback(async () => {
-    const remote = await pullCloudStore()
-    if (remote) {
-      persistLocal(remote)
-      applyStoreFromRemote(remote)
-      return
+    setSyncing(true)
+    try {
+      const { store, error } = await pullCloudStore()
+      if (error) {
+        setSyncError(error)
+        return false
+      }
+      setSyncError(null)
+      if (store) {
+        persistLocal(store)
+        applyStoreFromRemote(store)
+        setLastSyncedAt(Date.now())
+        return true
+      }
+      reloadLocalStore()
+      setLastSyncedAt(Date.now())
+      return true
+    } finally {
+      setSyncing(false)
     }
-    reloadLocalStore()
   }, [applyStoreFromRemote, reloadLocalStore])
 
   useEffect(() => {
@@ -161,13 +177,26 @@ export default function App() {
   }, [refreshData])
 
   useEffect(() => {
+    if (!currentUser) return
+    refreshData()
+  }, [currentUser?.id, refreshData])
+
+  useEffect(() => {
     if (!currentUser) {
       syncStarted.current = false
+      setSyncError(null)
       return
     }
     if (syncStarted.current) return
     syncStarted.current = true
-    const stop = startCloudSync({ onRemoteUpdate: applyStoreFromRemote })
+    const stop = startCloudSync({
+      onRemoteUpdate: applyStoreFromRemote,
+      onSyncError: setSyncError,
+      onSyncOk: () => {
+        setSyncError(null)
+        setLastSyncedAt(Date.now())
+      },
+    })
     return () => {
       syncStarted.current = false
       stop()
@@ -234,6 +263,7 @@ export default function App() {
     <AppContext.Provider value={{
       currentUser, data, dataRevision, updateData, batchUpdateData, refreshData,
       login, loginWithGoogle, logout, googleError, setGoogleError, saveError, setSaveError,
+      syncError, setSyncError, lastSyncedAt, syncing,
     }}>
       <BrowserRouter>
         <Routes>

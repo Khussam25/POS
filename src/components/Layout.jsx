@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
 import { useIsPhone, useIsTablet } from '../hooks/useIsCompact'
@@ -51,16 +51,26 @@ function NavLinks({ items, onNavigate, showActiveDot }) {
   ))
 }
 
+const APP_BUILD = typeof __APP_BUILD__ !== 'undefined' ? __APP_BUILD__ : 'dev'
+
 export default function Layout() {
-  const { currentUser, logout, data, saveError, setSaveError } = useApp()
+  const { currentUser, logout, data, saveError, setSaveError, syncError, setSyncError, lastSyncedAt, syncing, refreshData } = useApp()
   const storeLogo = data.settings.storeLogo || '/Jeibe_Logo.jpg'
   const isPhone = useIsPhone()
   const isTablet = useIsTablet()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [navCollapsed, setNavCollapsed] = useState(() => {
-    try { return localStorage.getItem('jeibe_nav_collapsed') === '1' } catch { return false }
+    try {
+      const saved = localStorage.getItem('jeibe_nav_collapsed')
+      if (saved !== null) return saved === '1'
+    } catch { /* ignore */ }
+    return typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
   })
   const t = useT()
+
+  useEffect(() => {
+    if (isTablet) setNavCollapsed(true)
+  }, [isTablet])
 
   function toggleNavCollapsed() {
     setNavCollapsed(c => {
@@ -173,21 +183,50 @@ export default function Layout() {
     )
   }
 
-  function MainContent({ bottomPad = false }) {
+  function StatusBanners() {
     return (
-      <main style={{
-        flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0,
-        paddingBottom: bottomPad ? 70 : 0,
-      }}>
+      <>
+        {syncError && (
+          <div className="no-print" style={{ background: '#fef3c7', color: '#92400e', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexShrink: 0 }}>
+            <span>{syncError}</span>
+            <button type="button" onClick={() => setSyncError(null)} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1, flexShrink: 0 }} aria-label="Dismiss">×</button>
+          </div>
+        )}
         {saveError && (
           <div className="no-print" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
             <span>{saveError}</span>
             <button type="button" onClick={() => setSaveError(null)} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
           </div>
         )}
+      </>
+    )
+  }
+
+  function BuildFooter() {
+    const synced = lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : null
+    return (
+      <div className="no-print" style={{
+        padding: '4px 12px', fontSize: 10, color: 'var(--text-500)', textAlign: 'center',
+        borderTop: '1px solid var(--outline)', flexShrink: 0, display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap',
+      }}>
+        <span>v{APP_BUILD}</span>
+        {syncing ? <span>· syncing…</span> : synced ? <span>· synced {synced}</span> : null}
+        <button type="button" onClick={() => refreshData()} style={{ textDecoration: 'underline', color: 'var(--primary)', fontSize: 10 }}>Refresh</button>
+      </div>
+    )
+  }
+
+  function MainContent({ bottomPad = false, showBuildFooter = false }) {
+    return (
+      <main style={{
+        flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0,
+        paddingBottom: bottomPad ? 70 : 0,
+      }}>
+        <StatusBanners />
         <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
           <Outlet />
         </div>
+        {showBuildFooter && <BuildFooter />}
       </main>
     )
   }
@@ -205,7 +244,7 @@ export default function Layout() {
           </div>
         )}
 
-        <MainContent bottomPad />
+        <MainContent bottomPad showBuildFooter />
 
         <nav className="no-print layout-bottom-nav" style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
@@ -237,7 +276,7 @@ export default function Layout() {
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh' }}>
           <TopBar showNavToggle onNavToggle={toggleNavCollapsed} navOpen={!navCollapsed} />
-          <MainContent />
+          <MainContent showBuildFooter />
         </div>
       </div>
     )
@@ -265,14 +304,12 @@ export default function Layout() {
           <LangToggle />
         </header>
 
-        <main style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
-          {saveError && (
-            <div className="no-print" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-              <span>{saveError}</span>
-              <button type="button" onClick={() => setSaveError(null)} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
-            </div>
-          )}
-          <Outlet />
+        <main style={{ flex: 1, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <StatusBanners />
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <Outlet />
+          </div>
+          <BuildFooter />
         </main>
       </div>
     </div>
