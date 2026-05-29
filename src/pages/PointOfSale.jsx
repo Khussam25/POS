@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
-import { useIsMobile } from '../hooks/useIsMobile'
+import { useIsCompact } from '../hooks/useIsCompact'
 import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import OrderCheckout from '../components/pos/OrderCheckout'
@@ -27,7 +27,7 @@ export default function PointOfSale() {
   const [checkoutError, setCheckoutError] = useState(null)
   const navigate = useNavigate()
   const userId = currentUser?.id
-  const isMobile = useIsMobile()
+  const isCompact = useIsCompact()
   const t = useT()
   const [mobileTab, setMobileTab] = useState('products')
   const [search, setSearch] = useState('')
@@ -171,10 +171,10 @@ export default function PointOfSale() {
 
   const cartCount = cart.reduce((a, i) => a + i.qty, 0)
 
-  // ── Mobile: tab-based layout ──────────────────────────────────────────────
-  if (isMobile) {
+  // ── Phone & tablet: tab-based layout (products | order) ───────────────────
+  if (isCompact) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
+      <div className="pos-page-compact">
         {/* Tab bar */}
         <div style={{ display: 'flex', background: 'var(--surface)', borderBottom: '1px solid var(--outline)', flexShrink: 0 }}>
           {[{ key: 'products', label: t('products') }, { key: 'order', label: `${t('order')}${cartCount > 0 ? ` (${cartCount})` : ''}` }].map(tb => (

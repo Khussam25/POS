@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
+import { useIsCompact } from '../hooks/useIsCompact'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
 import { formatPhoneDisplay } from '../utils/phone'
@@ -60,6 +61,8 @@ const SECTIONS = [
 export default function Settings() {
   const { currentUser, data, updateData } = useApp()
   const t = useT()
+  const isCompact = useIsCompact()
+  const fieldLayout = isCompact ? 'stack' : 'row'
   const [section, setSection] = useState('store')
   const [form, setForm] = useState(() => settingsToForm(data.settings))
   const formDirtyRef = useRef(false)
@@ -132,8 +135,8 @@ export default function Settings() {
 
       <div className="settings-layout" style={{ display: 'flex', gap: 24 }}>
         {/* Sidebar */}
-        <div style={{ width: 220, flexShrink: 0 }}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 8, boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div className="settings-nav" style={{ width: 220, flexShrink: 0 }}>
+          <div className="settings-nav-inner" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 8, boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', gap: 2 }}>
             {SECTIONS.map(({ key, labelKey, icon: Icon }) => (
               <button key={key} onClick={() => setSection(key)} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
@@ -150,8 +153,8 @@ export default function Settings() {
 
         {/* Content */}
         <div style={{ flex: 1 }}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '24px 28px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 16, borderBottom: '1.5px solid var(--outline)' }}>
+          <div className="settings-content-card" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '24px 28px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
+            <div className="settings-content-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 8, paddingBottom: 16, borderBottom: '1.5px solid var(--outline)' }}>
               <h2 style={{ fontSize: 17, fontWeight: 800 }}>{t(SECTIONS.find(s => s.key === section)?.labelKey)}</h2>
               {section !== 'account' && (
                 <button onClick={handleSave} style={{
@@ -167,17 +170,17 @@ export default function Settings() {
 
             {section === 'store' && (
               <>
-                <FormField layout="row" label={t('storeName')} desc={t('storeNameDesc')} value={form.storeName} onChange={v => patchForm(f => ({ ...f, storeName: v }))} />
-                <FormField layout="row" label={t('address')} desc={t('addressDesc')} value={form.address} onChange={v => patchForm(f => ({ ...f, address: v }))} />
+                <FormField layout={fieldLayout} label={t('storeName')} desc={t('storeNameDesc')} value={form.storeName} onChange={v => patchForm(f => ({ ...f, storeName: v }))} />
+                <FormField layout={fieldLayout} label={t('address')} desc={t('addressDesc')} value={form.address} onChange={v => patchForm(f => ({ ...f, address: v }))} />
                 <FormField
-                  layout="row"
+                  layout={fieldLayout}
                   label={t('phoneNumber')}
                   phone
                   value={form.phone}
                   onChange={phone => patchForm(f => ({ ...f, phone }))}
                   placeholder="+255 712 345 678"
                 />
-                <FormField layout="row" label={t('emailAddressLabel')} type="email" value={form.email} onChange={v => patchForm(f => ({ ...f, email: v }))} />
+                <FormField layout={fieldLayout} label={t('emailAddressLabel')} type="email" value={form.email} onChange={v => patchForm(f => ({ ...f, email: v }))} />
                 <div style={{ padding: '16px 0' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
@@ -213,22 +216,22 @@ export default function Settings() {
 
             {section === 'currency' && (
               <>
-                <FormField layout="row" label={t('currencyCode')} desc={t('currencyCodeDesc')} value={form.currency} onChange={v => patchForm(f => ({ ...f, currency: v }))} placeholder="TZS" />
-                <FormField layout="row" label={t('exchangeRate')} desc={t('exchangeRateDesc')} value={form.exchangeRate} onChange={v => patchForm(f => ({ ...f, exchangeRate: v }))} numeric />
+                <FormField layout={fieldLayout} label={t('currencyCode')} desc={t('currencyCodeDesc')} value={form.currency} onChange={v => patchForm(f => ({ ...f, currency: v }))} placeholder="TZS" />
+                <FormField layout={fieldLayout} label={t('exchangeRate')} desc={t('exchangeRateDesc')} value={form.exchangeRate} onChange={v => patchForm(f => ({ ...f, exchangeRate: v }))} numeric />
               </>
             )}
 
             {section === 'tax' && (
               <>
                 <SettingsToggle label={t('enableVAT')} desc={t('enableVATDesc')} checked={form.vatEnabled} onChange={vatEnabled => patchForm(f => ({ ...f, vatEnabled }))} />
-                <FormField layout="row" label={t('vatRate')} desc={t('vatRateDesc')} value={form.vatRate} onChange={v => patchForm(f => ({ ...f, vatRate: v }))} numeric disabled={!form.vatEnabled} placeholder="18" />
+                <FormField layout={fieldLayout} label={t('vatRate')} desc={t('vatRateDesc')} value={form.vatRate} onChange={v => patchForm(f => ({ ...f, vatRate: v }))} numeric disabled={!form.vatEnabled} placeholder="18" />
               </>
             )}
 
             {section === 'receipt' && (
               <>
-                <FormField layout="row" label={t('receiptHeader')} desc={t('receiptHeaderDesc')} value={form.receiptHeader} onChange={v => patchForm(f => ({ ...f, receiptHeader: v }))} placeholder="Thank you for shopping!" />
-                <FormField layout="row" label={t('receiptFooter')} desc={t('receiptFooterDesc')} value={form.receiptFooter} onChange={v => patchForm(f => ({ ...f, receiptFooter: v }))} placeholder="Come again!" />
+                <FormField layout={fieldLayout} label={t('receiptHeader')} desc={t('receiptHeaderDesc')} value={form.receiptHeader} onChange={v => patchForm(f => ({ ...f, receiptHeader: v }))} placeholder="Thank you for shopping!" />
+                <FormField layout={fieldLayout} label={t('receiptFooter')} desc={t('receiptFooterDesc')} value={form.receiptFooter} onChange={v => patchForm(f => ({ ...f, receiptFooter: v }))} placeholder="Come again!" />
               </>
             )}
 

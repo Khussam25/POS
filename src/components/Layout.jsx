@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
-import { useIsMobile } from '../hooks/useIsMobile'
+import { useIsCompact } from '../hooks/useIsCompact'
 import { useT, useLang } from '../i18n/LangContext'
 import {
   LayoutDashboard, ShoppingCart, Package, Receipt,
@@ -31,9 +31,20 @@ function LangToggle() {
 export default function Layout() {
   const { currentUser, logout, data, saveError, setSaveError } = useApp()
   const storeLogo = data.settings.storeLogo || '/Jeibe_Logo.jpg'
-  const isMobile = useIsMobile()
+  const isCompact = useIsCompact()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [navCollapsed, setNavCollapsed] = useState(() => {
+    try { return localStorage.getItem('jeibe_nav_collapsed') === '1' } catch { return false }
+  })
   const t = useT()
+
+  function toggleNavCollapsed() {
+    setNavCollapsed(c => {
+      const next = !c
+      try { localStorage.setItem('jeibe_nav_collapsed', next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }
 
   const NAV = [
     { to: '/', label: t('dashboard'), icon: LayoutDashboard, end: true },
@@ -55,8 +66,8 @@ export default function Layout() {
     }
   }
 
-  // ── Mobile ──────────────────────────────────────────────────────────────
-  if (isMobile) {
+  // ── Phone & tablet: drawer + bottom nav ───────────────────────────────────
+  if (isCompact) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <header className="no-print" style={{
@@ -132,14 +143,16 @@ export default function Layout() {
           </div>
         )}
 
-        <main style={{ flex: 1, overflow: 'auto', paddingBottom: 70 }}>
+        <main style={{ flex: 1, overflow: 'hidden', paddingBottom: 70, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {saveError && (
-            <div className="no-print" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div className="no-print" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
               <span>{saveError}</span>
               <button type="button" onClick={() => setSaveError(null)} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
             </div>
           )}
-          <Outlet />
+          <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <Outlet />
+          </div>
         </main>
 
         <nav className="no-print" style={{
@@ -164,22 +177,28 @@ export default function Layout() {
     )
   }
 
-  // ── Desktop ──────────────────────────────────────────────────────────────
+  // ── Desktop: collapsible sidebar ────────────────────────────────────────
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
+      {!navCollapsed && (
       <aside className="no-print" style={{ width: 260, flexShrink: 0, background: 'var(--surface)', borderRight: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh' }}>
         <div style={{ padding: '20px 20px 14px', borderBottom: '1px solid var(--outline)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-            <img src={storeLogo} alt="JEIBE" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0, boxShadow: 'var(--shadow-sm)' }} />
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{data.settings.storeName.split(' ')[0]}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-500)' }}>Original Products USA</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+              <img src={storeLogo} alt="JEIBE" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0, boxShadow: 'var(--shadow-sm)' }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.settings.storeName.split(' ')[0]}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-500)' }}>Original Products USA</div>
+              </div>
             </div>
+            <button type="button" onClick={toggleNavCollapsed} title="Hide menu" style={{ color: 'var(--text-500)', padding: 6, flexShrink: 0 }}>
+              <X size={18} />
+            </button>
           </div>
           <LangToggle />
         </div>
 
-        <nav style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <nav style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
           <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-500)', letterSpacing: '0.08em', padding: '8px 8px 4px', textTransform: 'uppercase' }}>{t('menu')}</div>
           {visibleNav.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end}
@@ -219,8 +238,26 @@ export default function Layout() {
           </button>
         </div>
       </aside>
+      )}
 
-      <main style={{ flex: 1, overflow: 'auto', minHeight: '100vh' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh' }}>
+        <header className="no-print" style={{
+          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px',
+          background: 'var(--surface)', borderBottom: '1px solid var(--outline)', flexShrink: 0,
+        }}>
+          {navCollapsed && (
+            <button type="button" onClick={toggleNavCollapsed} title="Show menu" style={{ color: 'var(--text-900)', padding: 6 }}>
+              <Menu size={22} />
+            </button>
+          )}
+          <img src={storeLogo} alt="" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+          <span style={{ fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {data.settings.storeName.split(' ')[0]}
+          </span>
+          <div style={{ marginLeft: 'auto' }}><LangToggle /></div>
+        </header>
+
+      <main style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
         {saveError && (
           <div className="no-print" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
             <span>{saveError}</span>
@@ -229,6 +266,7 @@ export default function Layout() {
         )}
         <Outlet />
       </main>
+      </div>
     </div>
   )
 }

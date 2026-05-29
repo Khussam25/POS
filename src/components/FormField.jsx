@@ -50,7 +50,7 @@ export default function FormField({
 
   if (layout === 'row') {
     return (
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid var(--outline)', ...style }}>
+      <div className="form-field-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid var(--outline)', ...style }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{label}</div>
           {desc && <div style={{ fontSize: 12, color: 'var(--text-500)' }}>{desc}</div>}
