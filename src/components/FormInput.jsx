@@ -1,3 +1,5 @@
+import { formatPhoneInput } from '../utils/phone'
+
 const baseStyle = {
   width: '100%',
   padding: '9px 12px',
@@ -19,6 +21,7 @@ export default function FormInput({
   onChange,
   type = 'text',
   numeric = false,
+  phone = false,
   placeholder,
   disabled = false,
   error = false,
@@ -29,8 +32,8 @@ export default function FormInput({
   onBlur,
   ...rest
 }) {
-  const inputType = numeric ? 'text' : type
-  const inputMode = numeric ? 'decimal' : undefined
+  const inputType = numeric || phone ? 'text' : type
+  const inputMode = phone ? 'tel' : numeric ? 'decimal' : undefined
   const shouldSelect = selectOnFocus && !disabled && type !== 'password' && type !== 'date'
 
   return (
@@ -39,7 +42,14 @@ export default function FormInput({
       type={inputType}
       inputMode={inputMode}
       value={value ?? ''}
-      onChange={onChange}
+      onChange={e => {
+        if (!phone) {
+          onChange?.(e)
+          return
+        }
+        const formatted = formatPhoneInput(e.target.value)
+        onChange?.({ ...e, target: { ...e.target, value: formatted } })
+      }}
       placeholder={placeholder}
       disabled={disabled}
       autoFocus={autoFocus}

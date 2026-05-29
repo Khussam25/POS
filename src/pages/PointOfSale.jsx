@@ -214,7 +214,7 @@ export default function PointOfSale() {
               <div style={{ display: 'flex', gap: 8 }}>
                 <FormInput value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Customer name"
                   style={{ flex: 1, padding: '9px 10px', fontSize: 12 }} />
-                <FormInput value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone"
+                <FormInput phone value={phone} onChange={e => setPhone(e.target.value)} placeholder="+255 712 345 678"
                   style={{ flex: 1, padding: '9px 10px', fontSize: 12 }} />
               </div>
               {/* Payment */}
@@ -439,7 +439,7 @@ export default function PointOfSale() {
             <div style={{ display: 'flex', gap: 8 }}>
               <FormInput value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Name"
                 style={{ flex: 1, padding: '9px 10px', fontSize: 12, background: 'var(--surface)' }} />
-              <FormInput value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone"
+              <FormInput phone value={phone} onChange={e => setPhone(e.target.value)} placeholder="+255 712 345 678"
                 style={{ flex: 1, padding: '9px 10px', fontSize: 12, background: 'var(--surface)' }} />
             </div>
           </div>

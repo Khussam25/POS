@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useApp } from '../App'
+import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
+import { formatPhoneDisplay } from '../utils/phone'
 import { Store, DollarSign, Receipt, FileText, User, Save, CheckCircle2 } from 'lucide-react'
 
 function settingsToForm(settings) {
   return {
     ...settings,
+    phone: formatPhoneDisplay(settings.phone ?? ''),
     exchangeRate: settings.exchangeRate != null ? String(settings.exchangeRate) : '',
     vatRate: settings.vatRate != null ? String(settings.vatRate) : '',
   }
@@ -43,6 +46,7 @@ const SECTIONS = [
 
 export default function Settings() {
   const { currentUser, data, updateData } = useApp()
+  const t = useT()
   const [section, setSection] = useState('store')
   const [form, setForm] = useState(() => settingsToForm(data.settings))
   const [saved, setSaved] = useState(false)
@@ -51,11 +55,14 @@ export default function Settings() {
   const [pwSaved, setPwSaved] = useState(false)
 
   function handleSave() {
-    updateData('settings', {
+    const next = {
       ...form,
+      phone: formatPhoneDisplay(form.phone.trim()),
       exchangeRate: form.exchangeRate === '' ? 0 : +form.exchangeRate,
       vatRate: form.vatRate === '' ? 0 : +form.vatRate,
-    })
+    }
+    updateData('settings', next)
+    setForm(settingsToForm(next))
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
@@ -117,7 +124,15 @@ export default function Settings() {
               <>
                 <FormField layout="row" label="Store Name" desc="Displayed on receipts and reports" value={form.storeName} onChange={v => setForm(f => ({ ...f, storeName: v }))} />
                 <FormField layout="row" label="Address" desc="Physical location of the store" value={form.address} onChange={v => setForm(f => ({ ...f, address: v }))} />
-                <FormField layout="row" label="Phone Number" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} />
+                <FormField
+                  layout="row"
+                  label={t('phoneNumber')}
+                  phone
+                  value={form.phone}
+                  onChange={phone => setForm(f => ({ ...f, phone }))}
+                  placeholder="+255 712 345 678"
+                  inputStyle={{ width: 320, maxWidth: '100%' }}
+                />
                 <FormField layout="row" label="Email Address" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} />
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0' }}>
                   <div>

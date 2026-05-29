@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../App'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
+import { formatPhoneDisplay } from '../utils/phone'
 import { Plus, Pencil, RefreshCw, X, Shield, CreditCard } from 'lucide-react'
 
 const ROLES = ['Admin', 'Cashier', 'Manager']
@@ -25,7 +26,7 @@ export default function Employees() {
       id: emp.id,
       name: emp.name ?? '',
       role: emp.role ?? 'Cashier',
-      phone: emp.phone ?? '',
+      phone: formatPhoneDisplay(emp.phone ?? ''),
       username: emp.username ?? '',
       status: emp.status ?? 'Active',
     })
@@ -121,7 +122,7 @@ export default function Employees() {
             <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                 <span style={{ color: 'var(--text-500)' }}>Phone</span>
-                <span style={{ fontWeight: 500 }}>{emp.phone}</span>
+                <span style={{ fontWeight: 500 }}>{formatPhoneDisplay(emp.phone) || '—'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-500)' }}>Username</span>
@@ -160,7 +161,7 @@ export default function Employees() {
             <div style={{ display: 'grid', gap: 14 }}>
               <FormField label="Full Name" value={form.name} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. Amina Hassan" />
               <FormField label="Username" value={form.username} onChange={username => setForm(f => ({ ...f, username }))} error={errors.username} placeholder="e.g. amina.hassan" />
-              <FormField label="Phone" value={form.phone} onChange={phone => setForm(f => ({ ...f, phone }))} error={errors.phone} placeholder="+255 712 345 678" />
+              <FormField label="Phone" phone value={form.phone} onChange={phone => setForm(f => ({ ...f, phone }))} error={errors.phone} placeholder="+255 712 345 678" />
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Role</label>
                 <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 13, background: 'var(--bg)' }}>

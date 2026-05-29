@@ -11,6 +11,7 @@ export default function FormField({
   error,
   type = 'text',
   numeric = false,
+  phone = false,
   placeholder,
   disabled = false,
   selectOnFocus = false,
@@ -32,6 +33,7 @@ export default function FormField({
       disabled={disabled}
       error={hasError}
       selectOnFocus={selectOnFocus}
+      phone={phone}
       style={layout === 'row' ? { width: 280, background: disabled ? 'var(--bg)' : 'var(--surface)', ...inputStyle } : inputStyle}
     />
   )
