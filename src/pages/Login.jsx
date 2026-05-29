@@ -1,29 +1,63 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48">
+      <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
+      <path fill="#FF3D00" d="m6.306 14.691 6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
+      <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
+      <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
+    </svg>
+  )
+}
+
+const FIREBASE_ERRORS = {
+  'auth/user-not-found': 'No account found with this email.',
+  'auth/wrong-password': 'Incorrect password.',
+  'auth/invalid-credential': 'Invalid email or password.',
+  'auth/invalid-email': 'Invalid email format.',
+  'auth/user-disabled': 'This account has been disabled.',
+  'auth/too-many-requests': 'Too many failed attempts. Try again later.',
+  'auth/network-request-failed': 'Network error. Check your connection.',
+  'auth/unauthorized-domain': 'This domain is not authorised. Contact your administrator.',
+}
+
 export default function Login() {
-  const { login, data } = useApp()
-  const navigate = useNavigate()
+  const { login, loginWithGoogle, data } = useApp()
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     if (!identifier.trim() || !password) { setError('Please fill in all fields.'); return }
     setLoading(true)
-    await new Promise(r => setTimeout(r, 600))
-    const ok = login(identifier.trim(), password)
-    if (ok) {
-      navigate('/', { replace: true })
-    } else {
-      setError('Invalid username or password.')
+    try {
+      const email = identifier.includes('@') ? identifier.trim() : `${identifier.trim()}@jeibe.co.tz`
+      await login(email, password)
+      // Router auto-redirects when currentUser is set via onAuthStateChanged
+    } catch (err) {
+      setError(FIREBASE_ERRORS[err.code] || 'Sign in failed. Please try again.')
       setLoading(false)
+    }
+  }
+
+  async function handleGoogle() {
+    setError('')
+    setGoogleLoading(true)
+    try {
+      await loginWithGoogle()
+    } catch (err) {
+      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+        setError(FIREBASE_ERRORS[err.code] || 'Google sign-in failed. Try again.')
+      }
+      setGoogleLoading(false)
     }
   }
 
@@ -42,7 +76,9 @@ export default function Login() {
           color: 'white', fontWeight: 800, fontSize: 26, margin: '0 auto 16px',
           boxShadow: '0 8px 24px rgba(30,78,140,0.3)'
         }}>J</div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-900)', marginBottom: 4 }}>{data.settings.storeName.split(' ')[0]}</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-900)', marginBottom: 4 }}>
+          {data.settings.storeName.split(' ')[0]}
+        </h1>
         <p style={{ color: 'var(--text-500)', fontSize: 13 }}>Original Products From USA</p>
         <div style={{ width: 40, height: 2, background: 'var(--accent)', margin: '12px auto 0', borderRadius: 2 }} />
       </div>
@@ -54,15 +90,40 @@ export default function Login() {
         boxShadow: 'var(--shadow)'
       }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>Sign in to your account</h2>
-        <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 28 }}>Enter your credentials to continue</p>
+        <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 24 }}>Enter your credentials to continue</p>
+
+        {/* Google button */}
+        <button onClick={handleGoogle} disabled={googleLoading || loading} style={{
+          width: '100%', padding: '11px', borderRadius: 'var(--radius-sm)',
+          border: '1.5px solid var(--outline)', background: 'var(--surface)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          fontWeight: 600, fontSize: 14, color: 'var(--text-900)',
+          marginBottom: 20, transition: 'all 0.15s',
+          opacity: googleLoading ? 0.7 : 1
+        }}
+          onMouseEnter={e => { if (!googleLoading) e.currentTarget.style.borderColor = 'var(--primary)' }}
+          onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--outline)'}>
+          {googleLoading
+            ? <div style={{ width: 18, height: 18, border: '2px solid var(--outline)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
+            : <GoogleIcon />}
+          {googleLoading ? 'Signing in…' : 'Continue with Google'}
+        </button>
+
+        {/* Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--outline)' }} />
+          <span style={{ fontSize: 12, color: 'var(--text-500)', fontWeight: 500 }}>or sign in with email</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--outline)' }} />
+        </div>
 
         <form onSubmit={handleSubmit}>
+          {/* Email */}
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Email or Username</label>
             <div style={{ position: 'relative' }}>
               <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
               <input
-                type="text" value={identifier} onChange={e => setIdentifier(e.target.value)}
+                type="text" value={identifier} onChange={e => { setIdentifier(e.target.value); setError('') }}
                 placeholder="you@jeibe.co.tz"
                 style={{
                   width: '100%', padding: '11px 14px 11px 40px',
@@ -76,12 +137,13 @@ export default function Login() {
             </div>
           </div>
 
-          <div style={{ marginBottom: 24 }}>
+          {/* Password */}
+          <div style={{ marginBottom: 22 }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Password</label>
             <div style={{ position: 'relative' }}>
               <Lock size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
               <input
-                type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                type={showPassword ? 'text' : 'password'} value={password} onChange={e => { setPassword(e.target.value); setError('') }}
                 placeholder="Enter your password"
                 style={{
                   width: '100%', padding: '11px 40px 11px 40px',
@@ -108,12 +170,13 @@ export default function Login() {
             }}>{error}</div>
           )}
 
-          <button type="submit" disabled={loading} style={{
+          <button type="submit" disabled={loading || googleLoading} style={{
             width: '100%', padding: '13px', borderRadius: 'var(--radius-sm)',
-            background: loading ? 'var(--primary-hover)' : 'var(--primary)',
-            color: 'white', fontWeight: 700, fontSize: 15, letterSpacing: '0.02em',
-            transition: 'background 0.15s', opacity: loading ? 0.85 : 1
-          }}>
+            background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: 15,
+            opacity: loading ? 0.8 : 1, transition: 'all 0.15s'
+          }}
+            onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--primary-hover)' }}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}>
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>

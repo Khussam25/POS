@@ -61,3 +61,7 @@ button { cursor: pointer; border: none; background: none; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--outline); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-500); }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

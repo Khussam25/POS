@@ -1,5 +1,12 @@
-import { useState, createContext, useContext } from 'react'
+import { useState, useEffect, createContext, useContext } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut
+} from 'firebase/auth'
+import { auth, googleProvider } from './firebase'
 import { getStore, saveStore } from './store'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -13,45 +20,85 @@ import Settings from './pages/Settings'
 import './index.css'
 
 export const AppContext = createContext(null)
-
 export function useApp() { return useContext(AppContext) }
 
-const USERS = [
-  { id: 'emp1', username: 'rhoda.mutafungwa', password: 'admin123', name: 'Rhoda Mutafungwa', role: 'Admin', initials: 'RM', color: '#C92B36' },
-  { id: 'emp2', username: 'rustick.mbilauli', password: 'cashier123', name: 'Rustick Mbilauli', role: 'Cashier', initials: 'RMB', color: '#1E4E8C' },
-  { id: 'emp3', username: 'neema.juma', password: 'cashier123', name: 'Neema Juma', role: 'Cashier', initials: 'NJ', color: '#1E4E8C' },
-]
+function resolveEmployee(firebaseUser) {
+  if (!firebaseUser) return null
+  const { employees } = getStore()
+  const emp = employees.find(e => e.email === firebaseUser.email)
+  if (!emp) return null
+  return {
+    id: emp.id,
+    name: emp.name,
+    role: emp.role,
+    initials: emp.initials,
+    color: emp.color,
+    email: firebaseUser.email,
+    photoURL: firebaseUser.photoURL || null,
+  }
+}
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem('jeibe_user')) } catch { return null }
-  })
+  const [currentUser, setCurrentUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [data, setData] = useState(() => getStore())
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const user = resolveEmployee(firebaseUser)
+        if (user) {
+          setCurrentUser(user)
+        } else {
+          await signOut(auth)
+          setCurrentUser(null)
+        }
+      } else {
+        setCurrentUser(null)
+      }
+      setAuthLoading(false)
+    })
+    return unsub
+  }, [])
 
   function updateData(key, value) {
     setData(prev => ({ ...prev, [key]: value }))
     saveStore(key, value)
   }
 
-  function login(usernameOrEmail, password) {
-    const user = USERS.find(u =>
-      (u.username === usernameOrEmail || u.username + '@jeibe.co.tz' === usernameOrEmail) &&
-      u.password === password
-    )
-    if (!user) return false
-    const u = { id: user.id, name: user.name, role: user.role, initials: user.initials, color: user.color }
-    setCurrentUser(u)
-    sessionStorage.setItem('jeibe_user', JSON.stringify(u))
-    return true
+  async function login(email, password) {
+    await signInWithEmailAndPassword(auth, email, password)
   }
 
-  function logout() {
+  async function loginWithGoogle() {
+    await signInWithPopup(auth, googleProvider)
+  }
+
+  async function logout() {
+    await signOut(auth)
     setCurrentUser(null)
-    sessionStorage.removeItem('jeibe_user')
+  }
+
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: 44, height: 44,
+            border: '3px solid var(--primary-light)',
+            borderTopColor: 'var(--primary)',
+            borderRadius: '50%',
+            animation: 'spin 0.75s linear infinite',
+            margin: '0 auto 14px'
+          }} />
+          <p style={{ color: 'var(--text-500)', fontSize: 13 }}>Loading…</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <AppContext.Provider value={{ currentUser, data, updateData, login, logout }}>
+    <AppContext.Provider value={{ currentUser, data, updateData, login, loginWithGoogle, logout }}>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" replace />} />
