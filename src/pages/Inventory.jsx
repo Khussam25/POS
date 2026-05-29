@@ -148,7 +148,7 @@ export default function Inventory() {
               )
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>No products found</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noProductsFound')}</td></tr>
             )}
           </tbody>
         </table>
@@ -163,23 +163,23 @@ export default function Inventory() {
               <button onClick={() => setModal(null)} style={{ color: 'var(--text-500)', padding: 4 }}><X size={20} /></button>
             </div>
             <div style={{ display: 'grid', gap: 14 }}>
-              <FormField label="Product Name" value={form.name ?? ''} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. CeraVe Moisturizing Cream" />
-              <FormField label="SKU" value={form.sku ?? ''} onChange={sku => setForm(f => ({ ...f, sku }))} error={errors.sku} placeholder="e.g. CV-MC-001" />
+              <FormField label={t('productName')} value={form.name ?? ''} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. CeraVe Moisturizing Cream" />
+              <FormField label={t('skuLabel')} value={form.sku ?? ''} onChange={sku => setForm(f => ({ ...f, sku }))} error={errors.sku} placeholder="e.g. CV-MC-001" />
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Category</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('category')}</label>
                 <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 13, background: 'var(--bg)' }}>
                   {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="Buying Price (TZS)" value={form.buyingPriceTZS ?? ''} onChange={buyingPriceTZS => setForm(f => ({ ...f, buyingPriceTZS }))} error={errors.buyingPriceTZS} numeric placeholder="e.g. 37000" />
-                <FormField label="Selling Price (TZS)" value={form.sellingPriceTZS ?? ''} onChange={sellingPriceTZS => setForm(f => ({ ...f, sellingPriceTZS }))} error={errors.sellingPriceTZS} numeric placeholder="e.g. 55000" />
+                <FormField label={t('buyingPrice')} value={form.buyingPriceTZS ?? ''} onChange={buyingPriceTZS => setForm(f => ({ ...f, buyingPriceTZS }))} error={errors.buyingPriceTZS} numeric placeholder="e.g. 37000" />
+                <FormField label={t('sellingPrice')} value={form.sellingPriceTZS ?? ''} onChange={sellingPriceTZS => setForm(f => ({ ...f, sellingPriceTZS }))} error={errors.sellingPriceTZS} numeric placeholder="e.g. 55000" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="Quantity" value={form.qty ?? ''} onChange={qty => setForm(f => ({ ...f, qty }))} error={errors.qty} numeric placeholder="e.g. 50" />
-                <FormField label="Low Stock Threshold" value={form.lowStockThreshold ?? ''} onChange={lowStockThreshold => setForm(f => ({ ...f, lowStockThreshold }))} error={errors.lowStockThreshold} numeric placeholder="e.g. 10" />
+                <FormField label={t('quantity')} value={form.qty ?? ''} onChange={qty => setForm(f => ({ ...f, qty }))} error={errors.qty} numeric placeholder="e.g. 50" />
+                <FormField label={t('lowStockThreshold')} value={form.lowStockThreshold ?? ''} onChange={lowStockThreshold => setForm(f => ({ ...f, lowStockThreshold }))} error={errors.lowStockThreshold} numeric placeholder="e.g. 10" />
               </div>
-              <FormField label="Expiry Date" type="date" value={form.expiryDate ?? ''} onChange={expiryDate => setForm(f => ({ ...f, expiryDate }))} error={errors.expiryDate} />
+              <FormField label={t('expiryDate')} type="date" value={form.expiryDate ?? ''} onChange={expiryDate => setForm(f => ({ ...f, expiryDate }))} error={errors.expiryDate} />
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
               <button onClick={() => setModal(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>

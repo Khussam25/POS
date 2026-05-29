@@ -122,6 +122,7 @@ const en = {
   editProductTitle: 'Edit Product',
   skuLabel: 'SKU',
   lowStockThreshold: 'Low Stock Threshold',
+  quantity: 'Quantity',
   cancel: 'Cancel',
   saveChanges: 'Save Changes',
   deleteProductTitle: 'Delete Product?',
@@ -226,6 +227,7 @@ const en = {
   newPasswordLabel: 'New Password',
   confirmPassword: 'Confirm New Password',
   passwordChanged: 'Password changed successfully',
+  saved: 'Saved!',
 }
 
 const sw = {
@@ -352,6 +354,7 @@ const sw = {
   editProductTitle: 'Hariri Bidhaa',
   skuLabel: 'SKU',
   lowStockThreshold: 'Kiwango cha Bidhaa Kidogo',
+  quantity: 'Idadi',
   cancel: 'Ghairi',
   saveChanges: 'Hifadhi Mabadiliko',
   deleteProductTitle: 'Futa Bidhaa?',
@@ -456,6 +459,7 @@ const sw = {
   newPasswordLabel: 'Nywila Mpya',
   confirmPassword: 'Thibitisha Nywila Mpya',
   passwordChanged: 'Nywila imebadilishwa',
+  saved: 'Imehifadhiwa!',
 }
 
 export const translations = { en, sw }

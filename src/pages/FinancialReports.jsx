@@ -191,7 +191,7 @@ export default function FinancialReports() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-                  {['Category', 'Transactions', 'Amount'].map(h => (
+                  {[t('categoryLabel'), t('transactions2'), t('amount')].map(h => (
                     <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
                   ))}
                 </tr>
@@ -205,7 +205,7 @@ export default function FinancialReports() {
                   </tr>
                 ))}
                 <tr style={{ borderTop: '2px solid var(--outline)', background: 'var(--bg)' }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>Total</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>{t('totalLabel')}</td>
                   <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: 13 }}>{monthExpenses.length}</td>
                   <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--warning)' }}>{fmt(totalExpenses)}</td>
                 </tr>
@@ -219,7 +219,7 @@ export default function FinancialReports() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-                  {['Date', 'Customer', 'Items', 'Payment', 'Amount'].map(h => (
+                  {[t('dateLabel'), t('customer'), t('itemsCol'), t('payment'), t('amount')].map(h => (
                     <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
                   ))}
                 </tr>
@@ -243,7 +243,7 @@ export default function FinancialReports() {
                   </tr>
                 ))}
                 <tr style={{ borderTop: '2px solid var(--outline)', background: 'var(--bg)' }}>
-                  <td colSpan={4} style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>Total Revenue</td>
+                  <td colSpan={4} style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>{t('totalRevenue')}</td>
                   <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--primary)' }}>{fmt(revenue)}</td>
                 </tr>
               </tbody>

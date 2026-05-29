@@ -213,7 +213,7 @@ export default function PointOfSale() {
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>{fmt(item.price * item.qty)}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{fmt(item.price)} ea</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{fmt(item.price)} {t('eachUnit')}</div>
                     </div>
                   </div>
                 </div>
@@ -380,7 +380,7 @@ export default function PointOfSale() {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{fmt(item.price * item.qty)}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{fmt(item.price)} ea</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{fmt(item.price)} {t('eachUnit')}</div>
                 </div>
               </div>
             </div>

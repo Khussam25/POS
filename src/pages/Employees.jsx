@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../App'
+import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
 import { formatPhoneDisplay } from '../utils/phone'
@@ -13,6 +14,7 @@ function getColor(role) { return role === 'Admin' ? '#C92B36' : '#1E4E8C' }
 
 export default function Employees() {
   const { currentUser, data, updateData } = useApp()
+  const t = useT()
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
@@ -85,14 +87,14 @@ export default function Employees() {
     <div className="r-page">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Employees</h1>
-          <p style={{ color: 'var(--text-500)', fontSize: 13 }}>{data.employees.length} team members</p>
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>{t('employeesTitle')}</h1>
+          <p style={{ color: 'var(--text-500)', fontSize: 13 }}>{data.employees.length} {t('teamMembers')}</p>
         </div>
         {currentUser.role === 'Admin' && (
           <button onClick={openAdd} style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px',
             background: 'var(--accent)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13
-          }}><Plus size={15} /> Add Employee</button>
+          }}><Plus size={15} /> {t('addEmployee')}</button>
         )}
       </div>
 
@@ -116,16 +118,16 @@ export default function Employees() {
                 fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
                 background: emp.status === 'Active' ? 'var(--success-light)' : 'var(--outline)',
                 color: emp.status === 'Active' ? 'var(--success)' : 'var(--text-500)'
-              }}>{emp.status}</span>
+              }}>{emp.status === 'Active' ? t('active') : t('inactive')}</span>
             </div>
 
             <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: 'var(--text-500)' }}>Phone</span>
+                <span style={{ color: 'var(--text-500)' }}>{t('phone')}</span>
                 <span style={{ fontWeight: 500 }}>{formatPhoneDisplay(emp.phone) || '—'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-500)' }}>Username</span>
+                <span style={{ color: 'var(--text-500)' }}>{t('username')}</span>
                 <code style={{ fontSize: 12, background: 'var(--bg)', padding: '2px 8px', borderRadius: 6, border: '1px solid var(--outline)' }}>{emp.username}</code>
               </div>
             </div>
@@ -136,13 +138,13 @@ export default function Employees() {
                   flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   padding: '8px', border: '1.5px solid var(--outline)', borderRadius: 8, fontSize: 12, fontWeight: 600, transition: 'all 0.15s', color: 'var(--text-900)'
                 }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
-                  <Pencil size={13} /> Edit
+                  <Pencil size={13} /> {t('edit')}
                 </button>
                 <button onClick={() => { setResetModal(emp); setNewPassword('') }} style={{
                   flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   padding: '8px', border: '1.5px solid var(--outline)', borderRadius: 8, fontSize: 12, fontWeight: 600, transition: 'all 0.15s', color: 'var(--text-900)'
                 }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
-                  <RefreshCw size={13} /> Reset Password
+                  <RefreshCw size={13} /> {t('resetPassword')}
                 </button>
               </div>
             )}
@@ -155,33 +157,34 @@ export default function Employees() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
           <div ref={modalRef} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 440, boxShadow: 'var(--shadow)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800 }}>{modal === 'add' ? 'Add Employee' : 'Edit Employee'}</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 800 }}>{modal === 'add' ? t('addEmployee') : t('editEmployee')}</h2>
               <button onClick={() => setModal(null)} style={{ color: 'var(--text-500)', padding: 4 }}><X size={20} /></button>
             </div>
             <div style={{ display: 'grid', gap: 14 }}>
-              <FormField label="Full Name" value={form.name} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. Amina Hassan" />
-              <FormField label="Username" value={form.username} onChange={username => setForm(f => ({ ...f, username }))} error={errors.username} placeholder="e.g. amina.hassan" />
-              <FormField label="Phone" phone value={form.phone} onChange={phone => setForm(f => ({ ...f, phone }))} error={errors.phone} placeholder="+255 712 345 678" />
+              <FormField label={t('fullName')} value={form.name} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. Amina Hassan" />
+              <FormField label={t('username')} value={form.username} onChange={username => setForm(f => ({ ...f, username }))} error={errors.username} placeholder="e.g. amina.hassan" />
+              <FormField label={t('phone')} phone value={form.phone} onChange={phone => setForm(f => ({ ...f, phone }))} error={errors.phone} placeholder="+255 712 345 678" />
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Role</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('role')}</label>
                 <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 13, background: 'var(--bg)' }}>
                   {ROLES.map(r => <option key={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Status</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('status')}</label>
                 <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 13, background: 'var(--bg)' }}>
-                  {['Active', 'Inactive'].map(s => <option key={s}>{s}</option>)}
+                  <option value="Active">{t('active')}</option>
+                  <option value="Inactive">{t('inactive')}</option>
                 </select>
               </div>
               {modal === 'add' && (
-                <FormField label="Password" type="password" value={form.password ?? ''} onChange={password => setForm(f => ({ ...f, password }))} error={errors.password} placeholder="Set initial password" />
+                <FormField label={t('password')} type="password" value={form.password ?? ''} onChange={password => setForm(f => ({ ...f, password }))} error={errors.password} placeholder={t('initialPassword')} />
               )}
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-              <button onClick={() => setModal(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>Cancel</button>
+              <button onClick={() => setModal(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>
               <button onClick={save} style={{ flex: 1, padding: '11px', background: 'var(--primary)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>
-                {modal === 'add' ? 'Add Employee' : 'Save Changes'}
+                {modal === 'add' ? t('addEmployee') : t('saveChanges')}
               </button>
             </div>
           </div>
@@ -193,15 +196,15 @@ export default function Employees() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
           <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 360, boxShadow: 'var(--shadow)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 800 }}>Reset Password</h2>
+              <h2 style={{ fontSize: 17, fontWeight: 800 }}>{t('resetPassword')}</h2>
               <button onClick={() => setResetModal(null)} style={{ color: 'var(--text-500)', padding: 4 }}><X size={18} /></button>
             </div>
-            <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 16 }}>Set a new password for <strong>{resetModal.name}</strong></p>
-            <FormInput type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="New password"
+            <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 16 }}>{t('setNewPassword')} <strong>{resetModal.name}</strong></p>
+            <FormInput type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder={t('newPassword')}
               selectOnFocus={false} style={{ marginBottom: 16 }} />
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setResetModal(null)} style={{ flex: 1, padding: '10px', border: '1.5px solid var(--outline)', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>Cancel</button>
-              <button onClick={resetPassword} style={{ flex: 1, padding: '10px', background: 'var(--primary)', color: 'white', borderRadius: 8, fontWeight: 700, fontSize: 13 }}>Reset Password</button>
+              <button onClick={() => setResetModal(null)} style={{ flex: 1, padding: '10px', border: '1.5px solid var(--outline)', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>
+              <button onClick={resetPassword} style={{ flex: 1, padding: '10px', background: 'var(--primary)', color: 'white', borderRadius: 8, fontWeight: 700, fontSize: 13 }}>{t('resetPassword')}</button>
             </div>
           </div>
         </div>

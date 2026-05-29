@@ -50,11 +50,11 @@ function SettingsToggle({ label, desc, checked, onChange }) {
 }
 
 const SECTIONS = [
-  { key: 'store', label: 'Store Information', icon: Store },
-  { key: 'currency', label: 'Currency & Exchange', icon: DollarSign },
-  { key: 'tax', label: 'Tax Settings', icon: FileText },
-  { key: 'receipt', label: 'Receipt Settings', icon: Receipt },
-  { key: 'account', label: 'My Account', icon: User },
+  { key: 'store', labelKey: 'storeInformation', icon: Store },
+  { key: 'currency', labelKey: 'currencyExchange', icon: DollarSign },
+  { key: 'tax', labelKey: 'taxSettings', icon: FileText },
+  { key: 'receipt', labelKey: 'receiptSettings', icon: Receipt },
+  { key: 'account', labelKey: 'myAccount', icon: User },
 ]
 
 export default function Settings() {
@@ -115,15 +115,15 @@ export default function Settings() {
   return (
     <div className="r-page">
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Settings</h1>
-        <p style={{ color: 'var(--text-500)', fontSize: 13 }}>Configure your store preferences</p>
+        <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>{t('settingsTitle')}</h1>
+        <p style={{ color: 'var(--text-500)', fontSize: 13 }}>{t('settingsSub')}</p>
       </div>
 
       <div className="settings-layout" style={{ display: 'flex', gap: 24 }}>
         {/* Sidebar */}
         <div style={{ width: 220, flexShrink: 0 }}>
           <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 8, boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {SECTIONS.map(({ key, label, icon: Icon }) => (
+            {SECTIONS.map(({ key, labelKey, icon: Icon }) => (
               <button key={key} onClick={() => setSection(key)} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
                 borderRadius: 8, fontSize: 13, fontWeight: 600, textAlign: 'left', transition: 'all 0.15s',
@@ -131,7 +131,7 @@ export default function Settings() {
                 color: section === key ? 'var(--primary)' : 'var(--text-900)',
               }}>
                 <Icon size={15} strokeWidth={section === key ? 2.2 : 1.8} />
-                {label}
+                {t(labelKey)}
               </button>
             ))}
           </div>
@@ -141,7 +141,7 @@ export default function Settings() {
         <div style={{ flex: 1 }}>
           <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '24px 28px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 16, borderBottom: '1.5px solid var(--outline)' }}>
-              <h2 style={{ fontSize: 17, fontWeight: 800 }}>{SECTIONS.find(s => s.key === section)?.label}</h2>
+              <h2 style={{ fontSize: 17, fontWeight: 800 }}>{t(SECTIONS.find(s => s.key === section)?.labelKey)}</h2>
               {section !== 'account' && (
                 <button onClick={handleSave} style={{
                   display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px',
@@ -149,15 +149,15 @@ export default function Settings() {
                   borderRadius: 8, fontWeight: 700, fontSize: 13, transition: 'background 0.2s'
                 }}>
                   {saved ? <CheckCircle2 size={14} /> : <Save size={14} />}
-                  {saved ? 'Saved!' : 'Save Changes'}
+                  {saved ? t('saved') : t('saveChanges')}
                 </button>
               )}
             </div>
 
             {section === 'store' && (
               <>
-                <FormField layout="row" label="Store Name" desc="Displayed on receipts and reports" value={form.storeName} onChange={v => setForm(f => ({ ...f, storeName: v }))} />
-                <FormField layout="row" label="Address" desc="Physical location of the store" value={form.address} onChange={v => setForm(f => ({ ...f, address: v }))} />
+                <FormField layout="row" label={t('storeName')} desc={t('storeNameDesc')} value={form.storeName} onChange={v => setForm(f => ({ ...f, storeName: v }))} />
+                <FormField layout="row" label={t('address')} desc={t('addressDesc')} value={form.address} onChange={v => setForm(f => ({ ...f, address: v }))} />
                 <FormField
                   layout="row"
                   label={t('phoneNumber')}
@@ -167,7 +167,7 @@ export default function Settings() {
                   placeholder="+255 712 345 678"
                   inputStyle={{ width: 320, maxWidth: '100%' }}
                 />
-                <FormField layout="row" label="Email Address" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} />
+                <FormField layout="row" label={t('emailAddressLabel')} type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} />
                 <div style={{ padding: '16px 0' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
@@ -203,22 +203,22 @@ export default function Settings() {
 
             {section === 'currency' && (
               <>
-                <FormField layout="row" label="Currency Code" desc="Primary display currency" value={form.currency} onChange={v => setForm(f => ({ ...f, currency: v }))} placeholder="TZS" />
-                <FormField layout="row" label="USD to TZS Rate" desc="Exchange rate used for buying price conversions" value={form.exchangeRate} onChange={v => setForm(f => ({ ...f, exchangeRate: v }))} numeric />
+                <FormField layout="row" label={t('currencyCode')} desc={t('currencyCodeDesc')} value={form.currency} onChange={v => setForm(f => ({ ...f, currency: v }))} placeholder="TZS" />
+                <FormField layout="row" label={t('exchangeRate')} desc={t('exchangeRateDesc')} value={form.exchangeRate} onChange={v => setForm(f => ({ ...f, exchangeRate: v }))} numeric />
               </>
             )}
 
             {section === 'tax' && (
               <>
-                <SettingsToggle label="Enable VAT" desc="Apply Value Added Tax to sales" checked={form.vatEnabled} onChange={vatEnabled => setForm(f => ({ ...f, vatEnabled }))} />
-                <FormField layout="row" label="VAT Rate (%)" desc="Percentage applied to each sale" value={form.vatRate} onChange={v => setForm(f => ({ ...f, vatRate: v }))} numeric disabled={!form.vatEnabled} placeholder="18" />
+                <SettingsToggle label={t('enableVAT')} desc={t('enableVATDesc')} checked={form.vatEnabled} onChange={vatEnabled => setForm(f => ({ ...f, vatEnabled }))} />
+                <FormField layout="row" label={t('vatRate')} desc={t('vatRateDesc')} value={form.vatRate} onChange={v => setForm(f => ({ ...f, vatRate: v }))} numeric disabled={!form.vatEnabled} placeholder="18" />
               </>
             )}
 
             {section === 'receipt' && (
               <>
-                <FormField layout="row" label="Receipt Header" desc="Text shown at the top of the receipt" value={form.receiptHeader} onChange={v => setForm(f => ({ ...f, receiptHeader: v }))} placeholder="Thank you for shopping!" />
-                <FormField layout="row" label="Receipt Footer" desc="Text shown at the bottom of the receipt" value={form.receiptFooter} onChange={v => setForm(f => ({ ...f, receiptFooter: v }))} placeholder="Come again!" />
+                <FormField layout="row" label={t('receiptHeader')} desc={t('receiptHeaderDesc')} value={form.receiptHeader} onChange={v => setForm(f => ({ ...f, receiptHeader: v }))} placeholder="Thank you for shopping!" />
+                <FormField layout="row" label={t('receiptFooter')} desc={t('receiptFooterDesc')} value={form.receiptFooter} onChange={v => setForm(f => ({ ...f, receiptFooter: v }))} placeholder="Come again!" />
               </>
             )}
 
@@ -231,17 +231,17 @@ export default function Settings() {
                     <div style={{ fontSize: 13, color: 'var(--text-500)' }}>{currentUser.role}</div>
                   </div>
                 </div>
-                <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Change Password</h3>
+                <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t('changePassword')}</h3>
                 {pwSaved && (
                   <div style={{ background: 'var(--success-light)', color: 'var(--success)', borderRadius: 8, padding: '10px 14px', fontSize: 13, fontWeight: 500, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CheckCircle2 size={15} /> Password changed successfully
+                    <CheckCircle2 size={15} /> {t('passwordChanged')}
                   </div>
                 )}
                 {pwError && (
                   <div style={{ background: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, fontWeight: 500, marginBottom: 16 }}>{pwError}</div>
                 )}
                 <div style={{ display: 'grid', gap: 12 }}>
-                  {[['Current Password', 'current'], ['New Password', 'next'], ['Confirm New Password', 'confirm']].map(([label, field]) => (
+                  {[[t('currentPassword'), 'current'], [t('newPasswordLabel'), 'next'], [t('confirmPassword'), 'confirm']].map(([label, field]) => (
                     <div key={field}>
                       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{label}</label>
                       <FormInput type="password" value={passwordForm[field]} onChange={e => setPasswordForm(f => ({ ...f, [field]: e.target.value }))} placeholder="••••••••"
@@ -250,7 +250,7 @@ export default function Settings() {
                   ))}
                 </div>
                 <button onClick={handlePasswordChange} style={{ marginTop: 20, padding: '11px 22px', background: 'var(--primary)', color: 'white', borderRadius: 8, fontWeight: 700, fontSize: 13 }}>
-                  Change Password
+                  {t('changePassword')}
                 </button>
               </div>
             )}
