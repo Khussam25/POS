@@ -2,8 +2,9 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import { ShoppingBag, TrendingUp, Receipt, Package2, Plus, ShoppingCart, BarChart2, AlertTriangle, AlertCircle, ArrowRight, Circle } from 'lucide-react'
+import { fmtMoney, saleNetRevenue, saleCogs } from '../utils/money'
 
-function fmt(n) { return 'TZS ' + Number(n).toLocaleString() }
+const fmt = fmtMoney
 
 function StatCard({ label, value, sub, subColor }) {
   return (
@@ -38,21 +39,13 @@ export default function Dashboard() {
   const monthSales = data.sales.filter(s => s.date.startsWith(currentMonth))
   const monthRevenue = monthSales.reduce((a, s) => a + s.total, 0)
   const monthExpenses = data.expenses.filter(e => e.date.startsWith(currentMonth)).reduce((a, e) => a + e.amount, 0)
-  const monthProfit = monthRevenue - monthExpenses
+  const monthGross = monthSales.reduce((a, s) => a + saleNetRevenue(s) - saleCogs(s, data.products), 0)
+  const monthProfit = monthGross - monthExpenses
 
   const todayExpenses = data.expenses.filter(e => e.date === today).reduce((a, e) => a + e.amount, 0)
 
-  const totalCOGS = data.products.reduce((a, p) => {
-    const rate = data.settings.exchangeRate || 2450
-    return a + p.buyingPriceTZS * p.qty
-  }, 0)
-
   const todayProfit = todaySales.reduce((a, s) => {
-    return a + s.items.reduce((ia, item) => {
-      const prod = data.products.find(p => p.id === item.productId)
-      const cogs = prod ? prod.buyingPriceTZS * item.qty : 0
-      return ia + item.price * item.qty - cogs
-    }, 0)
+    return a + saleNetRevenue(s) - saleCogs(s, data.products)
   }, 0) - todayExpenses
 
   const stockValue = data.products.reduce((a, p) => a + p.sellingPriceTZS * p.qty, 0)
@@ -78,7 +71,7 @@ export default function Dashboard() {
       {/* Stat cards */}
       <div className="r-stats">
         <StatCard label={t('todaySales')} value={fmt(todayRevenue)} sub={`${todaySales.length} ${todaySales.length !== 1 ? t('transactions') : t('transaction')}`} subColor="#1E4E8C" />
-        <StatCard label={t('todayProfit')} value={fmt(Math.max(0, todayProfit))} sub={t('afterExpenses')} subColor="#1A9E6B" />
+        <StatCard label={t('todayProfit')} value={fmt(todayProfit)} sub={t('afterExpenses')} subColor={todayProfit >= 0 ? '#1A9E6B' : 'var(--danger)'} />
         <StatCard label={t('todayExpenses')} value={fmt(todayExpenses)} sub={`${data.expenses.filter(e => e.date === today).length} ${t('expenseRecorded')}`} subColor="#E07B20" />
         <StatCard label={t('stockValue')} value={fmt(stockValue)} sub={t('allProducts')} subColor="#7A8694" />
       </div>

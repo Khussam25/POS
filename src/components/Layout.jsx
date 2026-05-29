@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useT, useLang } from '../i18n/LangContext'
@@ -29,9 +29,8 @@ function LangToggle() {
 }
 
 export default function Layout() {
-  const { currentUser, logout, data } = useApp()
+  const { currentUser, logout, data, saveError, setSaveError } = useApp()
   const storeLogo = data.settings.storeLogo || '/Jeibe_Logo.jpg'
-  const navigate = useNavigate()
   const isMobile = useIsMobile()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const t = useT()
@@ -48,7 +47,13 @@ export default function Layout() {
 
   const visibleNav = NAV.filter(({ to }) => canAccess(currentUser.role, to))
 
-  function handleLogout() { logout(); navigate('/login') }
+  async function handleLogout() {
+    try {
+      await logout()
+    } catch {
+      /* route guard redirects once auth state clears */
+    }
+  }
 
   // ── Mobile ──────────────────────────────────────────────────────────────
   if (isMobile) {
@@ -127,7 +132,15 @@ export default function Layout() {
           </div>
         )}
 
-        <main style={{ flex: 1, overflow: 'auto', paddingBottom: 70 }}><Outlet /></main>
+        <main style={{ flex: 1, overflow: 'auto', paddingBottom: 70 }}>
+          {saveError && (
+            <div className="no-print" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <span>{saveError}</span>
+              <button type="button" onClick={() => setSaveError(null)} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
+            </div>
+          )}
+          <Outlet />
+        </main>
 
         <nav className="no-print" style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
@@ -207,7 +220,15 @@ export default function Layout() {
         </div>
       </aside>
 
-      <main style={{ flex: 1, overflow: 'auto', minHeight: '100vh' }}><Outlet /></main>
+      <main style={{ flex: 1, overflow: 'auto', minHeight: '100vh' }}>
+        {saveError && (
+          <div className="no-print" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <span>{saveError}</span>
+            <button type="button" onClick={() => setSaveError(null)} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
+          </div>
+        )}
+        <Outlet />
+      </main>
     </div>
   )
 }

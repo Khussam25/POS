@@ -1,15 +1,22 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
-import { Search, Plus, Pencil, Trash2, X, AlertTriangle, AlertCircle } from 'lucide-react'
+import { fmtMoney, roundTz } from '../utils/money'
+import { Search, Plus, Pencil, Trash2, X, AlertTriangle, ArrowUpDown } from 'lucide-react'
 
-function fmt(n) { return 'TZS ' + Number(n).toLocaleString() }
+const fmt = fmtMoney
 
 const CATEGORIES = ['Moisturizers', 'Serums', 'Eye Care', 'Sunscreen', 'Foundation', 'Lip Care', 'Body Care', 'Anti-Aging', 'Toners', 'Cleansers', 'Other']
 
 const EMPTY = { name: '', category: 'Moisturizers', buyingPriceTZS: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10, expiryDate: '' }
+
+const SORT_KEYS = ['nameAsc', 'nameDesc', 'qtyDesc', 'qtyAsc', 'profitDesc', 'profitAsc']
+
+function unitProfit(p) {
+  return roundTz(p.sellingPriceTZS - p.buyingPriceTZS)
+}
 
 function nextProductId(products) {
   let n = products.length + 1
@@ -21,11 +28,31 @@ function nextProductId(products) {
   return id
 }
 
+function sortProducts(list, sortKey) {
+  const items = [...list]
+  switch (sortKey) {
+    case 'nameDesc':
+      return items.sort((a, b) => b.name.localeCompare(a.name))
+    case 'qtyDesc':
+      return items.sort((a, b) => b.qty - a.qty)
+    case 'qtyAsc':
+      return items.sort((a, b) => a.qty - b.qty)
+    case 'profitDesc':
+      return items.sort((a, b) => unitProfit(b) - unitProfit(a))
+    case 'profitAsc':
+      return items.sort((a, b) => unitProfit(a) - unitProfit(b))
+    case 'nameAsc':
+    default:
+      return items.sort((a, b) => a.name.localeCompare(b.name))
+  }
+}
+
 export default function Inventory() {
   const { data, updateData } = useApp()
   const t = useT()
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('All')
+  const [filter, setFilter] = useState('all')
+  const [sortKey, setSortKey] = useState('nameAsc')
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
@@ -34,15 +61,25 @@ export default function Inventory() {
 
   useEffect(() => {
     if (!modal) return
-    const t = setTimeout(() => modalRef.current?.querySelector('input')?.focus(), 0)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => modalRef.current?.querySelector('input')?.focus(), 0)
+    return () => clearTimeout(timer)
   }, [modal])
 
-  const filtered = data.products.filter(p => {
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase())
-    const matchFilter = filter === 'all' || (filter === 'inStock' && p.qty > p.lowStockThreshold) || (filter === 'lowStock' && p.qty > 0 && p.qty <= p.lowStockThreshold) || (filter === 'outOfStock' && p.qty === 0)
-    return matchSearch && matchFilter
-  })
+  const filtered = useMemo(() => {
+    const list = data.products.filter(p => {
+      const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase())
+      const matchFilter = filter === 'all' || (filter === 'inStock' && p.qty > p.lowStockThreshold) || (filter === 'lowStock' && p.qty > 0 && p.qty <= p.lowStockThreshold) || (filter === 'outOfStock' && p.qty === 0)
+      return matchSearch && matchFilter
+    })
+    return sortProducts(list, sortKey)
+  }, [data.products, search, filter, sortKey])
+
+  const formProfitPreview = useMemo(() => {
+    const buy = parseFloat(form.buyingPriceTZS)
+    const sell = parseFloat(form.sellingPriceTZS)
+    if (!Number.isFinite(buy) || !Number.isFinite(sell) || buy <= 0 || sell <= 0) return null
+    return roundTz(sell - buy)
+  }, [form.buyingPriceTZS, form.sellingPriceTZS])
 
   function openAdd() { setForm(EMPTY); setErrors({}); setModal('add') }
   function openEdit(p) { setForm({ ...p, buyingPriceTZS: String(p.buyingPriceTZS), sellingPriceTZS: String(p.sellingPriceTZS), qty: String(p.qty), lowStockThreshold: String(p.lowStockThreshold) }); setErrors({}); setModal('edit') }
@@ -70,6 +107,15 @@ export default function Inventory() {
     setModal(null)
   }
 
+  const sortLabels = {
+    nameAsc: t('sortNameAZ'),
+    nameDesc: t('sortNameZA'),
+    qtyDesc: t('sortStockHigh'),
+    qtyAsc: t('sortStockLow'),
+    profitDesc: t('sortProfitHigh'),
+    profitAsc: t('sortProfitLow'),
+  }
+
   return (
     <div className="r-page">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
@@ -82,13 +128,32 @@ export default function Inventory() {
         </button>
       </div>
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
           <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
           <FormInput value={search} onChange={e => setSearch(e.target.value)} placeholder={t('searchProductsPlaceholder')} selectOnFocus={false}
             style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: 'var(--radius-sm)', background: 'var(--surface)' }} />
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <ArrowUpDown size={15} color="var(--text-500)" aria-hidden />
+          <select
+            value={sortKey}
+            onChange={e => setSortKey(e.target.value)}
+            aria-label={t('sortBy')}
+            style={{
+              padding: '9px 12px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)',
+              fontSize: 13, fontWeight: 600, background: 'var(--surface)', color: 'var(--text-900)', outline: 'none',
+              maxWidth: 220,
+            }}
+          >
+            {SORT_KEYS.map(key => (
+              <option key={key} value={key}>{sortLabels[key]}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {[['all', t('all')], ['inStock', t('inStock')], ['lowStock', t('lowStock')], ['outOfStock', t('outOfStock')]].map(([key, label]) => (
           <button key={key} onClick={() => setFilter(key)} style={{
             padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
@@ -99,13 +164,12 @@ export default function Inventory() {
         ))}
       </div>
 
-      {/* Table */}
       <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-              {[t('productName'), t('category'), t('qty'), t('buyingPrice'), t('sellingPrice'), t('stockStatus'), t('expiryDate'), ''].map(h => (
-                <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</th>
+              {[t('productName'), t('qty'), t('sellingPrice'), t('profitPerUnit'), t('stockStatus'), ''].map(h => (
+                <th key={h || 'actions'} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -113,20 +177,24 @@ export default function Inventory() {
             {filtered.map(p => {
               const isOut = p.qty === 0
               const isLow = !isOut && p.qty <= p.lowStockThreshold
+              const profit = unitProfit(p)
+              const profitColor = profit < 0 ? 'var(--danger)' : profit > 0 ? 'var(--success)' : 'var(--text-500)'
               return (
                 <tr key={p.id} style={{ borderBottom: '1px solid var(--outline)' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <td style={{ padding: '13px 16px', fontWeight: 600, fontSize: 13 }}>{p.name}</td>
-                  <td style={{ padding: '13px 16px', color: 'var(--text-500)', fontSize: 13 }}>{p.category}</td>
+                  <td style={{ padding: '13px 16px' }}>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-500)', marginTop: 2 }}>{p.category}</div>
+                  </td>
                   <td style={{ padding: '13px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontWeight: 700, fontSize: 14, color: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--text-900)' }}>{p.qty}</span>
                       {isLow && <AlertTriangle size={13} color="var(--warning)" />}
                     </div>
                   </td>
-                  <td style={{ padding: '13px 16px', fontSize: 13 }}>{fmt(p.buyingPriceTZS)}</td>
                   <td style={{ padding: '13px 16px', fontWeight: 600, fontSize: 13 }}>{fmt(p.sellingPriceTZS)}</td>
+                  <td style={{ padding: '13px 16px', fontWeight: 700, fontSize: 13, color: profitColor }}>{fmt(profit)}</td>
                   <td style={{ padding: '13px 16px' }}>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
@@ -134,7 +202,6 @@ export default function Inventory() {
                       color: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)'
                     }}>{isOut ? t('outOfStock') : isLow ? t('lowStock') : t('inStock')}</span>
                   </td>
-                  <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--text-500)' }}>{p.expiryDate}</td>
                   <td style={{ padding: '13px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <button onClick={() => openEdit(p)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', border: '1.5px solid var(--outline)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: 'var(--text-500)', background: 'transparent', transition: 'all 0.15s' }}
@@ -153,13 +220,12 @@ export default function Inventory() {
               )
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noProductsFound')}</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noProductsFound')}</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Modal */}
       {modal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
           <div ref={modalRef} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow)' }}>
@@ -179,6 +245,21 @@ export default function Inventory() {
                 <FormField label={t('buyingPrice')} value={form.buyingPriceTZS ?? ''} onChange={buyingPriceTZS => setForm(f => ({ ...f, buyingPriceTZS }))} error={errors.buyingPriceTZS} numeric placeholder="e.g. 37000" />
                 <FormField label={t('sellingPrice')} value={form.sellingPriceTZS ?? ''} onChange={sellingPriceTZS => setForm(f => ({ ...f, sellingPriceTZS }))} error={errors.sellingPriceTZS} numeric placeholder="e.g. 55000" />
               </div>
+              {formProfitPreview != null && (
+                <div style={{
+                  padding: '12px 14px', borderRadius: 8, border: '1.5px solid var(--outline)',
+                  background: formProfitPreview < 0 ? 'var(--danger-light)' : 'var(--success-light)',
+                }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-500)', marginBottom: 4 }}>{t('expectedProfitHint')}</div>
+                  <div style={{
+                    fontSize: 18, fontWeight: 800,
+                    color: formProfitPreview < 0 ? 'var(--danger)' : 'var(--success)',
+                  }}>{fmt(formProfitPreview)}</div>
+                  {formProfitPreview < 0 && (
+                    <p style={{ fontSize: 12, color: 'var(--danger)', marginTop: 8, lineHeight: 1.45 }}>{t('sellingBelowCost')}</p>
+                  )}
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label={t('quantity')} value={form.qty ?? ''} onChange={qty => setForm(f => ({ ...f, qty }))} error={errors.qty} numeric placeholder="e.g. 50" />
                 <FormField label={t('lowStockThreshold')} value={form.lowStockThreshold ?? ''} onChange={lowStockThreshold => setForm(f => ({ ...f, lowStockThreshold }))} error={errors.lowStockThreshold} numeric placeholder="e.g. 10" />
@@ -195,7 +276,6 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Delete confirmation modal */}
       {deleteTarget && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
           <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 380, boxShadow: 'var(--shadow)' }}>

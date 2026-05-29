@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useApp } from '../App'
@@ -18,7 +18,7 @@ function LangToggle() {
   )
 }
 
-const REDIRECT_URL = 'https://pos-git-main-khussam-mohameds-projects.vercel.app/login'
+const REDIRECT_URL = typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login'
 
 function GoogleIcon() {
   return (
@@ -114,7 +114,7 @@ function ForgotPassword({ onBack }) {
 
 // ─── Main Login view ─────────────────────────────────────────────────────────
 export default function Login() {
-  const { login, loginWithGoogle, data, googleError, setGoogleError } = useApp()
+  const { login, loginWithGoogle, data, googleError, setGoogleError, currentUser } = useApp()
   const t = useT()
   const [view, setView] = useState('login')   // 'login' | 'forgot'
   const [identifier, setIdentifier] = useState('')
@@ -124,16 +124,30 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
 
+  useEffect(() => {
+    if (currentUser) {
+      setLoading(false)
+      setGoogleLoading(false)
+      return
+    }
+    if (googleError && (loading || googleLoading)) {
+      setLoading(false)
+      setGoogleLoading(false)
+    }
+  }, [currentUser, googleError, loading, googleLoading])
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setGoogleError(null)
     if (!identifier.trim() || !password) { setError('Please fill in all fields.'); return }
     setLoading(true)
     try {
-      const email = identifier.includes('@') ? identifier.trim() : `${identifier.trim()}@jeibe.co.tz`
+      const email = identifier.includes('@') ? identifier.trim().toLowerCase() : `${identifier.trim().toLowerCase()}@jeibe.co.tz`
       await login(email, password)
     } catch (err) {
       setError(FIREBASE_ERRORS[err.code] || 'Sign in failed. Please try again.')
+    } finally {
       setLoading(false)
     }
   }

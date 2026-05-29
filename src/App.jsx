@@ -7,7 +7,7 @@ import {
   signOut
 } from 'firebase/auth'
 import { auth, googleProvider } from './firebase'
-import { getStore, saveStore } from './store'
+import { getStore, saveStore, saveStoreBatch } from './store'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -48,10 +48,11 @@ function ProtectedRoute({ path, children }) {
 }
 
 function resolveEmployee(firebaseUser) {
-  if (!firebaseUser) return null
+  if (!firebaseUser?.email) return null
   const { employees } = getStore()
-  const emp = employees.find(e => e.email === firebaseUser.email)
-  if (!emp) return null
+  const email = firebaseUser.email.toLowerCase()
+  const emp = employees.find(e => e.email?.toLowerCase() === email)
+  if (!emp || emp.status === 'Inactive') return null
   return {
     id: emp.id,
     name: emp.name,
@@ -67,30 +68,65 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [googleError, setGoogleError] = useState(null)
+  const [saveError, setSaveError] = useState(null)
   const [data, setData] = useState(() => getStore())
 
   useEffect(() => {
+    let cancelled = false
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (cancelled) return
       if (firebaseUser) {
         const user = resolveEmployee(firebaseUser)
         if (user) {
           setCurrentUser(user)
+          setGoogleError(null)
         } else {
-          await signOut(auth)
-          setCurrentUser(null)
-          setGoogleError('Your Google account is not linked to any employee. Contact your administrator.')
+          try {
+            await signOut(auth)
+          } catch { /* ignore */ }
+          if (!cancelled) {
+            setCurrentUser(null)
+            setGoogleError('This account is not registered as an active employee. Contact your administrator.')
+          }
         }
       } else {
         setCurrentUser(null)
       }
-      setAuthLoading(false)
+      if (!cancelled) setAuthLoading(false)
     })
-    return unsub
+    return () => {
+      cancelled = true
+      unsub()
+    }
+  }, [])
+
+  useEffect(() => {
+    function onStorage(e) {
+      if (!e.key?.startsWith('jeibe_') || e.key === 'jeibe_version' || e.key === 'jeibe_lang') return
+      setData(getStore())
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
 
   function updateData(key, value) {
+    if (!saveStore(key, value)) {
+      setSaveError('Could not save your changes. Storage may be full — try a smaller store logo.')
+      return false
+    }
+    setSaveError(null)
     setData(prev => ({ ...prev, [key]: value }))
-    saveStore(key, value)
+    return true
+  }
+
+  function batchUpdateData(updates) {
+    if (!saveStoreBatch(updates)) {
+      setSaveError('Could not save your changes. Storage may be full — try a smaller store logo.')
+      return false
+    }
+    setSaveError(null)
+    setData(prev => ({ ...prev, ...updates }))
+    return true
   }
 
   async function login(email, password) {
@@ -105,6 +141,7 @@ export default function App() {
   async function logout() {
     await signOut(auth)
     setCurrentUser(null)
+    setGoogleError(null)
   }
 
   if (authLoading) {
@@ -127,7 +164,7 @@ export default function App() {
 
   return (
     <LangProvider>
-    <AppContext.Provider value={{ currentUser, data, updateData, login, loginWithGoogle, logout, googleError, setGoogleError }}>
+    <AppContext.Provider value={{ currentUser, data, updateData, batchUpdateData, login, loginWithGoogle, logout, googleError, setGoogleError, saveError, setSaveError }}>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" replace />} />

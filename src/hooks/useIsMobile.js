@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react'
 
 export function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint)
+  const query = `(max-width: ${breakpoint - 1}px)`
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(query).matches
+  )
   useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < breakpoint)
-    window.addEventListener('resize', handler)
-    return () => window.removeEventListener('resize', handler)
-  }, [breakpoint])
+    const mq = window.matchMedia(query)
+    const handler = e => setIsMobile(e.matches)
+    setIsMobile(mq.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [query])
   return isMobile
 }

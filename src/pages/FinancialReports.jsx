@@ -4,8 +4,9 @@ import { useT } from '../i18n/LangContext'
 import { Printer, Download, DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
+import { fmtMoney, saleNetRevenue, saleCogs } from '../utils/money'
 
-function fmt(n) { return 'TZS ' + Number(Math.round(n)).toLocaleString() }
+const fmt = fmtMoney
 function fmtSign(n) { return (n < 0 ? '(' : '') + fmt(Math.abs(n)) + (n < 0 ? ')' : '') }
 
 const TAB_KEYS = ['profitLoss', 'incomeStatement', 'expenseSummary', 'salesSummary']
@@ -24,16 +25,10 @@ export default function FinancialReports() {
   const monthSales = data.sales.filter(s => s.date.startsWith(currentMonth))
   const monthExpenses = data.expenses.filter(e => e.date.startsWith(currentMonth))
 
-  const revenue = monthSales.reduce((a, s) => a + s.total, 0)
+  const revenue = monthSales.reduce((a, s) => a + saleNetRevenue(s), 0)
   const totalExpenses = monthExpenses.reduce((a, e) => a + e.amount, 0)
 
-  const rate = data.settings.exchangeRate || 2450
-  const cogs = monthSales.reduce((a, s) => {
-    return a + s.items.reduce((ia, item) => {
-      const prod = data.products.find(p => p.id === item.productId)
-      return ia + (prod ? prod.buyingPriceTZS * item.qty : 0)
-    }, 0)
-  }, 0)
+  const cogs = monthSales.reduce((a, s) => a + saleCogs(s, data.products), 0)
 
   const grossProfit = revenue - cogs
   const netProfit = grossProfit - totalExpenses

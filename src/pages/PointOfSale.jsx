@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useApp } from '../App'
+import { useNavigate } from 'react-router-dom'
+import { useApp, canAccess } from '../App'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import OrderCheckout from '../components/pos/OrderCheckout'
 import { loadPosDraft, savePosDraft, clearPosDraft, reconcileCartWithProducts } from '../utils/posCart'
-import { Search, Plus, Minus, ShoppingCart, CheckCircle2, X } from 'lucide-react'
+import { calcOrderTotals, fmtMoney } from '../utils/money'
+import { Search, Plus, Minus, ShoppingCart, CheckCircle2, X, Package } from 'lucide-react'
 
-function fmt(n) { return 'TZS ' + Number(n).toLocaleString() }
+const fmt = fmtMoney
 
 function readDraftState(userId, products) {
   const draft = loadPosDraft(userId)
@@ -21,7 +23,9 @@ function readDraftState(userId, products) {
 }
 
 export default function PointOfSale() {
-  const { currentUser, data, updateData } = useApp()
+  const { currentUser, data, batchUpdateData } = useApp()
+  const [checkoutError, setCheckoutError] = useState(null)
+  const navigate = useNavigate()
   const userId = currentUser?.id
   const isMobile = useIsMobile()
   const t = useT()
@@ -46,8 +50,12 @@ export default function PointOfSale() {
   }, [userId])
 
   useEffect(() => {
-    setCart(prev => reconcileCartWithProducts(prev, data.products))
-  }, [data.products])
+    setCart(prev => {
+      const next = reconcileCartWithProducts(prev, data.products)
+      if (next.length === 0 && prev.length > 0) clearPosDraft(userId)
+      return next
+    })
+  }, [data.products, userId])
 
   useEffect(() => {
     if (!userId) return
@@ -84,29 +92,52 @@ export default function PointOfSale() {
     }).filter(Boolean))
   }
 
-  const subtotal = cart.reduce((a, i) => a + i.price * i.qty, 0)
-  const vat = Math.round(subtotal * vatRate)
-  const rawDiscount = parseFloat(discountValue) || 0
-  const discountAmount = Math.min(rawDiscount, subtotal)
-  const total = Math.max(0, subtotal + vat - discountAmount)
+  const { subtotal, vat, discountAmount, total } = calcOrderTotals({
+    cartItems: cart,
+    vatRate,
+    discountValue,
+  })
 
   function completeSale() {
     if (cart.length === 0) return
+    setCheckoutError(null)
+
+    for (const item of cart) {
+      const product = data.products.find(p => p.id === item.productId)
+      if (!product || product.qty < item.qty) {
+        setCart(prev => reconcileCartWithProducts(prev, data.products))
+        setCheckoutError(t('stockChanged'))
+        return
+      }
+    }
+
     const now = new Date()
     const sale = {
       id: 's' + Date.now(),
       date: now.toISOString().split('T')[0],
       time: now.toTimeString().slice(0, 5),
       customer: customer.trim() || 'Walk-in Customer',
-      items: cart.map(i => ({ productId: i.productId, name: i.name, qty: i.qty, price: i.price })),
+      items: cart.map(i => {
+        const product = data.products.find(p => p.id === i.productId)
+        return {
+          productId: i.productId,
+          name: i.name,
+          qty: i.qty,
+          price: i.price,
+          buyingPriceTZS: product?.buyingPriceTZS ?? 0,
+        }
+      }),
       subtotal, vat, discountAmount, total, paymentMethod: payment,
       soldBy: currentUser.name
     }
-    updateData('sales', [sale, ...data.sales])
-    updateData('products', data.products.map(p => {
+    const newProducts = data.products.map(p => {
       const item = cart.find(i => i.productId === p.id)
       return item ? { ...p, qty: p.qty - item.qty } : p
-    }))
+    })
+    if (!batchUpdateData({ sales: [sale, ...data.sales], products: newProducts })) {
+      setCheckoutError(t('saveFailed'))
+      return
+    }
     setSuccess(sale)
     clearPosDraft(userId)
     setCart([])
@@ -164,7 +195,19 @@ export default function PointOfSale() {
                 style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: 'var(--radius-sm)', background: 'var(--surface)' }} />
             </div>
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {products.map(p => {
+              {products.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-500)' }}>
+                  <Package size={40} strokeWidth={1.2} style={{ opacity: 0.25, marginBottom: 12 }} />
+                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-900)', marginBottom: 8 }}>{t('posNoProducts')}</div>
+                  <p style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>{t('posNoProductsHint')}</p>
+                  {canAccess(currentUser?.role, '/inventory') && (
+                    <button type="button" onClick={() => navigate('/inventory')} style={{
+                      background: 'var(--primary)', color: 'white', fontWeight: 700,
+                      padding: '10px 20px', borderRadius: 'var(--radius-sm)', fontSize: 13
+                    }}>{t('goToInventory')}</button>
+                  )}
+                </div>
+              ) : products.map(p => {
                 const isLow = p.qty <= p.lowStockThreshold
                 return (
                   <div key={p.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '12px 14px', border: '1px solid var(--outline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -219,6 +262,9 @@ export default function PointOfSale() {
               ))}
             </div>
 
+            {checkoutError && (
+              <p style={{ color: 'var(--danger)', fontSize: 12, fontWeight: 600, padding: '0 4px 8px', textAlign: 'center' }}>{checkoutError}</p>
+            )}
             <OrderCheckout
               compact
               t={t}
@@ -384,6 +430,9 @@ export default function PointOfSale() {
         </div>
 
         <div style={{ flexShrink: 0, borderTop: '2px solid var(--outline)' }}>
+          {checkoutError && (
+            <p style={{ color: 'var(--danger)', fontSize: 12, fontWeight: 600, padding: '8px 14px 0' }}>{checkoutError}</p>
+          )}
           <OrderCheckout
             t={t}
             cart={cart}

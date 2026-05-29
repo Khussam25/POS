@@ -1,18 +1,7 @@
 // Central data store with localStorage persistence
 
 const SEED = {
-  products: [
-    { id: 'CV-MC-001', name: 'CeraVe Moisturizing Cream', category: 'Moisturizers', buyingPriceTZS: 37500, sellingPriceTZS: 55000, qty: 45, lowStockThreshold: 10, expiryDate: '2026-08-15', sku: 'CV-MC-001' },
-    { id: 'NG-HB-002', name: 'Neutrogena Hydro Boost Serum', category: 'Serums', buyingPriceTZS: 62500, sellingPriceTZS: 89000, qty: 8, lowStockThreshold: 10, expiryDate: '2026-05-30', sku: 'NG-HB-002' },
-    { id: 'TO-NI-003', name: 'The Ordinary Niacinamide 10%', category: 'Serums', buyingPriceTZS: 17500, sellingPriceTZS: 28000, qty: 0, lowStockThreshold: 5, expiryDate: '2027-01-20', sku: 'TO-NI-003' },
-    { id: 'LO-RE-004', name: "L'Oreal Revitalift Eye Cream", category: 'Eye Care', buyingPriceTZS: 47500, sellingPriceTZS: 72000, qty: 22, lowStockThreshold: 5, expiryDate: '2026-11-10', sku: 'LO-RE-004' },
-    { id: 'OL-TE-005', name: 'Olay Total Effects SPF30', category: 'Sunscreen', buyingPriceTZS: 56000, sellingPriceTZS: 82000, qty: 5, lowStockThreshold: 8, expiryDate: '2026-06-01', sku: 'OL-TE-005' },
-    { id: 'MB-FM-006', name: 'Maybelline Fit Me Foundation', category: 'Foundation', buyingPriceTZS: 32500, sellingPriceTZS: 38000, qty: 30, lowStockThreshold: 5, expiryDate: '2027-03-15', sku: 'MB-FM-006' },
-    { id: 'NY-BG-007', name: 'NYX Butter Gloss', category: 'Lip Care', buyingPriceTZS: 21000, sellingPriceTZS: 28500, qty: 50, lowStockThreshold: 10, expiryDate: '2027-05-20', sku: 'NY-BG-007' },
-    { id: 'DV-DM-008', name: 'Dove Deep Moisture Body Wash', category: 'Body Care', buyingPriceTZS: 25000, sellingPriceTZS: 34000, qty: 40, lowStockThreshold: 10, expiryDate: '2027-08-01', sku: 'DV-DM-008' },
-    { id: 'AV-DM-009', name: 'Aveeno Daily Moisturizing Lotion', category: 'Body Care', buyingPriceTZS: 30000, sellingPriceTZS: 44000, qty: 7, lowStockThreshold: 10, expiryDate: '2026-09-15', sku: 'AV-DM-009' },
-    { id: 'PC-RT-010', name: 'Pond\'s Rejuveness Anti-Wrinkle', category: 'Anti-Aging', buyingPriceTZS: 41000, sellingPriceTZS: 58000, qty: 18, lowStockThreshold: 5, expiryDate: '2026-12-31', sku: 'PC-RT-010' },
-  ],
+  products: [],
 
   sales: [],
 
@@ -50,15 +39,32 @@ function save(key, value) {
   localStorage.setItem(`jeibe_${key}`, JSON.stringify(value));
 }
 
-const DATA_VERSION = '7'
+const DATA_VERSION = '8'
+
+/** Old demo inventory shipped in v7 — remove if the store still has only these items. */
+const DEMO_PRODUCT_IDS = new Set([
+  'CV-MC-001', 'NG-HB-002', 'TO-NI-003', 'LO-RE-004', 'OL-TE-005',
+  'MB-FM-006', 'NY-BG-007', 'DV-DM-008', 'AV-DM-009', 'PC-RT-010',
+])
+
+function isDemoOnlyInventory(products) {
+  return Array.isArray(products) && products.length > 0 && products.every(p => DEMO_PRODUCT_IDS.has(p.id))
+}
 
 function getStore() {
-  if (localStorage.getItem('jeibe_version') !== DATA_VERSION) {
-    ['products', 'sales', 'expenses', 'employees', 'settings'].forEach(k => localStorage.removeItem(`jeibe_${k}`))
+  const prevVersion = localStorage.getItem('jeibe_version')
+  if (prevVersion !== DATA_VERSION) {
+    if (prevVersion === '7') {
+      const products = load('products')
+      if (isDemoOnlyInventory(products)) localStorage.removeItem('jeibe_products')
+    } else if (prevVersion != null) {
+      // Unknown older version: do not wipe — only set version (avoids accidental data loss on deploy)
+      console.warn(`JEIBE POS: upgraded store version ${prevVersion} → ${DATA_VERSION} without clearing data.`)
+    }
     localStorage.setItem('jeibe_version', DATA_VERSION)
   }
   return {
-    products: load('products') ?? SEED.products,
+    products: load('products') ?? [],
     sales: load('sales') ?? SEED.sales,
     expenses: load('expenses') ?? SEED.expenses,
     employees: load('employees') ?? SEED.employees,
@@ -67,7 +73,28 @@ function getStore() {
 }
 
 function saveStore(key, value) {
-  save(key, value);
+  try {
+    save(key, value);
+    return true;
+  } catch (err) {
+    console.error(`Failed to save jeibe_${key}:`, err);
+    return false;
+  }
 }
 
-export { getStore, saveStore, SEED };
+/** Persist multiple keys; rolls back keys already written if a later write fails. */
+function saveStoreBatch(updates) {
+  const written = []
+  try {
+    for (const [key, value] of Object.entries(updates)) {
+      save(key, value);
+      written.push(key);
+    }
+    return true;
+  } catch (err) {
+    console.error('Failed to save batch:', err);
+    return false;
+  }
+}
+
+export { getStore, saveStore, saveStoreBatch, SEED };
