@@ -131,8 +131,7 @@ export default function Inventory() {
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
           <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
-          <FormInput value={search} onChange={e => setSearch(e.target.value)} placeholder={t('searchProductsPlaceholder')} selectOnFocus={false}
-            style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: 'var(--radius-sm)', background: 'var(--surface)' }} />
+          <FormInput variant="search" value={search} onChange={e => setSearch(e.target.value)} placeholder={t('searchProductsPlaceholder')} selectOnFocus={false} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <ArrowUpDown size={15} color="var(--text-500)" aria-hidden />
@@ -237,7 +236,7 @@ export default function Inventory() {
               <FormField label={t('productName')} value={form.name ?? ''} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. CeraVe Moisturizing Cream" />
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('category')}</label>
-                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 13, background: 'var(--bg)' }}>
+                <select className="form-select" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                   {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>

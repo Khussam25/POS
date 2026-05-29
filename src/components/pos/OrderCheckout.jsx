@@ -46,10 +46,11 @@ export default function OrderCheckout({
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <FormInput
             numeric
+            variant="compact"
             value={discountValue}
             onChange={e => setDiscountValue(e.target.value)}
             placeholder="0"
-            style={{ width: compact ? 72 : 90, padding: compact ? '4px 6px' : '5px 8px', borderRadius: 7, fontSize: compact ? 12 : 13, textAlign: 'right', background: 'var(--bg)' }}
+            style={{ width: compact ? 72 : 90, textAlign: 'right' }}
           />
           {discountAmount > 0 && (
             <span style={{ fontSize: compact ? 11 : 13, fontWeight: 600, color: 'var(--success)', whiteSpace: 'nowrap' }}>
@@ -78,10 +79,10 @@ export default function OrderCheckout({
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', marginBottom: 6 }}>{t('customerDetails')}</div>
       )}
       <div style={{ display: 'flex', gap: 8, flexDirection: compact ? 'column' : 'row', flexWrap: compact ? 'nowrap' : 'wrap' }}>
-        <FormInput value={customer} onChange={e => setCustomer(e.target.value)} placeholder={t('nameLabel')}
-          style={{ flex: compact ? 'none' : '1 1 120px', width: compact ? '100%' : undefined, padding: compact ? '8px 10px' : '9px 10px', fontSize: 12, background: 'var(--surface)', minWidth: 0 }} />
-        <FormInput phone value={phone} onChange={e => setPhone(e.target.value)} placeholder="+255 712 345 678"
-          style={{ flex: compact ? 'none' : '1 1 120px', width: compact ? '100%' : undefined, padding: compact ? '8px 10px' : '9px 10px', fontSize: 12, background: 'var(--surface)', minWidth: 0 }} />
+        <FormInput variant="compact" value={customer} onChange={e => setCustomer(e.target.value)} placeholder={t('nameLabel')}
+          style={{ flex: compact ? 'none' : '1 1 120px', width: compact ? '100%' : undefined, background: 'var(--surface)', minWidth: 0 }} />
+        <FormInput variant="compact" phone value={phone} onChange={e => setPhone(e.target.value)} placeholder="+255 712 345 678"
+          style={{ flex: compact ? 'none' : '1 1 120px', width: compact ? '100%' : undefined, background: 'var(--surface)', minWidth: 0 }} />
       </div>
     </div>
   )

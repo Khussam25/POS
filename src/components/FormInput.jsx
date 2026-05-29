@@ -1,33 +1,9 @@
 import { formatPhoneInput } from '../utils/phone'
 
-const INPUT_HEIGHT = 38
-const BORDER_W = 1.5
-/** Inner line box (height minus top/bottom border) for vertical centering. */
-const INPUT_LINE_HEIGHT = INPUT_HEIGHT - BORDER_W * 2
-
-const baseStyle = {
-  width: '100%',
-  height: INPUT_HEIGHT,
-  padding: '0 12px',
-  borderRadius: 8,
-  outline: 'none',
-  fontSize: 13,
-  lineHeight: `${INPUT_LINE_HEIGHT}px`,
-  boxSizing: 'border-box',
-  background: 'var(--bg)',
-  color: 'var(--text-900)',
-  border: `${BORDER_W}px solid var(--outline)`,
-  transition: 'border-color 0.15s',
-}
-
-const dateStyle = {
-  lineHeight: '1.25',
-  padding: '8px 12px',
-}
-
 /**
  * Controlled text input that allows clearing and retyping.
  * Use `numeric` instead of type="number" — number inputs fight React when empty.
+ * Sizing is in index.css (.form-input) — avoid overriding padding/height inline.
  */
 export default function FormInput({
   value,
@@ -40,6 +16,7 @@ export default function FormInput({
   error = false,
   selectOnFocus = false,
   autoFocus = false,
+  variant,
   style,
   onFocus,
   onBlur,
@@ -47,16 +24,21 @@ export default function FormInput({
   ...rest
 }) {
   const inputType = numeric || phone ? 'text' : type
-  // Use numeric keyboard for phone — inputMode "tel" can render taller on some browsers
   const inputMode = phone ? 'numeric' : numeric ? 'decimal' : undefined
   const shouldSelect = selectOnFocus && !disabled && type !== 'password' && type !== 'date'
 
-  const isDate = type === 'date'
+  const classes = [
+    'form-input',
+    error && 'form-input--error',
+    variant === 'search' && 'form-input--search',
+    variant === 'compact' && 'form-input--compact',
+    className,
+  ].filter(Boolean).join(' ')
 
   return (
     <input
       {...rest}
-      className={['form-input', className].filter(Boolean).join(' ')}
+      className={classes}
       type={inputType}
       inputMode={inputMode}
       value={value ?? ''}
@@ -72,23 +54,12 @@ export default function FormInput({
       disabled={disabled}
       autoFocus={autoFocus}
       autoComplete="off"
-      style={{
-        ...baseStyle,
-        ...(isDate ? dateStyle : null),
-        ...style,
-        borderColor: error ? 'var(--danger)' : (style?.borderColor ?? 'var(--outline)'),
-        background: disabled ? 'var(--bg)' : (style?.background ?? 'var(--bg)'),
-        color: disabled ? 'var(--text-500)' : 'var(--text-900)',
-      }}
+      style={style}
       onFocus={e => {
         if (shouldSelect) e.target.select()
-        if (!error && !disabled) e.target.style.borderColor = 'var(--primary)'
         onFocus?.(e)
       }}
-      onBlur={e => {
-        if (!error) e.target.style.borderColor = 'var(--outline)'
-        onBlur?.(e)
-      }}
+      onBlur={onBlur}
     />
   )
 }

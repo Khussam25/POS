@@ -58,11 +58,78 @@ button, select, textarea {
   font-size: inherit;
 }
 
-/* Form inputs use explicit sizing — inherit + line-height caused text stuck at top */
+/* ── Form inputs (Settings, modals, etc.) ── */
 input.form-input {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
   font-size: 13px;
-  -webkit-appearance: none;
-  appearance: none;
+  line-height: 1.25;
+  font-family: inherit;
+  color: var(--text-900);
+  background: var(--bg);
+  border: 1.5px solid var(--outline);
+  border-radius: 8px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+  /* Do NOT use appearance:none on text — it pins text to the top in Chrome/Edge */
+}
+
+input.form-input:focus {
+  border-color: var(--primary);
+}
+
+input.form-input:disabled {
+  color: var(--text-500);
+  cursor: not-allowed;
+}
+
+input.form-input.form-input--error {
+  border-color: var(--danger);
+}
+
+input.form-input.form-input--error:focus {
+  border-color: var(--danger);
+}
+
+.form-field-row .form-input {
+  width: 280px;
+  max-width: 100%;
+  flex-shrink: 0;
+  background: var(--surface);
+}
+
+input.form-input.form-input--search {
+  padding-left: 36px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+}
+
+input.form-input.form-input--compact {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+input.form-input[type="date"] {
+  min-height: 40px;
+}
+
+select.form-select {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.25;
+  font-family: inherit;
+  color: var(--text-900);
+  background: var(--bg);
+  border: 1.5px solid var(--outline);
+  border-radius: 8px;
+  box-sizing: border-box;
+  outline: none;
 }
 
 input:not([type="checkbox"]):not([type="radio"]),

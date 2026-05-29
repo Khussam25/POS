@@ -191,8 +191,7 @@ export default function PointOfSale() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '16px' }}>
             <div style={{ position: 'relative', marginBottom: 12 }}>
               <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
-              <FormInput value={search} onChange={e => setSearch(e.target.value)} placeholder={t('searchProducts')} selectOnFocus={false}
-                style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: 'var(--radius-sm)', background: 'var(--surface)' }} />
+              <FormInput variant="search" value={search} onChange={e => setSearch(e.target.value)} placeholder={t('searchProducts')} selectOnFocus={false} />
             </div>
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {products.length === 0 ? (
@@ -299,12 +298,13 @@ export default function PointOfSale() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '28px 24px 28px 32px' }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 16 }}>{t('pointOfSale')}</h1>
         <div style={{ position: 'relative', marginBottom: 16 }}>
-          <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
+          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)', pointerEvents: 'none' }} />
           <FormInput
-            value={search} onChange={e => setSearch(e.target.value)}
+            variant="search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
             placeholder={t('searchProducts')}
             selectOnFocus={false}
-            style={{ width: '100%', padding: '11px 14px 11px 42px', borderRadius: 'var(--radius-sm)', background: 'var(--surface)' }}
           />
         </div>
 
