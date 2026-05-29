@@ -76,13 +76,13 @@ export default function Settings() {
   )
 
   return (
-    <div style={{ padding: '28px 32px' }}>
+    <div className="r-page">
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Settings</h1>
         <p style={{ color: 'var(--text-500)', fontSize: 13 }}>Configure your store preferences</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 24 }}>
+      <div className="settings-layout" style={{ display: 'flex', gap: 24 }}>
         {/* Sidebar */}
         <div style={{ width: 220, flexShrink: 0 }}>
           <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 8, boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', gap: 2 }}>

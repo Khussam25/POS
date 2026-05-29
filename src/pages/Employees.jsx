@@ -57,7 +57,7 @@ export default function Employees() {
   )
 
   return (
-    <div style={{ padding: '28px 32px' }}>
+    <div className="r-page">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Employees</h1>

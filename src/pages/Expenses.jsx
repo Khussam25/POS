@@ -66,7 +66,7 @@ export default function Expenses() {
   }
 
   return (
-    <div style={{ padding: '28px 32px' }}>
+    <div className="r-page">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Expenses</h1>
@@ -79,7 +79,7 @@ export default function Expenses() {
       </div>
 
       {/* Category summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
+      <div className="r-stats" style={{ marginBottom: 24 }}>
         {topCats.map(([cat, amount]) => {
           const meta = getCatMeta(cat)
           return (
@@ -115,7 +115,7 @@ export default function Expenses() {
       </div>
 
       {/* Table */}
-      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', overflow: 'hidden' }}>
+      <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>

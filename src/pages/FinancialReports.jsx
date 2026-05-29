@@ -49,14 +49,14 @@ export default function FinancialReports() {
   )
 
   return (
-    <div style={{ padding: '28px 32px' }}>
+    <div className="r-page">
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Financial Reports</h1>
         <p style={{ color: 'var(--text-500)', fontSize: 13 }}>{monthName} · {storeName}</p>
       </div>
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 28 }}>
+      <div className="r-three-col" style={{ marginBottom: 28 }}>
         {[
           { label: 'Total Revenue', value: fmt(revenue), icon: DollarSign, color: '#1E4E8C' },
           { label: 'Total Expenses', value: fmt(totalExpenses), icon: TrendingDown, color: '#E07B20' },

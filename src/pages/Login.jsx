@@ -164,7 +164,7 @@ export default function Login() {
     <div style={{
       minHeight: '100vh', background: 'var(--bg)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      padding: 20
+      padding: '20px 16px'
     }}>
       {/* Brand */}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>

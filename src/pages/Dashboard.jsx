@@ -60,7 +60,7 @@ export default function Dashboard() {
   const lowStockAlerts = [...outOfStock, ...lowStock]
 
   return (
-    <div style={{ padding: '28px 32px' }}>
+    <div className="r-page">
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
@@ -74,7 +74,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="r-stats">
         <StatCard label="Today's Sales" value={fmt(todayRevenue)} sub={`${todaySales.length} transaction${todaySales.length !== 1 ? 's' : ''}`} subColor="#1E4E8C" />
         <StatCard label="Today's Profit" value={fmt(Math.max(0, todayProfit))} sub="After expenses" subColor="#1A9E6B" />
         <StatCard label="Today's Expenses" value={fmt(todayExpenses)} sub={`${data.expenses.filter(e => e.date === today).length} expense recorded`} subColor="#E07B20" />
@@ -117,7 +117,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Sales + Low Stock */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, marginBottom: 24 }}>
+      <div className="r-two-col">
         {/* Recent Sales */}
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '20px 22px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -197,7 +197,7 @@ export default function Dashboard() {
         <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>
           Monthly Summary — {now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+        <div className="r-three-col">
           <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '16px 18px' }}>
             <div style={{ fontSize: 12, color: 'var(--text-500)', marginBottom: 6 }}>Total Revenue</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.02em' }}>{fmt(monthRevenue)}</div>
