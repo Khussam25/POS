@@ -59,8 +59,7 @@ export default function PointOfSale() {
   const products = data.products.filter(p =>
     p.qty > 0 && (
       p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.category.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase())
+      p.category.toLowerCase().includes(search.toLowerCase())
     )
   )
 
@@ -279,10 +278,7 @@ export default function PointOfSale() {
                   <tr key={p.id} style={{ borderBottom: '1px solid var(--outline)', cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '13px 16px' }}>
-                      <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{p.sku}</div>
-                    </td>
+                    <td style={{ padding: '13px 16px', fontWeight: 600, fontSize: 13 }}>{p.name}</td>
                     <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--text-500)' }}>{p.category}</td>
                     <td style={{ padding: '13px 16px', fontWeight: 700, fontSize: 13 }}>{fmt(p.sellingPriceTZS)}</td>
                     <td style={{ padding: '13px 16px' }}>

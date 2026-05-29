@@ -69,7 +69,7 @@ const en = {
 
   // ── POS ──────────────────────────────────────────────────────────────────
   pointOfSale: 'Point of Sale',
-  searchProducts: 'Search products by name, category, or SKU...',
+  searchProducts: 'Search products by name or category...',
   productName: 'Product Name',
   category: 'Category',
   priceTZS: 'Price (TZS)',
@@ -120,7 +120,6 @@ const en = {
   delete: 'Delete',
   addProductTitle: 'Add Product',
   editProductTitle: 'Edit Product',
-  skuLabel: 'SKU',
   lowStockThreshold: 'Low Stock Threshold',
   quantity: 'Quantity',
   cancel: 'Cancel',
@@ -301,7 +300,7 @@ const sw = {
 
   // ── POS ──────────────────────────────────────────────────────────────────
   pointOfSale: 'Mauzo',
-  searchProducts: 'Tafuta bidhaa kwa jina, aina, au SKU...',
+  searchProducts: 'Tafuta bidhaa kwa jina au aina...',
   productName: 'Jina la Bidhaa',
   category: 'Aina',
   priceTZS: 'Bei (TZS)',
@@ -352,7 +351,6 @@ const sw = {
   delete: 'Futa',
   addProductTitle: 'Ongeza Bidhaa',
   editProductTitle: 'Hariri Bidhaa',
-  skuLabel: 'SKU',
   lowStockThreshold: 'Kiwango cha Bidhaa Kidogo',
   quantity: 'Idadi',
   cancel: 'Ghairi',

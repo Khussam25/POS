@@ -9,7 +9,17 @@ function fmt(n) { return 'TZS ' + Number(n).toLocaleString() }
 
 const CATEGORIES = ['Moisturizers', 'Serums', 'Eye Care', 'Sunscreen', 'Foundation', 'Lip Care', 'Body Care', 'Anti-Aging', 'Toners', 'Cleansers', 'Other']
 
-const EMPTY = { name: '', category: 'Moisturizers', buyingPriceTZS: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10, expiryDate: '', sku: '' }
+const EMPTY = { name: '', category: 'Moisturizers', buyingPriceTZS: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10, expiryDate: '' }
+
+function nextProductId(products) {
+  let n = products.length + 1
+  let id
+  do {
+    id = `P-${String(n).padStart(4, '0')}`
+    n++
+  } while (products.some(p => p.id === id))
+  return id
+}
 
 export default function Inventory() {
   const { data, updateData } = useApp()
@@ -29,7 +39,7 @@ export default function Inventory() {
   }, [modal])
 
   const filtered = data.products.filter(p => {
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase())
     const matchFilter = filter === 'all' || (filter === 'inStock' && p.qty > p.lowStockThreshold) || (filter === 'lowStock' && p.qty > 0 && p.qty <= p.lowStockThreshold) || (filter === 'outOfStock' && p.qty === 0)
     return matchSearch && matchFilter
   })
@@ -40,7 +50,6 @@ export default function Inventory() {
   function validate() {
     const e = {}
     if (!form.name.trim()) e.name = 'Required'
-    if (!form.sku.trim()) e.sku = 'Required'
     if (!form.buyingPriceTZS || isNaN(form.buyingPriceTZS) || +form.buyingPriceTZS <= 0) e.buyingPriceTZS = 'Enter valid price'
     if (!form.sellingPriceTZS || isNaN(form.sellingPriceTZS) || +form.sellingPriceTZS <= 0) e.sellingPriceTZS = 'Enter valid price'
     if (!form.qty || isNaN(form.qty) || +form.qty < 0) e.qty = 'Enter valid qty'
@@ -52,9 +61,8 @@ export default function Inventory() {
   function save() {
     if (!validate()) return
     if (modal === 'add') {
-      const skuExists = data.products.some(p => p.sku === form.sku.trim())
-      if (skuExists) { setErrors(e => ({ ...e, sku: 'SKU already exists' })); return }
-      const newProduct = { ...form, id: form.sku.trim(), sku: form.sku.trim().toUpperCase(), buyingPriceTZS: +form.buyingPriceTZS, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 }
+      const id = nextProductId(data.products)
+      const newProduct = { ...form, id, sku: id, buyingPriceTZS: +form.buyingPriceTZS, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 }
       updateData('products', [newProduct, ...data.products])
     } else {
       updateData('products', data.products.map(p => p.id === form.id ? { ...form, buyingPriceTZS: +form.buyingPriceTZS, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 } : p))
@@ -109,10 +117,7 @@ export default function Inventory() {
                 <tr key={p.id} style={{ borderBottom: '1px solid var(--outline)' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <td style={{ padding: '13px 16px' }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{p.sku}</div>
-                  </td>
+                  <td style={{ padding: '13px 16px', fontWeight: 600, fontSize: 13 }}>{p.name}</td>
                   <td style={{ padding: '13px 16px', color: 'var(--text-500)', fontSize: 13 }}>{p.category}</td>
                   <td style={{ padding: '13px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -164,7 +169,6 @@ export default function Inventory() {
             </div>
             <div style={{ display: 'grid', gap: 14 }}>
               <FormField label={t('productName')} value={form.name ?? ''} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. CeraVe Moisturizing Cream" />
-              <FormField label={t('skuLabel')} value={form.sku ?? ''} onChange={sku => setForm(f => ({ ...f, sku }))} error={errors.sku} placeholder="e.g. CV-MC-001" />
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('category')}</label>
                 <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 13, background: 'var(--bg)' }}>

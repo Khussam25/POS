@@ -165,7 +165,6 @@ export default function Settings() {
                   value={form.phone}
                   onChange={phone => setForm(f => ({ ...f, phone }))}
                   placeholder="+255 712 345 678"
-                  inputStyle={{ width: 320, maxWidth: '100%' }}
                 />
                 <FormField layout="row" label={t('emailAddressLabel')} type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} />
                 <div style={{ padding: '16px 0' }}>

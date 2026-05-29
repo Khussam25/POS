@@ -6,6 +6,8 @@ const baseStyle = {
   borderRadius: 8,
   outline: 'none',
   fontSize: 13,
+  lineHeight: '1.25',
+  boxSizing: 'border-box',
   background: 'var(--bg)',
   color: 'var(--text-900)',
   border: '1.5px solid var(--outline)',
@@ -33,7 +35,8 @@ export default function FormInput({
   ...rest
 }) {
   const inputType = numeric || phone ? 'text' : type
-  const inputMode = phone ? 'tel' : numeric ? 'decimal' : undefined
+  // Use numeric keyboard for phone — inputMode "tel" can render taller on some browsers
+  const inputMode = phone ? 'numeric' : numeric ? 'decimal' : undefined
   const shouldSelect = selectOnFocus && !disabled && type !== 'password' && type !== 'date'
 
   return (

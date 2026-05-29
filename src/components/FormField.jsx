@@ -1,5 +1,15 @@
 import FormInput from './FormInput'
 
+const ROW_INPUT_STYLE = {
+  width: 280,
+  maxWidth: '100%',
+  boxSizing: 'border-box',
+  height: 38,
+  padding: '8px 12px',
+  fontSize: 13,
+  lineHeight: '1.25',
+}
+
 /**
  * Label + input group. Must live in its own file — defining Field inside a page
  * component remounts inputs on every keystroke and steals focus.
@@ -34,7 +44,7 @@ export default function FormField({
       error={hasError}
       selectOnFocus={selectOnFocus}
       phone={phone}
-      style={layout === 'row' ? { width: 280, background: disabled ? 'var(--bg)' : 'var(--surface)', ...inputStyle } : inputStyle}
+      style={layout === 'row' ? { ...ROW_INPUT_STYLE, background: disabled ? 'var(--bg)' : 'var(--surface)', ...inputStyle } : inputStyle}
     />
   )
 
