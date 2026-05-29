@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import { useApp } from '../App'
-import { Search, Plus, Minus, Trash2, User, Phone, CheckCircle2 } from 'lucide-react'
+import { Search, Plus, Minus, ShoppingCart, Banknote, Smartphone, CreditCard, FileText, CheckCircle2, X } from 'lucide-react'
 
 function fmt(n) { return 'TZS ' + Number(n).toLocaleString() }
 
-const PAYMENT_METHODS = ['Cash', 'Mobile Money', 'Card']
+const PAYMENT_METHODS = [
+  { key: 'Cash',         label: 'Cash',   icon: Banknote },
+  { key: 'Mobile Money', label: 'Mobile', icon: Smartphone },
+  { key: 'Card',         label: 'Card',   icon: CreditCard },
+]
 
 export default function PointOfSale() {
   const { currentUser, data, updateData } = useApp()
@@ -46,10 +50,6 @@ export default function PointOfSale() {
     }).filter(Boolean))
   }
 
-  function removeFromCart(productId) {
-    setCart(prev => prev.filter(i => i.productId !== productId))
-  }
-
   const subtotal = cart.reduce((a, i) => a + i.price * i.qty, 0)
   const vat = Math.round(subtotal * vatRate)
   const total = subtotal + vat
@@ -66,13 +66,11 @@ export default function PointOfSale() {
       subtotal, vat, total, paymentMethod: payment,
       soldBy: currentUser.name
     }
-    const newSales = [sale, ...data.sales]
-    const newProducts = data.products.map(p => {
+    updateData('sales', [sale, ...data.sales])
+    updateData('products', data.products.map(p => {
       const item = cart.find(i => i.productId === p.id)
       return item ? { ...p, qty: p.qty - item.qty } : p
-    })
-    updateData('sales', newSales)
-    updateData('products', newProducts)
+    }))
     setSuccess(sale)
     setCart([])
     setCustomer('')
@@ -83,18 +81,18 @@ export default function PointOfSale() {
 
   if (success) {
     return (
-      <div style={{ padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '40px', textAlign: 'center', maxWidth: 400, width: '100%', boxShadow: 'var(--shadow)' }}>
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <CheckCircle2 size={32} color="var(--success)" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg)' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '44px 36px', textAlign: 'center', maxWidth: 380, width: '100%', boxShadow: 'var(--shadow)' }}>
+          <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <CheckCircle2 size={34} color="var(--success)" />
           </div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Sale Completed!</h2>
-          <p style={{ color: 'var(--text-500)', marginBottom: 24, fontSize: 13 }}>
-            {success.customer} · {fmt(success.total)} · {success.paymentMethod}
-          </p>
+          <h2 style={{ fontSize: 21, fontWeight: 800, marginBottom: 8 }}>Sale Completed!</h2>
+          <p style={{ color: 'var(--text-500)', marginBottom: 6, fontSize: 14 }}>{success.customer}</p>
+          <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 6 }}>{fmt(success.total)}</p>
+          <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 28 }}>{success.paymentMethod}</p>
           <button onClick={() => setSuccess(null)} style={{
             background: 'var(--primary)', color: 'white', fontWeight: 700,
-            padding: '12px 28px', borderRadius: 'var(--radius-sm)', fontSize: 14
+            padding: '12px 32px', borderRadius: 'var(--radius-sm)', fontSize: 14
           }}>New Sale</button>
         </div>
       </div>
@@ -103,7 +101,8 @@ export default function PointOfSale() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      {/* Product list */}
+
+      {/* ── Left: Product list ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '28px 24px 28px 32px' }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Point of Sale</h1>
         <div style={{ position: 'relative', marginBottom: 16 }}>
@@ -111,18 +110,14 @@ export default function PointOfSale() {
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search products by name, category, or SKU..."
-            style={{
-              width: '100%', padding: '11px 14px 11px 40px',
-              border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)',
-              outline: 'none', fontSize: 13, background: 'var(--surface)'
-            }}
+            style={{ width: '100%', padding: '11px 14px 11px 42px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', outline: 'none', fontSize: 13, background: 'var(--surface)' }}
             onFocus={e => e.target.style.borderColor = 'var(--primary)'}
             onBlur={e => e.target.style.borderColor = 'var(--outline)'}
           />
         </div>
 
         <div style={{ flex: 1, overflow: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--surface)', borderRadius: 'var(--radius)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--surface)', borderRadius: 'var(--radius)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
             <thead>
               <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
                 {['Product Name', 'Category', 'Price (TZS)', 'Stock', ''].map(h => (
@@ -134,7 +129,7 @@ export default function PointOfSale() {
               {products.map(p => {
                 const isLow = p.qty <= p.lowStockThreshold
                 return (
-                  <tr key={p.id} style={{ borderBottom: '1px solid var(--outline)' }}
+                  <tr key={p.id} style={{ borderBottom: '1px solid var(--outline)', cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <td style={{ padding: '13px 16px' }}>
@@ -153,9 +148,11 @@ export default function PointOfSale() {
                     <td style={{ padding: '13px 16px' }}>
                       <button onClick={() => addToCart(p)} style={{
                         background: 'var(--accent)', color: 'white', fontWeight: 700,
-                        padding: '8px 16px', borderRadius: 999, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6,
-                        transition: 'background 0.15s'
-                      }} onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}>
+                        padding: '8px 16px', borderRadius: 999, fontSize: 13,
+                        display: 'flex', alignItems: 'center', gap: 6, transition: 'background 0.15s'
+                      }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}>
                         <Plus size={14} /> Add
                       </button>
                     </td>
@@ -170,95 +167,158 @@ export default function PointOfSale() {
         </div>
       </div>
 
-      {/* Cart */}
-      <div style={{ width: 300, background: 'var(--surface)', borderLeft: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', padding: 20, gap: 12, overflow: 'auto' }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700 }}>Cart</h2>
+      {/* ── Right: Order panel ── */}
+      <div style={{ width: 310, background: 'var(--bg)', borderLeft: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        <div style={{ position: 'relative' }}>
-          <User size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
-          <input value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Customer name (optional)"
-            style={{ width: '100%', padding: '10px 12px 10px 34px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', outline: 'none', fontSize: 13, background: 'var(--bg)' }}
-            onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'var(--outline)'} />
-        </div>
-        <div style={{ position: 'relative' }}>
-          <Phone size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
-          <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone number (optional)"
-            style={{ width: '100%', padding: '10px 12px 10px 34px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', outline: 'none', fontSize: 13, background: 'var(--bg)' }}
-            onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'var(--outline)'} />
+        {/* Header */}
+        <div style={{ background: 'var(--primary)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'white' }}>
+            <ShoppingCart size={17} strokeWidth={2.2} />
+            <span style={{ fontWeight: 700, fontSize: 15 }}>Current Order</span>
+          </div>
+          {cart.length > 0 && (
+            <button onClick={() => setCart([])} style={{
+              background: 'rgba(255,255,255,0.18)', color: 'white', borderRadius: 999,
+              padding: '4px 12px', fontSize: 12, fontWeight: 600, transition: 'background 0.15s'
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.28)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.18)'}>
+              Clear
+            </button>
+          )}
         </div>
 
         {/* Cart items */}
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {cart.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-500)', fontSize: 13 }}>
-              <div style={{ marginBottom: 6 }}>No items in cart</div>
-              <div style={{ fontSize: 12 }}>Click a product to add it</div>
+            <div style={{ textAlign: 'center', paddingTop: 40, color: 'var(--text-500)' }}>
+              <ShoppingCart size={36} strokeWidth={1.2} style={{ opacity: 0.3, marginBottom: 10 }} />
+              <div style={{ fontSize: 13, fontWeight: 500 }}>No items yet</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Click + Add on a product</div>
             </div>
           )}
           {cart.map(item => (
-            <div key={item.productId} style={{ background: 'var(--bg)', borderRadius: 10, padding: '10px 12px' }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{item.name}</div>
+            <div key={item.productId} style={{
+              background: 'var(--surface)', borderRadius: 10, padding: '12px 14px',
+              border: '1px solid var(--outline)', boxShadow: 'var(--shadow-sm)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, flex: 1, paddingRight: 8, lineHeight: 1.3 }}>{item.name}</div>
+                <button onClick={() => setCart(c => c.filter(i => i.productId !== item.productId))} style={{ color: 'var(--text-500)', padding: 2, flexShrink: 0, transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-500)'}>
+                  <X size={14} />
+                </button>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button onClick={() => updateQty(item.productId, -1)} style={{ width: 26, height: 26, borderRadius: '50%', border: '1.5px solid var(--outline)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Minus size={12} />
+                {/* Qty stepper */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg)', borderRadius: 8, padding: '4px 10px', border: '1px solid var(--outline)' }}>
+                  <button onClick={() => updateQty(item.productId, -1)} style={{
+                    width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--outline)', color: 'var(--text-900)', transition: 'background 0.15s'
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-light)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--outline)'}>
+                    <Minus size={11} strokeWidth={2.5} />
                   </button>
-                  <span style={{ fontWeight: 700, fontSize: 14, minWidth: 20, textAlign: 'center' }}>{item.qty}</span>
-                  <button onClick={() => updateQty(item.productId, 1)} style={{ width: 26, height: 26, borderRadius: '50%', border: '1.5px solid var(--outline)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Plus size={12} />
+                  <span style={{ fontWeight: 700, fontSize: 14, minWidth: 18, textAlign: 'center', color: 'var(--text-900)' }}>{item.qty}</span>
+                  <button onClick={() => updateQty(item.productId, 1)} style={{
+                    width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--outline)', color: 'var(--text-900)', transition: 'background 0.15s'
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-light)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--outline)'}>
+                    <Plus size={11} strokeWidth={2.5} />
                   </button>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontWeight: 700, fontSize: 13 }}>{fmt(item.price * item.qty)}</span>
-                  <button onClick={() => removeFromCart(item.productId)} style={{ color: 'var(--danger)', padding: 2 }}>
-                    <Trash2 size={14} />
-                  </button>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{fmt(item.price * item.qty)}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{fmt(item.price)} ea</div>
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Totals */}
-        <div style={{ borderTop: '1px solid var(--outline)', paddingTop: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
-            <span style={{ color: 'var(--text-500)' }}>Subtotal</span>
-            <span>{fmt(subtotal)}</span>
-          </div>
-          {data.settings.vatEnabled && (
+        {/* Totals + bottom controls */}
+        <div style={{ flexShrink: 0, borderTop: '1px solid var(--outline)' }}>
+          {/* Subtotal / Tax / Total */}
+          <div style={{ padding: '14px 18px', background: 'var(--surface)', borderBottom: '1px solid var(--outline)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
-              <span style={{ color: 'var(--text-500)' }}>VAT ({data.settings.vatRate}%)</span>
-              <span>{fmt(vat)}</span>
+              <span style={{ color: 'var(--text-500)' }}>Subtotal</span>
+              <span style={{ fontWeight: 500 }}>{fmt(subtotal)}</span>
             </div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14, fontSize: 15, fontWeight: 800 }}>
-            <span>Total</span>
-            <span style={{ color: 'var(--primary)' }}>{fmt(total)}</span>
+            {data.settings.vatEnabled && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
+                <span style={{ color: 'var(--text-500)' }}>Tax ({data.settings.vatRate}%)</span>
+                <span style={{ fontWeight: 500 }}>{fmt(vat)}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--outline)' }}>
+              <span style={{ fontSize: 17, fontWeight: 800 }}>Total</span>
+              <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>{fmt(total)}</span>
+            </div>
           </div>
 
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Payment Method</div>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-            {PAYMENT_METHODS.map(m => (
-              <button key={m} onClick={() => setPayment(m)} style={{
-                flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                border: `2px solid ${payment === m ? 'var(--primary)' : 'var(--outline)'}`,
-                background: payment === m ? 'var(--primary)' : 'transparent',
-                color: payment === m ? 'white' : 'var(--text-900)', transition: 'all 0.15s'
-              }}>{m}</button>
-            ))}
+          {/* Customer details */}
+          <div style={{ padding: '12px 14px', background: 'var(--bg)', borderBottom: '1px solid var(--outline)' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Customer Details</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Name"
+                style={{ flex: 1, padding: '9px 10px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 12, background: 'var(--surface)' }}
+                onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'var(--outline)'} />
+              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone"
+                style={{ flex: 1, padding: '9px 10px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 12, background: 'var(--surface)' }}
+                onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'var(--outline)'} />
+            </div>
           </div>
 
-          <button onClick={completeSale} disabled={cart.length === 0} style={{
-            width: '100%', padding: '13px', borderRadius: 'var(--radius-sm)',
-            background: cart.length === 0 ? 'var(--outline)' : 'var(--accent)',
-            color: cart.length === 0 ? 'var(--text-500)' : 'white',
-            fontWeight: 700, fontSize: 14, transition: 'background 0.15s'
-          }}
-            onMouseEnter={e => { if (cart.length > 0) e.currentTarget.style.background = 'var(--accent-hover)' }}
-            onMouseLeave={e => { if (cart.length > 0) e.currentTarget.style.background = 'var(--accent)' }}
-          >
-            Complete Sale · {fmt(total)}
-          </button>
+          {/* Payment method */}
+          <div style={{ padding: '12px 14px', background: 'var(--bg)', borderBottom: '1px solid var(--outline)' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Payment Method</div>
+            <div style={{ display: 'flex', gap: 7 }}>
+              {PAYMENT_METHODS.map(({ key, label, icon: Icon }) => {
+                const active = payment === key
+                return (
+                  <button key={key} onClick={() => setPayment(key)} style={{
+                    flex: 1, padding: '9px 4px', borderRadius: 10, fontSize: 11, fontWeight: 700,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                    border: `2px solid ${active ? 'var(--primary)' : 'var(--outline)'}`,
+                    background: active ? 'var(--primary-soft)' : 'var(--surface)',
+                    color: active ? 'var(--primary)' : 'var(--text-500)',
+                    transition: 'all 0.15s'
+                  }}>
+                    <Icon size={16} strokeWidth={active ? 2.2 : 1.8} />
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ padding: '12px 14px', background: 'var(--bg)', display: 'flex', gap: 8 }}>
+            <button style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '12px 14px',
+              border: '2px solid var(--outline)', borderRadius: 'var(--radius-sm)',
+              background: 'var(--surface)', color: 'var(--text-900)', fontWeight: 600, fontSize: 13,
+              transition: 'all 0.15s', flexShrink: 0
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
+              <FileText size={15} /> Receipt
+            </button>
+            <button onClick={completeSale} disabled={cart.length === 0} style={{
+              flex: 1, padding: '12px', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 14,
+              background: cart.length === 0 ? 'var(--outline)' : 'var(--primary)',
+              color: cart.length === 0 ? 'var(--text-500)' : 'white',
+              transition: 'background 0.15s'
+            }}
+              onMouseEnter={e => { if (cart.length > 0) e.currentTarget.style.background = 'var(--primary-hover)' }}
+              onMouseLeave={e => { if (cart.length > 0) e.currentTarget.style.background = 'var(--primary)' }}>
+              Complete Sale
+            </button>
+          </div>
         </div>
       </div>
     </div>
