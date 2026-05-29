@@ -6,7 +6,7 @@ function fmt(n) { return 'TZS ' + Number(n).toLocaleString() }
 
 const CATEGORIES = ['Moisturizers', 'Serums', 'Eye Care', 'Sunscreen', 'Foundation', 'Lip Care', 'Body Care', 'Anti-Aging', 'Toners', 'Cleansers', 'Other']
 
-const EMPTY = { name: '', category: 'Moisturizers', buyingPriceUSD: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10, expiryDate: '', sku: '' }
+const EMPTY = { name: '', category: 'Moisturizers', buyingPriceTZS: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10, expiryDate: '', sku: '' }
 
 export default function Inventory() {
   const { data, updateData } = useApp()
@@ -24,13 +24,13 @@ export default function Inventory() {
   })
 
   function openAdd() { setForm(EMPTY); setErrors({}); setModal('add') }
-  function openEdit(p) { setForm({ ...p, buyingPriceUSD: String(p.buyingPriceUSD), sellingPriceTZS: String(p.sellingPriceTZS), qty: String(p.qty), lowStockThreshold: String(p.lowStockThreshold) }); setErrors({}); setModal('edit') }
+  function openEdit(p) { setForm({ ...p, buyingPriceTZS: String(p.buyingPriceTZS), sellingPriceTZS: String(p.sellingPriceTZS), qty: String(p.qty), lowStockThreshold: String(p.lowStockThreshold) }); setErrors({}); setModal('edit') }
 
   function validate() {
     const e = {}
     if (!form.name.trim()) e.name = 'Required'
     if (!form.sku.trim()) e.sku = 'Required'
-    if (!form.buyingPriceUSD || isNaN(form.buyingPriceUSD) || +form.buyingPriceUSD <= 0) e.buyingPriceUSD = 'Enter valid price'
+    if (!form.buyingPriceTZS || isNaN(form.buyingPriceTZS) || +form.buyingPriceTZS <= 0) e.buyingPriceTZS = 'Enter valid price'
     if (!form.sellingPriceTZS || isNaN(form.sellingPriceTZS) || +form.sellingPriceTZS <= 0) e.sellingPriceTZS = 'Enter valid price'
     if (!form.qty || isNaN(form.qty) || +form.qty < 0) e.qty = 'Enter valid qty'
     if (!form.expiryDate) e.expiryDate = 'Required'
@@ -43,10 +43,10 @@ export default function Inventory() {
     if (modal === 'add') {
       const skuExists = data.products.some(p => p.sku === form.sku.trim())
       if (skuExists) { setErrors(e => ({ ...e, sku: 'SKU already exists' })); return }
-      const newProduct = { ...form, id: form.sku.trim(), sku: form.sku.trim().toUpperCase(), buyingPriceUSD: +form.buyingPriceUSD, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 }
+      const newProduct = { ...form, id: form.sku.trim(), sku: form.sku.trim().toUpperCase(), buyingPriceTZS: +form.buyingPriceTZS, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 }
       updateData('products', [newProduct, ...data.products])
     } else {
-      updateData('products', data.products.map(p => p.id === form.id ? { ...form, buyingPriceUSD: +form.buyingPriceUSD, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 } : p))
+      updateData('products', data.products.map(p => p.id === form.id ? { ...form, buyingPriceTZS: +form.buyingPriceTZS, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 } : p))
     }
     setModal(null)
   }
@@ -98,7 +98,7 @@ export default function Inventory() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-              {['Product Name', 'Category', 'QTY', 'Buying Price (USD)', 'Selling Price (TZS)', 'Stock Status', 'Expiry Date', ''].map(h => (
+              {['Product Name', 'Category', 'QTY', 'Buying Price (TZS)', 'Selling Price (TZS)', 'Stock Status', 'Expiry Date', ''].map(h => (
                 <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</th>
               ))}
             </tr>
@@ -122,7 +122,7 @@ export default function Inventory() {
                       {isLow && <AlertTriangle size={13} color="var(--warning)" />}
                     </div>
                   </td>
-                  <td style={{ padding: '13px 16px', fontSize: 13 }}>${p.buyingPriceUSD.toFixed(2)}</td>
+                  <td style={{ padding: '13px 16px', fontSize: 13 }}>{fmt(p.buyingPriceTZS)}</td>
                   <td style={{ padding: '13px 16px', fontWeight: 600, fontSize: 13 }}>{fmt(p.sellingPriceTZS)}</td>
                   <td style={{ padding: '13px 16px' }}>
                     <span style={{
@@ -133,14 +133,24 @@ export default function Inventory() {
                   </td>
                   <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--text-500)' }}>{p.expiryDate}</td>
                   <td style={{ padding: '13px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button onClick={() => openEdit(p)} style={{ color: 'var(--text-500)', padding: 4, transition: 'color 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-500)'}>
-                        <Pencil size={15} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button onClick={() => openEdit(p)} style={{
+                        display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px',
+                        border: '1.5px solid var(--outline)', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                        color: 'var(--text-500)', background: 'transparent', transition: 'all 0.15s'
+                      }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-500)' }}>
+                        <Pencil size={12} /> Edit
                       </button>
-                      <button onClick={() => setDeleteTarget(p)} style={{ color: 'var(--text-500)', padding: 4, transition: 'color 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-500)'}>
-                        <Trash2 size={15} />
+                      <button onClick={() => setDeleteTarget(p)} style={{
+                        display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px',
+                        border: '1.5px solid var(--outline)', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                        color: 'var(--text-500)', background: 'transparent', transition: 'all 0.15s'
+                      }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-500)' }}>
+                        <Trash2 size={12} /> Delete
                       </button>
                     </div>
                   </td>
@@ -172,7 +182,7 @@ export default function Inventory() {
                 </select>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Field label="Buying Price (USD)" field="buyingPriceUSD" type="number" placeholder="e.g. 14.99" />
+                <Field label="Buying Price (TZS)" field="buyingPriceTZS" type="number" placeholder="e.g. 37000" />
                 <Field label="Selling Price (TZS)" field="sellingPriceTZS" type="number" placeholder="e.g. 55000" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

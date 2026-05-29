@@ -2,16 +2,16 @@
 
 const SEED = {
   products: [
-    { id: 'CV-MC-001', name: 'CeraVe Moisturizing Cream', category: 'Moisturizers', buyingPriceUSD: 14.99, sellingPriceTZS: 55000, qty: 45, lowStockThreshold: 10, expiryDate: '2026-08-15', sku: 'CV-MC-001' },
-    { id: 'NG-HB-002', name: 'Neutrogena Hydro Boost Serum', category: 'Serums', buyingPriceUSD: 24.99, sellingPriceTZS: 89000, qty: 8, lowStockThreshold: 10, expiryDate: '2026-05-30', sku: 'NG-HB-002' },
-    { id: 'TO-NI-003', name: 'The Ordinary Niacinamide 10%', category: 'Serums', buyingPriceUSD: 6.99, sellingPriceTZS: 28000, qty: 0, lowStockThreshold: 5, expiryDate: '2027-01-20', sku: 'TO-NI-003' },
-    { id: 'LO-RE-004', name: "L'Oreal Revitalift Eye Cream", category: 'Eye Care', buyingPriceUSD: 18.99, sellingPriceTZS: 72000, qty: 22, lowStockThreshold: 5, expiryDate: '2026-11-10', sku: 'LO-RE-004' },
-    { id: 'OL-TE-005', name: 'Olay Total Effects SPF30', category: 'Sunscreen', buyingPriceUSD: 22.49, sellingPriceTZS: 82000, qty: 5, lowStockThreshold: 8, expiryDate: '2026-06-01', sku: 'OL-TE-005' },
-    { id: 'MB-FM-006', name: 'Maybelline Fit Me Foundation', category: 'Foundation', buyingPriceUSD: 12.99, sellingPriceTZS: 38000, qty: 30, lowStockThreshold: 5, expiryDate: '2027-03-15', sku: 'MB-FM-006' },
-    { id: 'NY-BG-007', name: 'NYX Butter Gloss', category: 'Lip Care', buyingPriceUSD: 8.49, sellingPriceTZS: 28500, qty: 50, lowStockThreshold: 10, expiryDate: '2027-05-20', sku: 'NY-BG-007' },
-    { id: 'DV-DM-008', name: 'Dove Deep Moisture Body Wash', category: 'Body Care', buyingPriceUSD: 9.99, sellingPriceTZS: 34000, qty: 40, lowStockThreshold: 10, expiryDate: '2027-08-01', sku: 'DV-DM-008' },
-    { id: 'AV-DM-009', name: 'Aveeno Daily Moisturizing Lotion', category: 'Body Care', buyingPriceUSD: 11.99, sellingPriceTZS: 44000, qty: 7, lowStockThreshold: 10, expiryDate: '2026-09-15', sku: 'AV-DM-009' },
-    { id: 'PC-RT-010', name: 'Pond\'s Rejuveness Anti-Wrinkle', category: 'Anti-Aging', buyingPriceUSD: 16.49, sellingPriceTZS: 58000, qty: 18, lowStockThreshold: 5, expiryDate: '2026-12-31', sku: 'PC-RT-010' },
+    { id: 'CV-MC-001', name: 'CeraVe Moisturizing Cream', category: 'Moisturizers', buyingPriceTZS: 37500, sellingPriceTZS: 55000, qty: 45, lowStockThreshold: 10, expiryDate: '2026-08-15', sku: 'CV-MC-001' },
+    { id: 'NG-HB-002', name: 'Neutrogena Hydro Boost Serum', category: 'Serums', buyingPriceTZS: 62500, sellingPriceTZS: 89000, qty: 8, lowStockThreshold: 10, expiryDate: '2026-05-30', sku: 'NG-HB-002' },
+    { id: 'TO-NI-003', name: 'The Ordinary Niacinamide 10%', category: 'Serums', buyingPriceTZS: 17500, sellingPriceTZS: 28000, qty: 0, lowStockThreshold: 5, expiryDate: '2027-01-20', sku: 'TO-NI-003' },
+    { id: 'LO-RE-004', name: "L'Oreal Revitalift Eye Cream", category: 'Eye Care', buyingPriceTZS: 47500, sellingPriceTZS: 72000, qty: 22, lowStockThreshold: 5, expiryDate: '2026-11-10', sku: 'LO-RE-004' },
+    { id: 'OL-TE-005', name: 'Olay Total Effects SPF30', category: 'Sunscreen', buyingPriceTZS: 56000, sellingPriceTZS: 82000, qty: 5, lowStockThreshold: 8, expiryDate: '2026-06-01', sku: 'OL-TE-005' },
+    { id: 'MB-FM-006', name: 'Maybelline Fit Me Foundation', category: 'Foundation', buyingPriceTZS: 32500, sellingPriceTZS: 38000, qty: 30, lowStockThreshold: 5, expiryDate: '2027-03-15', sku: 'MB-FM-006' },
+    { id: 'NY-BG-007', name: 'NYX Butter Gloss', category: 'Lip Care', buyingPriceTZS: 21000, sellingPriceTZS: 28500, qty: 50, lowStockThreshold: 10, expiryDate: '2027-05-20', sku: 'NY-BG-007' },
+    { id: 'DV-DM-008', name: 'Dove Deep Moisture Body Wash', category: 'Body Care', buyingPriceTZS: 25000, sellingPriceTZS: 34000, qty: 40, lowStockThreshold: 10, expiryDate: '2027-08-01', sku: 'DV-DM-008' },
+    { id: 'AV-DM-009', name: 'Aveeno Daily Moisturizing Lotion', category: 'Body Care', buyingPriceTZS: 30000, sellingPriceTZS: 44000, qty: 7, lowStockThreshold: 10, expiryDate: '2026-09-15', sku: 'AV-DM-009' },
+    { id: 'PC-RT-010', name: 'Pond\'s Rejuveness Anti-Wrinkle', category: 'Anti-Aging', buyingPriceTZS: 41000, sellingPriceTZS: 58000, qty: 18, lowStockThreshold: 5, expiryDate: '2026-12-31', sku: 'PC-RT-010' },
   ],
 
   sales: [],
@@ -49,7 +49,7 @@ function save(key, value) {
   localStorage.setItem(`jeibe_${key}`, JSON.stringify(value));
 }
 
-const DATA_VERSION = '6'
+const DATA_VERSION = '7'
 
 function getStore() {
   if (localStorage.getItem('jeibe_version') !== DATA_VERSION) {

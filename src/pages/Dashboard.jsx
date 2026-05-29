@@ -42,13 +42,13 @@ export default function Dashboard() {
 
   const totalCOGS = data.products.reduce((a, p) => {
     const rate = data.settings.exchangeRate || 2450
-    return a + p.buyingPriceUSD * rate * p.qty
+    return a + p.buyingPriceTZS * p.qty
   }, 0)
 
   const todayProfit = todaySales.reduce((a, s) => {
     return a + s.items.reduce((ia, item) => {
       const prod = data.products.find(p => p.id === item.productId)
-      const cogs = prod ? prod.buyingPriceUSD * (data.settings.exchangeRate || 2450) * item.qty : 0
+      const cogs = prod ? prod.buyingPriceTZS * item.qty : 0
       return ia + item.price * item.qty - cogs
     }, 0)
   }, 0) - todayExpenses

@@ -25,7 +25,7 @@ export default function FinancialReports() {
   const cogs = monthSales.reduce((a, s) => {
     return a + s.items.reduce((ia, item) => {
       const prod = data.products.find(p => p.id === item.productId)
-      return ia + (prod ? prod.buyingPriceUSD * rate * item.qty : 0)
+      return ia + (prod ? prod.buyingPriceTZS * item.qty : 0)
     }, 0)
   }, 0)
 
