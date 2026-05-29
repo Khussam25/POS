@@ -164,13 +164,11 @@ export default function Login() {
     }}>
       {/* Brand */}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: 16,
-          background: 'linear-gradient(135deg,#1E4E8C,#163d6e)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'white', fontWeight: 800, fontSize: 26, margin: '0 auto 16px',
-          boxShadow: '0 8px 24px rgba(30,78,140,0.3)'
-        }}>J</div>
+        <img src="/Jeibe_Logo.jpg" alt="JEIBE Logo" style={{
+          width: 80, height: 80, borderRadius: 16, objectFit: 'cover',
+          margin: '0 auto 16px', display: 'block',
+          boxShadow: '0 8px 24px rgba(30,78,140,0.25)'
+        }} />
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-900)', marginBottom: 4 }}>
           {data.settings.storeName.split(' ')[0]}
         </h1>

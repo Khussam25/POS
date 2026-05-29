@@ -36,12 +36,11 @@ export default function Layout() {
         {/* Logo */}
         <div style={{ padding: '24px 20px 16px', borderBottom: '1px solid var(--outline)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
+            <img src="/Jeibe_Logo.jpg" alt="JEIBE" style={{
               width: 40, height: 40, borderRadius: 10,
-              background: 'linear-gradient(135deg,#1E4E8C,#163d6e)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontWeight: 700, fontSize: 18, flexShrink: 0
-            }}>J</div>
+              objectFit: 'cover', flexShrink: 0,
+              boxShadow: 'var(--shadow-sm)'
+            }} />
             <div>
               <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-900)' }}>{data.settings.storeName.split(' ')[0]}</div>
               <div style={{ fontSize: 11, color: 'var(--text-500)' }}>Original Products USA</div>

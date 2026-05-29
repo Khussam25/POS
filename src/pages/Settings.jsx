@@ -129,7 +129,7 @@ export default function Settings() {
                     <div style={{ fontSize: 12, color: 'var(--text-500)' }}>Upload a logo to display on receipts</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg,#1E4E8C,#163d6e)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 20 }}>J</div>
+                    <img src="/Jeibe_Logo.jpg" alt="JEIBE Logo" style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover' }} />
                     <button style={{ padding: '8px 14px', border: '1.5px solid var(--outline)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--text-500)' }}>Upload Logo</button>
                   </div>
                 </div>
