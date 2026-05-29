@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../App'
+import { useRefreshDataOnMount } from '../hooks/useRefreshData'
 import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
@@ -13,8 +14,9 @@ function getInitials(name) { return name.split(' ').map(n => n[0]).join('').toUp
 function getColor(role) { return role === 'Admin' ? '#C92B36' : '#1E4E8C' }
 
 export default function Employees() {
-  const { currentUser, data, updateData } = useApp()
+  const { currentUser, data, dataRevision, updateData } = useApp()
   const t = useT()
+  useRefreshDataOnMount()
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
@@ -100,7 +102,7 @@ export default function Employees() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 20 }}>
         {data.employees.map(emp => (
-          <div key={emp.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '22px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
+          <div key={`${emp.id}-${dataRevision}`} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '22px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 48, height: 48, borderRadius: '50%', background: emp.color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>

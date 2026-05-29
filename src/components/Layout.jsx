@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
-import { useIsCompact } from '../hooks/useIsCompact'
+import { useIsPhone, useIsTablet } from '../hooks/useIsCompact'
 import { useT, useLang } from '../i18n/LangContext'
 import {
   LayoutDashboard, ShoppingCart, Package, Receipt,
@@ -28,10 +28,34 @@ function LangToggle() {
   )
 }
 
+function NavLinks({ items, onNavigate, showActiveDot }) {
+  return items.map(({ to, label, icon: Icon, end }) => (
+    <NavLink key={to} to={to} end={end} onClick={onNavigate}
+      style={({ isActive }) => ({
+        display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+        borderRadius: 10, textDecoration: 'none', fontWeight: 500, fontSize: 14,
+        transition: 'all 0.15s',
+        background: isActive ? 'var(--primary-light)' : 'transparent',
+        color: isActive ? 'var(--primary)' : 'var(--text-900)',
+      })}>
+      {({ isActive }) => (
+        <>
+          <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} />
+          <span style={{ flex: 1 }}>{label}</span>
+          {showActiveDot && isActive && (
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)' }} />
+          )}
+        </>
+      )}
+    </NavLink>
+  ))
+}
+
 export default function Layout() {
   const { currentUser, logout, data, saveError, setSaveError } = useApp()
   const storeLogo = data.settings.storeLogo || '/Jeibe_Logo.jpg'
-  const isCompact = useIsCompact()
+  const isPhone = useIsPhone()
+  const isTablet = useIsTablet()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [navCollapsed, setNavCollapsed] = useState(() => {
     try { return localStorage.getItem('jeibe_nav_collapsed') === '1' } catch { return false }
@@ -57,6 +81,7 @@ export default function Layout() {
   ]
 
   const visibleNav = NAV.filter(({ to }) => canAccess(currentUser.role, to))
+  const storeShortName = data.settings.storeName.split(' ')[0]
 
   async function handleLogout() {
     try {
@@ -66,96 +91,123 @@ export default function Layout() {
     }
   }
 
-  // ── Phone & tablet: drawer + bottom nav ───────────────────────────────────
-  if (isCompact) {
+  function UserAvatar({ size = 30 }) {
+    if (currentUser.photoURL) {
+      return <img src={currentUser.photoURL} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />
+    }
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: '50%', background: currentUser.color, color: 'white',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: size < 34 ? 11 : 12,
+      }}>{currentUser.initials}</div>
+    )
+  }
+
+  function SidebarPanel({ onClose, width = 260, sticky = false, showActiveDot = false }) {
+    return (
+      <aside className="no-print" style={{
+        width, flexShrink: 0, background: 'var(--surface)',
+        borderRight: '1px solid var(--outline)', display: 'flex', flexDirection: 'column',
+        ...(sticky ? { position: 'sticky', top: 0, height: '100vh' } : { height: '100%' }),
+        boxShadow: sticky ? undefined : '4px 0 20px rgba(26,35,50,0.15)',
+      }}>
+        <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--outline)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <img src={storeLogo} alt="JEIBE" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{storeShortName}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-500)' }}>Original Products USA</div>
+            </div>
+          </div>
+          {onClose && (
+            <button type="button" onClick={onClose} style={{ color: 'var(--text-500)', padding: 4, flexShrink: 0 }} aria-label="Close menu">
+              <X size={18} />
+            </button>
+          )}
+        </div>
+        <nav style={{ flex: 1, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.08em', padding: '6px 8px 2px', textTransform: 'uppercase' }}>{t('menu')}</div>
+          <NavLinks items={visibleNav} onNavigate={onClose} showActiveDot={sticky} />
+        </nav>
+        <div style={{ borderTop: '1px solid var(--outline)', padding: '10px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, background: 'var(--bg)', marginBottom: 4 }}>
+            <UserAvatar size={32} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{currentUser.role}</div>
+            </div>
+          </div>
+          <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', borderRadius: 8, color: 'var(--text-500)', fontSize: 13, fontWeight: 500 }}>
+            <LogOut size={16} strokeWidth={1.8} /><span>{t('signOut')}</span>
+          </button>
+        </div>
+      </aside>
+    )
+  }
+
+  function TopBar({ showNavToggle, onNavToggle, navOpen }) {
+    return (
+      <header className="no-print" style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: isPhone ? '12px 16px' : '10px 16px',
+        background: 'var(--surface)', borderBottom: '1px solid var(--outline)', flexShrink: 0,
+        position: isPhone ? 'sticky' : undefined, top: isPhone ? 0 : undefined, zIndex: isPhone ? 50 : undefined,
+        boxShadow: isPhone ? 'var(--shadow-sm)' : undefined,
+      }}>
+        {showNavToggle && (
+          <button
+            type="button"
+            onClick={onNavToggle}
+            style={{ color: 'var(--text-900)', padding: 6, flexShrink: 0, marginRight: 2 }}
+            aria-label={navOpen ? 'Close menu' : 'Open menu'}
+          >
+            {navOpen && isTablet ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        )}
+        <img src={storeLogo} alt="" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+        <span style={{ fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+          {storeShortName}
+        </span>
+        <LangToggle />
+        <UserAvatar />
+      </header>
+    )
+  }
+
+  function MainContent({ bottomPad = false }) {
+    return (
+      <main style={{
+        flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0,
+        paddingBottom: bottomPad ? 70 : 0,
+      }}>
+        {saveError && (
+          <div className="no-print" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+            <span>{saveError}</span>
+            <button type="button" onClick={() => setSaveError(null)} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
+          </div>
+        )}
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <Outlet />
+        </div>
+      </main>
+    )
+  }
+
+  // ── Phone: left menu + bottom nav ─────────────────────────────────────────
+  if (isPhone) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <header className="no-print" style={{
-          background: 'var(--surface)', borderBottom: '1px solid var(--outline)',
-          padding: '12px 16px', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50,
-          boxShadow: 'var(--shadow-sm)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <img src={storeLogo} alt="JEIBE" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
-            <span style={{ fontWeight: 800, fontSize: 16, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {data.settings.storeName.split(' ')[0]}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <LangToggle />
-            {currentUser.photoURL
-              ? <img src={currentUser.photoURL} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover' }} />
-              : <div style={{ width: 30, height: 30, borderRadius: '50%', background: currentUser.color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11 }}>{currentUser.initials}</div>
-            }
-            <button onClick={() => setDrawerOpen(true)} style={{ color: 'var(--text-900)', padding: 4 }}>
-              <Menu size={22} />
-            </button>
-          </div>
-        </header>
+        <TopBar showNavToggle onNavToggle={() => setDrawerOpen(true)} navOpen={drawerOpen} />
 
         {drawerOpen && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex' }}>
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,35,50,0.4)' }} onClick={() => setDrawerOpen(false)} />
-            <aside className="no-print" style={{ position: 'relative', width: 260, background: 'var(--surface)', display: 'flex', flexDirection: 'column', height: '100%', boxShadow: '4px 0 20px rgba(26,35,50,0.15)' }}>
-              <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--outline)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <img src={storeLogo} alt="JEIBE" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>{data.settings.storeName.split(' ')[0]}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-500)' }}>Original Products USA</div>
-                  </div>
-                </div>
-                <button onClick={() => setDrawerOpen(false)} style={{ color: 'var(--text-500)' }}><X size={18} /></button>
-              </div>
-              <nav style={{ flex: 1, padding: '10px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.08em', padding: '6px 8px 2px', textTransform: 'uppercase' }}>{t('menu')}</div>
-                {visibleNav.map(({ to, label, icon: Icon, end }) => (
-                  <NavLink key={to} to={to} end={end} onClick={() => setDrawerOpen(false)}
-                    style={({ isActive }) => ({
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px',
-                      borderRadius: 10, textDecoration: 'none', fontWeight: 500, fontSize: 14,
-                      background: isActive ? 'var(--primary-light)' : 'transparent',
-                      color: isActive ? 'var(--primary)' : 'var(--text-900)',
-                    })}>
-                    {({ isActive }) => <><Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} /><span style={{ flex: 1 }}>{label}</span></>}
-                  </NavLink>
-                ))}
-              </nav>
-              <div style={{ borderTop: '1px solid var(--outline)', padding: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, background: 'var(--bg)', marginBottom: 4 }}>
-                  {currentUser.photoURL
-                    ? <img src={currentUser.photoURL} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                    : <div style={{ width: 32, height: 32, borderRadius: '50%', background: currentUser.color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>{currentUser.initials}</div>
-                  }
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{currentUser.role}</div>
-                  </div>
-                </div>
-                <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', borderRadius: 8, color: 'var(--text-500)', fontSize: 13, fontWeight: 500, transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger-light)' }}
-                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-500)'; e.currentTarget.style.background = 'transparent' }}>
-                  <LogOut size={16} strokeWidth={1.8} /><span>{t('signOut')}</span>
-                </button>
-              </div>
-            </aside>
+            <SidebarPanel onClose={() => setDrawerOpen(false)} />
+            <div style={{ flex: 1 }} onClick={() => setDrawerOpen(false)} aria-hidden />
           </div>
         )}
 
-        <main style={{ flex: 1, overflow: 'hidden', paddingBottom: 70, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {saveError && (
-            <div className="no-print" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-              <span>{saveError}</span>
-              <button type="button" onClick={() => setSaveError(null)} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
-            </div>
-          )}
-          <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-            <Outlet />
-          </div>
-        </main>
+        <MainContent bottomPad />
 
-        <nav className="no-print" style={{
+        <nav className="no-print layout-bottom-nav" style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
           background: 'var(--surface)', borderTop: '1px solid var(--outline)',
           display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
@@ -177,95 +229,51 @@ export default function Layout() {
     )
   }
 
-  // ── Desktop: collapsible sidebar ────────────────────────────────────────
+  // ── Tablet: collapsible left panel, no bottom nav ─────────────────────────
+  if (isTablet) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh' }}>
+        {!navCollapsed && <SidebarPanel onClose={toggleNavCollapsed} sticky />}
+
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh' }}>
+          <TopBar showNavToggle onNavToggle={toggleNavCollapsed} navOpen={!navCollapsed} />
+          <MainContent />
+        </div>
+      </div>
+    )
+  }
+
+  // ── Desktop: collapsible sidebar ──────────────────────────────────────────
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {!navCollapsed && (
-      <aside className="no-print" style={{ width: 260, flexShrink: 0, background: 'var(--surface)', borderRight: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh' }}>
-        <div style={{ padding: '20px 20px 14px', borderBottom: '1px solid var(--outline)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-              <img src={storeLogo} alt="JEIBE" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0, boxShadow: 'var(--shadow-sm)' }} />
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.settings.storeName.split(' ')[0]}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-500)' }}>Original Products USA</div>
-              </div>
-            </div>
-            <button type="button" onClick={toggleNavCollapsed} title="Hide menu" style={{ color: 'var(--text-500)', padding: 6, flexShrink: 0 }}>
-              <X size={18} />
-            </button>
-          </div>
-          <LangToggle />
-        </div>
-
-        <nav style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-500)', letterSpacing: '0.08em', padding: '8px 8px 4px', textTransform: 'uppercase' }}>{t('menu')}</div>
-          {visibleNav.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end}
-              style={({ isActive }) => ({
-                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
-                borderRadius: 10, textDecoration: 'none', fontWeight: 500, fontSize: 14,
-                transition: 'all 0.15s',
-                background: isActive ? 'var(--primary-light)' : 'transparent',
-                color: isActive ? 'var(--primary)' : 'var(--text-900)',
-              })}>
-              {({ isActive }) => (
-                <>
-                  <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} />
-                  <span style={{ flex: 1 }}>{label}</span>
-                  {isActive && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)' }} />}
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div style={{ borderTop: '1px solid var(--outline)', padding: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px', borderRadius: 10, background: 'var(--bg)' }}>
-            {currentUser.photoURL
-              ? <img src={currentUser.photoURL} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-              : <div style={{ width: 34, height: 34, borderRadius: '50%', background: currentUser.color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{currentUser.initials}</div>
-            }
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser.name}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{currentUser.role}</div>
-            </div>
-          </div>
-          <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', borderRadius: 8, color: 'var(--text-500)', fontSize: 13, fontWeight: 500, marginTop: 4, transition: 'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger-light)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-500)'; e.currentTarget.style.background = 'transparent' }}>
-            <LogOut size={16} strokeWidth={1.8} /><span>{t('signOut')}</span>
-          </button>
-        </div>
-      </aside>
-      )}
+      {!navCollapsed && <SidebarPanel sticky showActiveDot onClose={toggleNavCollapsed} />}
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh' }}>
         <header className="no-print" style={{
-          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px',
+          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px',
           background: 'var(--surface)', borderBottom: '1px solid var(--outline)', flexShrink: 0,
         }}>
           {navCollapsed && (
-            <button type="button" onClick={toggleNavCollapsed} title="Show menu" style={{ color: 'var(--text-900)', padding: 6 }}>
+            <button type="button" onClick={toggleNavCollapsed} style={{ color: 'var(--text-900)', padding: 6, flexShrink: 0 }} aria-label="Open menu">
               <Menu size={22} />
             </button>
           )}
           <img src={storeLogo} alt="" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-          <span style={{ fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {data.settings.storeName.split(' ')[0]}
+          <span style={{ fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+            {storeShortName}
           </span>
-          <div style={{ marginLeft: 'auto' }}><LangToggle /></div>
+          <LangToggle />
         </header>
 
-      <main style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
-        {saveError && (
-          <div className="no-print" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-            <span>{saveError}</span>
-            <button type="button" onClick={() => setSaveError(null)} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
-          </div>
-        )}
-        <Outlet />
-      </main>
+        <main style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+          {saveError && (
+            <div className="no-print" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 16px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <span>{saveError}</span>
+              <button type="button" onClick={() => setSaveError(null)} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
+            </div>
+          )}
+          <Outlet />
+        </main>
       </div>
     </div>
   )

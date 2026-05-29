@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import { useIsCompact } from '../hooks/useIsCompact'
+import { useRefreshDataOnMount } from '../hooks/useRefreshData'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
 import { formatPhoneDisplay } from '../utils/phone'
@@ -59,7 +60,7 @@ const SECTIONS = [
 ]
 
 export default function Settings() {
-  const { currentUser, data, updateData } = useApp()
+  const { currentUser, data, dataRevision, updateData } = useApp()
   const t = useT()
   const isCompact = useIsCompact()
   const fieldLayout = isCompact ? 'stack' : 'row'
@@ -67,10 +68,21 @@ export default function Settings() {
   const [form, setForm] = useState(() => settingsToForm(data.settings))
   const formDirtyRef = useRef(false)
   const [saved, setSaved] = useState(false)
+  const [hasRemoteUpdate, setHasRemoteUpdate] = useState(false)
+
+  useRefreshDataOnMount()
 
   useEffect(() => {
-    if (!formDirtyRef.current) setForm(settingsToForm(data.settings))
-  }, [data.settings])
+    const next = settingsToForm(data.settings)
+    if (!formDirtyRef.current) {
+      setForm(next)
+      setHasRemoteUpdate(false)
+      return
+    }
+    const localPayload = JSON.stringify(settingsToPayload(form))
+    const remotePayload = JSON.stringify(settingsToPayload(next))
+    if (localPayload !== remotePayload) setHasRemoteUpdate(true)
+  }, [data.settings, dataRevision])
 
   function patchForm(updater) {
     formDirtyRef.current = true
@@ -131,6 +143,21 @@ export default function Settings() {
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>{t('settingsTitle')}</h1>
         <p style={{ color: 'var(--text-500)', fontSize: 13 }}>{t('settingsSub')}</p>
+        {hasRemoteUpdate && (
+          <div style={{
+            marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--primary-light)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+          }}>
+            <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>{t('settingsUpdatedElsewhere')}</span>
+            <button type="button" onClick={() => {
+              formDirtyRef.current = false
+              setForm(settingsToForm(data.settings))
+              setHasRemoteUpdate(false)
+            }} style={{ padding: '6px 14px', background: 'var(--primary)', color: 'white', borderRadius: 6, fontWeight: 700, fontSize: 12 }}>
+              {t('loadLatest')}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="settings-layout" style={{ display: 'flex', gap: 24 }}>

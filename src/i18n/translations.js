@@ -206,6 +206,8 @@ const en = {
   // ── Settings ─────────────────────────────────────────────────────────────
   settingsTitle: 'Settings',
   settingsSub: 'Configure your store preferences',
+  settingsUpdatedElsewhere: 'Settings were updated on another device.',
+  loadLatest: 'Load latest',
   storeInformation: 'Store Information',
   currencyExchange: 'Currency & Exchange',
   taxSettings: 'Tax Settings',
@@ -452,6 +454,8 @@ const sw = {
   // ── Settings ─────────────────────────────────────────────────────────────
   settingsTitle: 'Mipangilio',
   settingsSub: 'Sanidi mapendeleo ya duka lako',
+  settingsUpdatedElsewhere: 'Mipangilio yalisasishwa kwenye kifaa kingine.',
+  loadLatest: 'Pakia mapya',
   storeInformation: 'Taarifa za Duka',
   currencyExchange: 'Sarafu na Ubadilishaji',
   taxSettings: 'Mipangilio ya Kodi',

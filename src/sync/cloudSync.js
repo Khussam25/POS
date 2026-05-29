@@ -1,6 +1,6 @@
 import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { app } from '../firebase'
-import { getStore, saveStore, saveStoreBatch } from '../store'
+import { getStore, saveStore } from '../store'
 
 const STORE_REF = ['stores', 'main']
 const SYNC_KEYS = ['products', 'sales', 'expenses', 'employees']
@@ -38,7 +38,7 @@ function packPayload(store) {
   }
 }
 
-function unpackPayload(data) {
+export function unpackPayload(data) {
   if (!data) return null
   const local = getStore()
   return {
@@ -50,14 +50,62 @@ function unpackPayload(data) {
   }
 }
 
-function persistLocal(store) {
+export function persistLocal(store) {
   for (const key of SYNC_KEYS) saveStore(key, store[key])
   saveStore('settings', store.settings)
+}
+
+function storeSignature(store) {
+  return JSON.stringify({
+    products: store.products?.length,
+    sales: store.sales?.length,
+    expenses: store.expenses?.length,
+    employees: store.employees,
+    settings: store.settings,
+  })
 }
 
 let applyingRemote = false
 let pushTimer = null
 let pendingPush = null
+let lastAppliedSig = ''
+let lastLocalPushAt = 0
+
+export function cancelPendingCloudPush() {
+  if (pushTimer) clearTimeout(pushTimer)
+  pushTimer = null
+  pendingPush = null
+}
+
+export function isApplyingCloudRemote() {
+  return applyingRemote
+}
+
+function applyRemoteStore(store, onRemoteUpdate) {
+  const sig = storeSignature(store)
+  if (sig === lastAppliedSig) return false
+  applyingRemote = true
+  cancelPendingCloudPush()
+  persistLocal(store)
+  onRemoteUpdate(store)
+  lastAppliedSig = sig
+  applyingRemote = false
+  return true
+}
+
+/** Fetch latest store document from Firestore (call on focus / opening Settings or Employees). */
+export async function pullCloudStore() {
+  const db = getFirestore(app)
+  const ref = doc(db, ...STORE_REF)
+  try {
+    const snap = await getDoc(ref)
+    if (!snap.exists()) return null
+    return unpackPayload(snap.data())
+  } catch (err) {
+    console.warn('Cloud pull failed:', err)
+    return null
+  }
+}
 
 /**
  * Real-time sync so desktop, phone, and tablet share the same store data.
@@ -72,15 +120,12 @@ export function startCloudSync({ onRemoteUpdate }) {
       const snap = await getDoc(ref)
       if (snap.exists()) {
         const store = unpackPayload(snap.data())
-        if (store) {
-          applyingRemote = true
-          persistLocal(store)
-          onRemoteUpdate(store)
-          applyingRemote = false
-        }
+        if (store) applyRemoteStore(store, onRemoteUpdate)
       } else {
         const local = getStore()
+        lastLocalPushAt = Date.now()
         await setDoc(ref, packPayload(local))
+        lastAppliedSig = storeSignature(local)
       }
     } catch (err) {
       console.warn('Cloud sync bootstrap failed (offline?):', err)
@@ -92,20 +137,19 @@ export function startCloudSync({ onRemoteUpdate }) {
   const unsub = onSnapshot(
     ref,
     snap => {
-      if (!snap.exists() || applyingRemote) return
+      if (!snap.exists()) return
+      // Ignore echo from our own write for a short window
+      if (Date.now() - lastLocalPushAt < 1500) return
       const store = unpackPayload(snap.data())
       if (!store) return
-      applyingRemote = true
-      persistLocal(store)
-      onRemoteUpdate(store)
-      applyingRemote = false
+      applyRemoteStore(store, onRemoteUpdate)
     },
     err => console.warn('Cloud sync listener error:', err)
   )
 
   return () => {
     unsub()
-    if (pushTimer) clearTimeout(pushTimer)
+    cancelPendingCloudPush()
   }
 }
 
@@ -116,9 +160,10 @@ function flushPush() {
   const ref = doc(db, ...STORE_REF)
   const payload = pendingPush
   pendingPush = null
-  setDoc(ref, payload, { merge: true }).catch(err => {
-    console.warn('Cloud sync push failed:', err)
-  })
+  lastLocalPushAt = Date.now()
+  setDoc(ref, payload, { merge: true })
+    .then(() => { lastAppliedSig = storeSignature(getStore()) })
+    .catch(err => console.warn('Cloud sync push failed:', err))
 }
 
 export function scheduleCloudPush(partialStore) {
@@ -140,8 +185,4 @@ export function pushCloudBatch(updates) {
   pendingPush = packPayload(merged)
   if (pushTimer) clearTimeout(pushTimer)
   pushTimer = setTimeout(flushPush, 400)
-}
-
-export function isApplyingCloudRemote() {
-  return applyingRemote
 }

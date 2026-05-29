@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext } from 'react'
+import { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import {
   onAuthStateChanged,
@@ -8,7 +8,10 @@ import {
 } from 'firebase/auth'
 import { auth, googleProvider } from './firebase'
 import { getStore, saveStore, saveStoreBatch } from './store'
-import { startCloudSync, scheduleCloudPush, pushCloudBatch, isApplyingCloudRemote } from './sync/cloudSync'
+import {
+  startCloudSync, scheduleCloudPush, pushCloudBatch, isApplyingCloudRemote,
+  pullCloudStore, persistLocal,
+} from './sync/cloudSync'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -71,6 +74,7 @@ export default function App() {
   const [googleError, setGoogleError] = useState(null)
   const [saveError, setSaveError] = useState(null)
   const [data, setData] = useState(() => getStore())
+  const [dataRevision, setDataRevision] = useState(0)
   const syncStarted = useRef(false)
 
   function refreshCurrentUserFromStore() {
@@ -80,14 +84,31 @@ export default function App() {
     if (user) setCurrentUser(user)
   }
 
-  function applyStoreFromRemote(store) {
-    setData(prev => ({ ...prev, ...store }))
+  const applyStoreFromRemote = useCallback((store) => {
+    setData({
+      products: store.products,
+      sales: store.sales,
+      expenses: store.expenses,
+      employees: store.employees,
+      settings: store.settings,
+    })
+    setDataRevision(r => r + 1)
     refreshCurrentUserFromStore()
-  }
+  }, [])
 
-  function reloadLocalStore() {
+  const reloadLocalStore = useCallback(() => {
     applyStoreFromRemote(getStore())
-  }
+  }, [applyStoreFromRemote])
+
+  const refreshData = useCallback(async () => {
+    const remote = await pullCloudStore()
+    if (remote) {
+      persistLocal(remote)
+      applyStoreFromRemote(remote)
+      return
+    }
+    reloadLocalStore()
+  }, [applyStoreFromRemote, reloadLocalStore])
 
   useEffect(() => {
     let cancelled = false
@@ -121,23 +142,23 @@ export default function App() {
   useEffect(() => {
     function onStorage(e) {
       if (!e.key?.startsWith('jeibe_') || e.key === 'jeibe_version' || e.key === 'jeibe_lang') return
-      reloadLocalStore()
+      refreshData()
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
-  }, [])
+  }, [refreshData])
 
   useEffect(() => {
     function onVisible() {
-      if (document.visibilityState === 'visible') reloadLocalStore()
+      if (document.visibilityState === 'visible') refreshData()
     }
     document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', reloadLocalStore)
+    window.addEventListener('focus', refreshData)
     return () => {
       document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', reloadLocalStore)
+      window.removeEventListener('focus', refreshData)
     }
-  }, [])
+  }, [refreshData])
 
   useEffect(() => {
     if (!currentUser) {
@@ -151,7 +172,7 @@ export default function App() {
       syncStarted.current = false
       stop()
     }
-  }, [currentUser?.id])
+  }, [currentUser?.id, applyStoreFromRemote])
 
   function updateData(key, value) {
     if (!saveStore(key, value)) {
@@ -210,7 +231,10 @@ export default function App() {
 
   return (
     <LangProvider>
-    <AppContext.Provider value={{ currentUser, data, updateData, batchUpdateData, login, loginWithGoogle, logout, googleError, setGoogleError, saveError, setSaveError }}>
+    <AppContext.Provider value={{
+      currentUser, data, dataRevision, updateData, batchUpdateData, refreshData,
+      login, loginWithGoogle, logout, googleError, setGoogleError, saveError, setSaveError,
+    }}>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" replace />} />
