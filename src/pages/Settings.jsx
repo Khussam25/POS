@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../App'
 import FormInput from '../components/FormInput'
+import FormField from '../components/FormField'
 import { Store, DollarSign, Receipt, FileText, User, Save, CheckCircle2 } from 'lucide-react'
 
 function settingsToForm(settings) {
@@ -9,6 +10,27 @@ function settingsToForm(settings) {
     exchangeRate: settings.exchangeRate != null ? String(settings.exchangeRate) : '',
     vatRate: settings.vatRate != null ? String(settings.vatRate) : '',
   }
+}
+
+function SettingsToggle({ label, desc, checked, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid var(--outline)' }}>
+      <div>
+        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{label}</div>
+        {desc && <div style={{ fontSize: 12, color: 'var(--text-500)' }}>{desc}</div>}
+      </div>
+      <button type="button" onClick={() => onChange(!checked)} style={{
+        width: 44, height: 24, borderRadius: 999, transition: 'background 0.2s', position: 'relative',
+        background: checked ? 'var(--primary)' : 'var(--outline)',
+      }}>
+        <div style={{
+          width: 18, height: 18, borderRadius: '50%', background: 'white',
+          position: 'absolute', top: 3, transition: 'left 0.2s',
+          left: checked ? 23 : 3, boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
+        }} />
+      </button>
+    </div>
+  )
 }
 
 const SECTIONS = [
@@ -48,43 +70,6 @@ export default function Settings() {
     setPasswordForm({ current: '', next: '', confirm: '' })
     setTimeout(() => setPwSaved(false), 2500)
   }
-
-  const Field = ({ label, desc, field, type = 'text', placeholder, disabled, numeric }) => (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid var(--outline)' }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{label}</div>
-        {desc && <div style={{ fontSize: 12, color: 'var(--text-500)' }}>{desc}</div>}
-      </div>
-      <FormInput
-        type={type}
-        numeric={numeric}
-        value={form[field]}
-        onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
-        placeholder={placeholder}
-        disabled={disabled}
-        style={{ width: 280, background: disabled ? 'var(--bg)' : 'var(--surface)' }}
-      />
-    </div>
-  )
-
-  const Toggle = ({ label, desc, field }) => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid var(--outline)' }}>
-      <div>
-        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{label}</div>
-        {desc && <div style={{ fontSize: 12, color: 'var(--text-500)' }}>{desc}</div>}
-      </div>
-      <button onClick={() => setForm(f => ({ ...f, [field]: !f[field] }))} style={{
-        width: 44, height: 24, borderRadius: 999, transition: 'background 0.2s', position: 'relative',
-        background: form[field] ? 'var(--primary)' : 'var(--outline)',
-      }}>
-        <div style={{
-          width: 18, height: 18, borderRadius: '50%', background: 'white',
-          position: 'absolute', top: 3, transition: 'left 0.2s',
-          left: form[field] ? 23 : 3, boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
-        }} />
-      </button>
-    </div>
-  )
 
   return (
     <div className="r-page">
@@ -130,10 +115,10 @@ export default function Settings() {
 
             {section === 'store' && (
               <>
-                <Field label="Store Name" desc="Displayed on receipts and reports" field="storeName" />
-                <Field label="Address" desc="Physical location of the store" field="address" />
-                <Field label="Phone Number" field="phone" />
-                <Field label="Email Address" field="email" type="email" />
+                <FormField layout="row" label="Store Name" desc="Displayed on receipts and reports" value={form.storeName} onChange={v => setForm(f => ({ ...f, storeName: v }))} />
+                <FormField layout="row" label="Address" desc="Physical location of the store" value={form.address} onChange={v => setForm(f => ({ ...f, address: v }))} />
+                <FormField layout="row" label="Phone Number" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} />
+                <FormField layout="row" label="Email Address" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} />
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0' }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Store Logo</div>
@@ -149,22 +134,22 @@ export default function Settings() {
 
             {section === 'currency' && (
               <>
-                <Field label="Currency Code" desc="Primary display currency" field="currency" placeholder="TZS" />
-                <Field label="USD to TZS Rate" desc="Exchange rate used for buying price conversions" field="exchangeRate" numeric />
+                <FormField layout="row" label="Currency Code" desc="Primary display currency" value={form.currency} onChange={v => setForm(f => ({ ...f, currency: v }))} placeholder="TZS" />
+                <FormField layout="row" label="USD to TZS Rate" desc="Exchange rate used for buying price conversions" value={form.exchangeRate} onChange={v => setForm(f => ({ ...f, exchangeRate: v }))} numeric />
               </>
             )}
 
             {section === 'tax' && (
               <>
-                <Toggle label="Enable VAT" desc="Apply Value Added Tax to sales" field="vatEnabled" />
-                <Field label="VAT Rate (%)" desc="Percentage applied to each sale" field="vatRate" numeric disabled={!form.vatEnabled} placeholder="18" />
+                <SettingsToggle label="Enable VAT" desc="Apply Value Added Tax to sales" checked={form.vatEnabled} onChange={vatEnabled => setForm(f => ({ ...f, vatEnabled }))} />
+                <FormField layout="row" label="VAT Rate (%)" desc="Percentage applied to each sale" value={form.vatRate} onChange={v => setForm(f => ({ ...f, vatRate: v }))} numeric disabled={!form.vatEnabled} placeholder="18" />
               </>
             )}
 
             {section === 'receipt' && (
               <>
-                <Field label="Receipt Header" desc="Text shown at the top of the receipt" field="receiptHeader" placeholder="Thank you for shopping!" />
-                <Field label="Receipt Footer" desc="Text shown at the bottom of the receipt" field="receiptFooter" placeholder="Come again!" />
+                <FormField layout="row" label="Receipt Header" desc="Text shown at the top of the receipt" value={form.receiptHeader} onChange={v => setForm(f => ({ ...f, receiptHeader: v }))} placeholder="Thank you for shopping!" />
+                <FormField layout="row" label="Receipt Footer" desc="Text shown at the bottom of the receipt" value={form.receiptFooter} onChange={v => setForm(f => ({ ...f, receiptFooter: v }))} placeholder="Come again!" />
               </>
             )}
 

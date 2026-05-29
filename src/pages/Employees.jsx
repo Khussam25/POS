@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../App'
 import FormInput from '../components/FormInput'
+import FormField from '../components/FormField'
 import { Plus, Pencil, RefreshCw, X, Shield, CreditCard } from 'lucide-react'
 
 const ROLES = ['Admin', 'Cashier', 'Manager']
@@ -78,20 +79,6 @@ export default function Employees() {
     setResetModal(null)
     setNewPassword('')
   }
-
-  const Field = ({ label, field, type = 'text', placeholder }) => (
-    <div>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: errors[field] ? 'var(--danger)' : 'var(--text-900)' }}>{label}{errors[field] ? ` — ${errors[field]}` : ''}</label>
-      <FormInput
-        type={type}
-        value={form[field]}
-        onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
-        placeholder={placeholder}
-        error={!!errors[field]}
-        selectOnFocus={type !== 'password'}
-      />
-    </div>
-  )
 
   return (
     <div className="r-page">
@@ -171,9 +158,9 @@ export default function Employees() {
               <button onClick={() => setModal(null)} style={{ color: 'var(--text-500)', padding: 4 }}><X size={20} /></button>
             </div>
             <div style={{ display: 'grid', gap: 14 }}>
-              <Field label="Full Name" field="name" placeholder="e.g. Amina Hassan" />
-              <Field label="Username" field="username" placeholder="e.g. amina.hassan" />
-              <Field label="Phone" field="phone" placeholder="+255 712 345 678" />
+              <FormField label="Full Name" value={form.name} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. Amina Hassan" />
+              <FormField label="Username" value={form.username} onChange={username => setForm(f => ({ ...f, username }))} error={errors.username} placeholder="e.g. amina.hassan" />
+              <FormField label="Phone" value={form.phone} onChange={phone => setForm(f => ({ ...f, phone }))} error={errors.phone} placeholder="+255 712 345 678" />
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Role</label>
                 <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 13, background: 'var(--bg)' }}>
@@ -186,7 +173,9 @@ export default function Employees() {
                   {['Active', 'Inactive'].map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
-              {modal === 'add' && <Field label="Password" field="password" type="password" placeholder="Set initial password" />}
+              {modal === 'add' && (
+                <FormField label="Password" type="password" value={form.password ?? ''} onChange={password => setForm(f => ({ ...f, password }))} error={errors.password} placeholder="Set initial password" />
+              )}
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
               <button onClick={() => setModal(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>Cancel</button>

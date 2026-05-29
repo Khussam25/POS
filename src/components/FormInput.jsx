@@ -22,7 +22,7 @@ export default function FormInput({
   placeholder,
   disabled = false,
   error = false,
-  selectOnFocus = true,
+  selectOnFocus = false,
   autoFocus = false,
   style,
   onFocus,

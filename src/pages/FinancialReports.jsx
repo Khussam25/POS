@@ -51,8 +51,15 @@ export default function FinancialReports() {
     const el = reportRef.current
     if (!el || pdfLoading) return
     setPdfLoading(true)
+    const hidden = [...el.querySelectorAll('.no-print')]
+    hidden.forEach(node => { node.style.display = 'none' })
     try {
-      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        ignoreElements: node => node.classList?.contains('no-print'),
+      })
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pageWidth = pdf.internal.pageSize.getWidth()
@@ -72,6 +79,7 @@ export default function FinancialReports() {
       const filename = `${t(tab).replace(/\s+/g, '-')}-${currentMonth}.pdf`
       pdf.save(filename)
     } finally {
+      hidden.forEach(node => { node.style.display = '' })
       setPdfLoading(false)
     }
   }
@@ -124,12 +132,12 @@ export default function FinancialReports() {
 
       {/* Report body */}
       <div ref={reportRef} className="financial-report-print" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '28px 32px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingBottom: 16, borderBottom: '2px solid var(--outline)' }}>
+        <div className="report-pdf-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingBottom: 16, borderBottom: '2px solid var(--outline)' }}>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 800 }}>{t(tab)} — {monthName}</h2>
             <p style={{ fontSize: 12, color: 'var(--text-500)', marginTop: 4 }}>{storeName}</p>
           </div>
-          <div className="no-print" style={{ display: 'flex', gap: 10 }}>
+          <div className="no-print report-actions" style={{ display: 'flex', gap: 10 }}>
             <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: '1.5px solid var(--outline)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--text-500)', transition: 'all 0.15s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-500)' }}>
