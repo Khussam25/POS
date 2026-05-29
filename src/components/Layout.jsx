@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
-import { useIsPhone, useIsTablet } from '../hooks/useIsCompact'
+import { useLayoutMode } from '../hooks/useIsCompact'
 import { useT, useLang } from '../i18n/LangContext'
 import {
   LayoutDashboard, ShoppingCart, Package, Receipt,
@@ -56,15 +56,12 @@ const APP_BUILD = typeof __APP_BUILD__ !== 'undefined' ? __APP_BUILD__ : 'dev'
 export default function Layout() {
   const { currentUser, logout, data, saveError, setSaveError, syncError, setSyncError, lastSyncedAt, syncing, refreshData } = useApp()
   const storeLogo = data.settings.storeLogo || '/Jeibe_Logo.jpg'
-  const isPhone = useIsPhone()
-  const isTablet = useIsTablet()
+  const layoutMode = useLayoutMode()
+  const isPhone = layoutMode === 'phone'
+  const isTablet = layoutMode === 'tablet'
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [navCollapsed, setNavCollapsed] = useState(() => {
-    try {
-      const saved = localStorage.getItem('jeibe_nav_collapsed')
-      if (saved !== null) return saved === '1'
-    } catch { /* ignore */ }
-    return typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+    try { return localStorage.getItem('jeibe_nav_collapsed') === '1' } catch { return false }
   })
   const t = useT()
 
