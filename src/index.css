@@ -1,0 +1,63 @@
+:root {
+  --bg: #F0F2F5;
+  --surface: #FFFFFF;
+  --outline: #E2E6EC;
+  --text-900: #1A2332;
+  --text-500: #7A8694;
+
+  --primary: #1E4E8C;
+  --primary-hover: #163d6e;
+  --primary-light: rgba(30,78,140,0.08);
+  --primary-soft: #EEF3FA;
+
+  --accent: #C92B36;
+  --accent-hover: #a82229;
+  --accent-light: rgba(201,43,54,0.08);
+
+  --success: #1A9E6B;
+  --success-light: rgba(26,158,107,0.1);
+  --warning: #E07B20;
+  --warning-light: rgba(224,123,32,0.1);
+  --danger: #C92B36;
+  --danger-light: rgba(201,43,54,0.1);
+
+  --shadow-sm: 0 1px 3px rgba(26,35,50,0.08);
+  --shadow: 0 4px 16px rgba(26,35,50,0.08);
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-900);
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+input, button, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+button { cursor: pointer; border: none; background: none; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--outline); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-500); }

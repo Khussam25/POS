@@ -1,0 +1,18 @@
+:root {
+  --bg: #F6F7F9;
+  --surface: #FFFFFF;
+  --outline: #E6E9EE;
+  --text-900: #1F2933;
+  --text-500: #8A939D;
+
+  --primary: #1E4E8C;
+  --primary-600: #153c6b;
+  --accent: #C92B36;
+  --accent-soft: #E76A6A;
+
+  --info: #2B9EB3;
+  --success: #1FA66A;
+  --warning: #E89F3A;
+
+  --shadow: 0 6px 20px rgba(31,41,51,0.06);
+}
