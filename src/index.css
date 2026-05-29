@@ -52,7 +52,17 @@ body {
 
 input, button, select, textarea {
   font-family: inherit;
+}
+
+button, select, textarea {
   font-size: inherit;
+}
+
+/* Form inputs use explicit sizing — inherit + line-height caused text stuck at top */
+input.form-input {
+  font-size: 13px;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 input:not([type="checkbox"]):not([type="radio"]),

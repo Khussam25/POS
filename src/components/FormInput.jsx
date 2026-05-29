@@ -1,17 +1,28 @@
 import { formatPhoneInput } from '../utils/phone'
 
+const INPUT_HEIGHT = 38
+const BORDER_W = 1.5
+/** Inner line box (height minus top/bottom border) for vertical centering. */
+const INPUT_LINE_HEIGHT = INPUT_HEIGHT - BORDER_W * 2
+
 const baseStyle = {
   width: '100%',
-  padding: '9px 12px',
+  height: INPUT_HEIGHT,
+  padding: '0 12px',
   borderRadius: 8,
   outline: 'none',
   fontSize: 13,
-  lineHeight: '1.25',
+  lineHeight: `${INPUT_LINE_HEIGHT}px`,
   boxSizing: 'border-box',
   background: 'var(--bg)',
   color: 'var(--text-900)',
-  border: '1.5px solid var(--outline)',
+  border: `${BORDER_W}px solid var(--outline)`,
   transition: 'border-color 0.15s',
+}
+
+const dateStyle = {
+  lineHeight: '1.25',
+  padding: '8px 12px',
 }
 
 /**
@@ -32,6 +43,7 @@ export default function FormInput({
   style,
   onFocus,
   onBlur,
+  className,
   ...rest
 }) {
   const inputType = numeric || phone ? 'text' : type
@@ -39,9 +51,12 @@ export default function FormInput({
   const inputMode = phone ? 'numeric' : numeric ? 'decimal' : undefined
   const shouldSelect = selectOnFocus && !disabled && type !== 'password' && type !== 'date'
 
+  const isDate = type === 'date'
+
   return (
     <input
       {...rest}
+      className={['form-input', className].filter(Boolean).join(' ')}
       type={inputType}
       inputMode={inputMode}
       value={value ?? ''}
@@ -59,6 +74,7 @@ export default function FormInput({
       autoComplete="off"
       style={{
         ...baseStyle,
+        ...(isDate ? dateStyle : null),
         ...style,
         borderColor: error ? 'var(--danger)' : (style?.borderColor ?? 'var(--outline)'),
         background: disabled ? 'var(--bg)' : (style?.background ?? 'var(--bg)'),

@@ -3,11 +3,6 @@ import FormInput from './FormInput'
 const ROW_INPUT_STYLE = {
   width: 280,
   maxWidth: '100%',
-  boxSizing: 'border-box',
-  height: 38,
-  padding: '8px 12px',
-  fontSize: 13,
-  lineHeight: '1.25',
 }
 
 /**
@@ -50,7 +45,7 @@ export default function FormField({
 
   if (layout === 'row') {
     return (
-      <div className="form-field-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid var(--outline)', ...style }}>
+      <div className="form-field-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid var(--outline)', ...style }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{label}</div>
           {desc && <div style={{ fontSize: 12, color: 'var(--text-500)' }}>{desc}</div>}
