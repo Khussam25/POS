@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
 import { useLayoutMode } from '../hooks/useIsCompact'
@@ -11,7 +11,7 @@ import {
 function LangToggle() {
   const { lang, toggleLang } = useLang()
   return (
-    <button onClick={toggleLang} style={{
+    <button type="button" onClick={toggleLang} className="app-lang-toggle" style={{
       display: 'flex', alignItems: 'center', gap: 1,
       background: 'var(--bg)', border: '1.5px solid var(--outline)',
       borderRadius: 999, overflow: 'hidden', flexShrink: 0
@@ -30,14 +30,20 @@ function LangToggle() {
 
 function NavLinks({ items, onNavigate, showActiveDot }) {
   return items.map(({ to, label, icon: Icon, end }) => (
-    <NavLink key={to} to={to} end={end} onClick={onNavigate}
+    <NavLink
+      key={to}
+      to={to}
+      end={end}
+      onClick={onNavigate}
+      className="app-nav-link"
       style={({ isActive }) => ({
         display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
         borderRadius: 10, textDecoration: 'none', fontWeight: 500, fontSize: 14,
-        transition: 'all 0.15s',
+        transition: 'background 0.15s, color 0.15s',
         background: isActive ? 'var(--primary-light)' : 'transparent',
         color: isActive ? 'var(--primary)' : 'var(--text-900)',
-      })}>
+      })}
+    >
       {({ isActive }) => (
         <>
           <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} />
@@ -52,7 +58,7 @@ function NavLinks({ items, onNavigate, showActiveDot }) {
 }
 
 const APP_BUILD = typeof __APP_BUILD__ !== 'undefined' ? __APP_BUILD__ : 'dev'
-const NAV_COLLAPSED_KEY = 'jeibe_nav_collapsed'
+const NAV_COLLAPSED_KEY = 'jeibe_nav_collapsed_desktop'
 
 export default function Layout() {
   const { currentUser, logout, data, saveError, setSaveError, syncError, setSyncError, lastSyncedAt, syncing, refreshData } = useApp()
@@ -60,16 +66,28 @@ export default function Layout() {
   const layoutMode = useLayoutMode()
   const isPhone = layoutMode === 'phone'
   const isTablet = layoutMode === 'tablet'
+  const isDesktop = layoutMode === 'desktop'
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [navCollapsed, setNavCollapsed] = useState(() => {
+    if (!isDesktop) return false
     try { return localStorage.getItem(NAV_COLLAPSED_KEY) === '1' } catch { return false }
   })
   const t = useT()
 
+  useEffect(() => {
+    if (!isDesktop) setNavCollapsed(false)
+  }, [isDesktop])
+
+  useEffect(() => {
+    if (!isPhone) setDrawerOpen(false)
+  }, [isPhone])
+
   function toggleNavCollapsed() {
     setNavCollapsed(c => {
       const next = !c
-      try { localStorage.setItem(NAV_COLLAPSED_KEY, next ? '1' : '0') } catch { /* ignore */ }
+      if (isDesktop) {
+        try { localStorage.setItem(NAV_COLLAPSED_KEY, next ? '1' : '0') } catch { /* ignore */ }
+      }
       return next
     })
   }
@@ -86,6 +104,8 @@ export default function Layout() {
 
   const visibleNav = NAV.filter(({ to }) => canAccess(currentUser.role, to))
   const storeShortName = data.settings.storeName.split(' ')[0]
+  const showInlineSidebar = (isDesktop || isTablet) && !navCollapsed
+  const showCompactHeader = isPhone || isTablet
 
   async function handleLogout() {
     try {
@@ -107,17 +127,11 @@ export default function Layout() {
     )
   }
 
-  /** Sidebar: logo lives here only. Nav clicks never collapse (phone drawer is separate). */
-  function SidebarPanel({ width = 260, sticky = false, showActiveDot = false, dismissible = false, onDismiss, closeOnNavigate = false }) {
+  function SidebarPanel({ sticky = false, showActiveDot = false, dismissible = false, onDismiss, closeOnNavigate = false }) {
     const afterNav = closeOnNavigate && onDismiss ? onDismiss : undefined
     return (
-      <aside className="no-print" style={{
-        width, flexShrink: 0, background: 'var(--surface)',
-        borderRight: '1px solid var(--outline)', display: 'flex', flexDirection: 'column',
-        ...(sticky ? { position: 'sticky', top: 0, height: '100vh' } : { height: '100%' }),
-        boxShadow: sticky ? undefined : '4px 0 20px rgba(26,35,50,0.15)',
-      }}>
-        <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--outline)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <aside className={`no-print app-sidebar ${sticky ? 'app-sidebar--sticky' : ''}`}>
+        <div className="app-sidebar-head">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <img src={storeLogo} alt="JEIBE" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
@@ -126,16 +140,16 @@ export default function Layout() {
             </div>
           </div>
           {dismissible && onDismiss && (
-            <button type="button" onClick={onDismiss} style={{ color: 'var(--text-500)', padding: 4, flexShrink: 0 }} aria-label="Close menu">
+            <button type="button" onClick={onDismiss} className="app-icon-btn" aria-label="Close menu">
               <X size={18} />
             </button>
           )}
         </div>
-        <nav style={{ flex: 1, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
+        <nav className="app-sidebar-nav">
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.08em', padding: '6px 8px 2px', textTransform: 'uppercase' }}>{t('menu')}</div>
           <NavLinks items={visibleNav} onNavigate={afterNav} showActiveDot={showActiveDot} />
         </nav>
-        <div style={{ borderTop: '1px solid var(--outline)', padding: '10px 12px' }}>
+        <div className="app-sidebar-foot">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, background: 'var(--bg)', marginBottom: 4 }}>
             <UserAvatar size={32} />
             <div style={{ minWidth: 0 }}>
@@ -143,46 +157,11 @@ export default function Layout() {
               <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{currentUser.role}</div>
             </div>
           </div>
-          <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', borderRadius: 8, color: 'var(--text-500)', fontSize: 13, fontWeight: 500 }}>
+          <button type="button" onClick={handleLogout} className="app-nav-link" style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', borderRadius: 8, color: 'var(--text-500)', fontSize: 13, fontWeight: 500 }}>
             <LogOut size={16} strokeWidth={1.8} /><span>{t('signOut')}</span>
           </button>
         </div>
       </aside>
-    )
-  }
-
-  /** Top bar for phone/tablet — logo only when sidebar is hidden. */
-  function CompactTopBar({ showNavToggle, onNavToggle, navOpen, showBranding }) {
-    return (
-      <header className="no-print" style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: isPhone ? '12px 16px' : '10px 16px',
-        background: 'var(--surface)', borderBottom: '1px solid var(--outline)', flexShrink: 0,
-        position: isPhone ? 'sticky' : undefined, top: isPhone ? 0 : undefined, zIndex: isPhone ? 50 : undefined,
-        boxShadow: isPhone ? 'var(--shadow-sm)' : undefined,
-      }}>
-        {showNavToggle && (
-          <button
-            type="button"
-            onClick={onNavToggle}
-            style={{ color: 'var(--text-900)', padding: 6, flexShrink: 0, marginRight: 2 }}
-            aria-label={navOpen ? 'Close menu' : 'Open menu'}
-          >
-            <Menu size={22} />
-          </button>
-        )}
-        {showBranding && (
-          <>
-            <img src={storeLogo} alt="" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-            <span style={{ fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-              {storeShortName}
-            </span>
-          </>
-        )}
-        {!showBranding && <div style={{ flex: 1 }} />}
-        {showBranding && <div style={{ flex: 1 }} />}
-        <LangToggle />
-        {(isPhone || isTablet) && <UserAvatar />}
-      </header>
     )
   }
 
@@ -208,132 +187,87 @@ export default function Layout() {
   function BuildFooter() {
     const synced = lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : null
     return (
-      <div className="no-print" style={{
-        padding: '4px 12px', fontSize: 10, color: 'var(--text-500)', textAlign: 'center',
-        borderTop: '1px solid var(--outline)', flexShrink: 0, display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap',
-      }}>
+      <div className="no-print app-build-footer">
         <span>v{APP_BUILD}</span>
         {syncing ? <span>· syncing…</span> : synced ? <span>· synced {synced}</span> : null}
-        <button type="button" onClick={() => refreshData()} style={{ textDecoration: 'underline', color: 'var(--primary)', fontSize: 10 }}>Refresh</button>
+        <button type="button" onClick={() => refreshData()}>Refresh</button>
       </div>
     )
   }
 
-  function MainContent({ bottomPad = false, showBuildFooter = false }) {
-    return (
-      <main style={{
-        flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0,
-        paddingBottom: bottomPad ? 70 : 0,
-      }}>
-        <StatusBanners />
-        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-          <Outlet />
-        </div>
-        {showBuildFooter && <BuildFooter />}
-      </main>
-    )
-  }
-
-  // ── Phone: drawer + bottom nav ────────────────────────────────────────────
-  if (isPhone) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <CompactTopBar
-          showNavToggle
-          onNavToggle={() => setDrawerOpen(true)}
-          navOpen={drawerOpen}
-          showBranding
-        />
-
-        {drawerOpen && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex' }}>
-            <SidebarPanel dismissible onDismiss={() => setDrawerOpen(false)} closeOnNavigate />
-            <div style={{ flex: 1 }} onClick={() => setDrawerOpen(false)} aria-hidden />
-          </div>
-        )}
-
-        <MainContent bottomPad showBuildFooter />
-
-        <nav className="no-print layout-bottom-nav" style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
-          background: 'var(--surface)', borderTop: '1px solid var(--outline)',
-          display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-          boxShadow: '0 -2px 12px rgba(26,35,50,0.08)',
-        }}>
-          {visibleNav.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} style={({ isActive }) => ({
-              flex: '0 0 auto', minWidth: 68, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              padding: '8px 10px', textDecoration: 'none', gap: 3,
-              color: isActive ? 'var(--primary)' : 'var(--text-500)',
-              borderTop: isActive ? '2px solid var(--primary)' : '2px solid transparent',
-              fontSize: 10, fontWeight: 600,
-            })}>
-              {({ isActive }) => <><Icon size={20} strokeWidth={isActive ? 2.2 : 1.6} /><span style={{ whiteSpace: 'nowrap' }}>{label.split(' ')[0]}</span></>}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
-    )
-  }
-
-  // ── Tablet: persistent sidebar; toggle only from top bar ─────────────────
-  if (isTablet) {
-    return (
-      <div style={{ display: 'flex', minHeight: '100vh' }}>
-        {!navCollapsed && <SidebarPanel sticky showActiveDot />}
-
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh' }}>
-          <CompactTopBar
-            showNavToggle
-            onNavToggle={toggleNavCollapsed}
-            navOpen={!navCollapsed}
-            showBranding={navCollapsed}
-          />
-          <MainContent showBuildFooter />
-        </div>
-      </div>
-    )
-  }
-
-  // ── Desktop: persistent sidebar; one logo; toggle only from top bar ───────
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {!navCollapsed && <SidebarPanel sticky showActiveDot />}
+    <div className={`app-shell app-shell--${layoutMode}`}>
+      {isPhone && drawerOpen && (
+        <div className="app-drawer-overlay" role="presentation" onClick={() => setDrawerOpen(false)}>
+          <div onClick={e => e.stopPropagation()}>
+            <SidebarPanel dismissible onDismiss={() => setDrawerOpen(false)} closeOnNavigate />
+          </div>
+        </div>
+      )}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh' }}>
-        <header className="no-print" style={{
-          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px',
-          background: 'var(--surface)', borderBottom: '1px solid var(--outline)', flexShrink: 0,
-        }}>
-          <button
-            type="button"
-            onClick={toggleNavCollapsed}
-            style={{ color: 'var(--text-900)', padding: 6, flexShrink: 0 }}
-            aria-label={navCollapsed ? 'Open menu' : 'Close menu'}
-          >
-            <Menu size={22} />
-          </button>
-          {navCollapsed && (
+      {showInlineSidebar && (
+        <SidebarPanel sticky showActiveDot />
+      )}
+
+      <div className="app-main-column">
+        <header className={`no-print app-topbar ${isPhone ? 'app-topbar--phone' : ''}`}>
+          {(showCompactHeader || isDesktop) && (
+            <button
+              type="button"
+              className="app-icon-btn"
+              onClick={isPhone ? () => setDrawerOpen(true) : toggleNavCollapsed}
+              aria-label={isPhone ? 'Open menu' : (navCollapsed ? 'Open menu' : 'Close menu')}
+            >
+              <Menu size={22} />
+            </button>
+          )}
+          {(isPhone || (isTablet && navCollapsed) || (isDesktop && navCollapsed)) && (
             <>
               <img src={storeLogo} alt="" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-              <span style={{ fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-                {storeShortName}
-              </span>
+              <span className="app-topbar-title">{storeShortName}</span>
             </>
           )}
-          {!navCollapsed && <div style={{ flex: 1 }} />}
-          {navCollapsed && <div style={{ flex: 1 }} />}
+          <div style={{ flex: 1 }} />
           <LangToggle />
+          {showCompactHeader && <UserAvatar />}
         </header>
 
-        <main style={{ flex: 1, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <main className={`app-main ${isPhone ? 'app-main--phone' : ''}`}>
           <StatusBanners />
-          <div style={{ flex: 1, minHeight: 0 }}>
+          <div className="app-outlet">
             <Outlet />
           </div>
           <BuildFooter />
         </main>
       </div>
+
+      {isPhone && (
+        <nav className="no-print layout-bottom-nav" aria-label="Main navigation">
+          {visibleNav.map(({ to, label, icon: Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className="app-bottom-nav-link"
+              style={({ isActive }) => ({
+                flex: '0 0 auto', minWidth: 72, minHeight: 52,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                padding: '8px 12px', textDecoration: 'none', gap: 4,
+                color: isActive ? 'var(--primary)' : 'var(--text-500)',
+                borderTop: isActive ? '2px solid var(--primary)' : '2px solid transparent',
+                fontSize: 10, fontWeight: 600,
+              })}
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon size={20} strokeWidth={isActive ? 2.2 : 1.6} />
+                  <span style={{ whiteSpace: 'nowrap' }}>{label.split(' ')[0]}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+      )}
     </div>
   )
 }

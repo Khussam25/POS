@@ -165,14 +165,22 @@ export default function App() {
   }, [refreshData])
 
   useEffect(() => {
+    let focusTimer
     function onVisible() {
-      if (document.visibilityState === 'visible') refreshData()
+      if (document.visibilityState !== 'visible') return
+      clearTimeout(focusTimer)
+      focusTimer = setTimeout(() => refreshData(), 400)
+    }
+    function onFocus() {
+      clearTimeout(focusTimer)
+      focusTimer = setTimeout(() => refreshData(), 400)
     }
     document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', refreshData)
+    window.addEventListener('focus', onFocus)
     return () => {
+      clearTimeout(focusTimer)
       document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', refreshData)
+      window.removeEventListener('focus', onFocus)
     }
   }, [refreshData])
 

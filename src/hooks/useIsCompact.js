@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 /** Tablets and phones — stacked POS / Settings layouts. */
 export const COMPACT_BREAKPOINT = 1104
 
 const PHONE_MAX = 768
-/** iPad landscape can exceed COMPACT_BREAKPOINT; only treat as tablet when touch-primary. */
 const TOUCH_TABLET_MAX = 1366
+const RESIZE_DEBOUNCE_MS = 200
 
 function isTouchPrimaryDevice() {
   if (typeof window === 'undefined') return false
@@ -25,18 +25,28 @@ function detectLayoutMode() {
 
 export function useLayoutMode() {
   const [mode, setMode] = useState(detectLayoutMode)
+  const timerRef = useRef(null)
 
   useEffect(() => {
-    const update = () => setMode(detectLayoutMode())
-    window.addEventListener('resize', update)
+    const apply = () => setMode(detectLayoutMode())
+    const schedule = () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(apply, RESIZE_DEBOUNCE_MS)
+    }
+
+    apply()
+
+    window.addEventListener('resize', schedule)
     const coarseMq = window.matchMedia('(pointer: coarse)')
     const fineMq = window.matchMedia('(hover: hover) and (pointer: fine)')
-    coarseMq.addEventListener('change', update)
-    fineMq.addEventListener('change', update)
+    coarseMq.addEventListener('change', schedule)
+    fineMq.addEventListener('change', schedule)
+
     return () => {
-      window.removeEventListener('resize', update)
-      coarseMq.removeEventListener('change', update)
-      fineMq.removeEventListener('change', update)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      window.removeEventListener('resize', schedule)
+      coarseMq.removeEventListener('change', schedule)
+      fineMq.removeEventListener('change', schedule)
     }
   }, [])
 
@@ -52,7 +62,6 @@ export function useIsPhone() {
   return useLayoutMode() === 'phone'
 }
 
-/** Tablet: 768px–1103px, or touch-primary device up to 1366px (e.g. iPad landscape). */
 export function useIsTablet() {
   return useLayoutMode() === 'tablet'
 }
