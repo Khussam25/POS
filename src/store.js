@@ -19,9 +19,9 @@ const SEED = {
   expenses: [],
 
   employees: [
-    { id: 'emp1', name: 'Rhoda Mutafungwa', role: 'Admin', email: 'rhodamutafungwa@gmail.com', phone: '+255 712 345 678', username: 'rhoda.mutafungwa', status: 'Active', initials: 'RM', color: '#C92B36' },
-    { id: 'emp2', name: 'Rustick Mbilauli', role: 'Cashier', email: 'rustick.mbilauli@jeibe.co.tz', phone: '+255 754 901 234', username: 'rustick.mbilauli', status: 'Active', initials: 'RM', color: '#1E4E8C' },
-    { id: 'emp3', name: 'Neema Juma', role: 'Cashier', email: 'neema.juma@jeibe.co.tz', phone: '+255 765 432 100', username: 'neema.juma', status: 'Inactive', initials: 'NJ', color: '#1E4E8C' },
+    { id: 'emp1', name: 'Khussam Mohamed', role: 'Admin', email: 'khussamjuma20@gmail.com', phone: '', username: 'khussam.mohamed', status: 'Active', initials: 'KM', color: '#1E4E8C' },
+    { id: 'emp2', name: 'Rhoda Mutafungwa', role: 'Admin', email: 'rhodamutafungwa@gmail.com', phone: '+255 712 345 678', username: 'rhoda.mutafungwa', status: 'Active', initials: 'RM', color: '#C92B36' },
+    { id: 'emp3', name: 'Rustick Mbilauli', role: 'Cashier', email: 'rmbilauli@gmail.com', phone: '+255 754 901 234', username: 'rustick.mbilauli', status: 'Active', initials: 'RM', color: '#1E4E8C' },
   ],
 
   settings: {
@@ -49,7 +49,7 @@ function save(key, value) {
   localStorage.setItem(`jeibe_${key}`, JSON.stringify(value));
 }
 
-const DATA_VERSION = '5'
+const DATA_VERSION = '6'
 
 function getStore() {
   if (localStorage.getItem('jeibe_version') !== DATA_VERSION) {
