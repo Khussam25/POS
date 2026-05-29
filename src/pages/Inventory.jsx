@@ -10,7 +10,7 @@ const fmt = fmtMoney
 
 const CATEGORIES = ['Moisturizers', 'Serums', 'Eye Care', 'Sunscreen', 'Foundation', 'Lip Care', 'Body Care', 'Anti-Aging', 'Toners', 'Cleansers', 'Other']
 
-const EMPTY = { name: '', category: 'Moisturizers', buyingPriceTZS: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10, expiryDate: '' }
+const EMPTY = { name: '', category: 'Moisturizers', buyingPriceTZS: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10 }
 
 const SORT_KEYS = ['nameAsc', 'nameDesc', 'qtyDesc', 'qtyAsc', 'profitDesc', 'profitAsc']
 
@@ -90,7 +90,6 @@ export default function Inventory() {
     if (!form.buyingPriceTZS || isNaN(form.buyingPriceTZS) || +form.buyingPriceTZS <= 0) e.buyingPriceTZS = 'Enter valid price'
     if (!form.sellingPriceTZS || isNaN(form.sellingPriceTZS) || +form.sellingPriceTZS <= 0) e.sellingPriceTZS = 'Enter valid price'
     if (!form.qty || isNaN(form.qty) || +form.qty < 0) e.qty = 'Enter valid qty'
-    if (!form.expiryDate) e.expiryDate = 'Required'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -263,7 +262,6 @@ export default function Inventory() {
                 <FormField label={t('quantity')} value={form.qty ?? ''} onChange={qty => setForm(f => ({ ...f, qty }))} error={errors.qty} numeric placeholder="e.g. 50" />
                 <FormField label={t('lowStockThreshold')} value={form.lowStockThreshold ?? ''} onChange={lowStockThreshold => setForm(f => ({ ...f, lowStockThreshold }))} error={errors.lowStockThreshold} numeric placeholder="e.g. 10" />
               </div>
-              <FormField label={t('expiryDate')} type="date" value={form.expiryDate ?? ''} onChange={expiryDate => setForm(f => ({ ...f, expiryDate }))} error={errors.expiryDate} />
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
               <button onClick={() => setModal(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>
