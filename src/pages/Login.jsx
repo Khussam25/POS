@@ -11,7 +11,7 @@ function LangToggle() {
     <button onClick={toggleLang} style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--outline)', borderRadius: 999, overflow: 'hidden', marginBottom: 20 }}>
       {['en', 'sw'].map(l => (
         <span key={l} style={{ padding: '5px 14px', fontSize: 12, fontWeight: 700, background: lang === l ? 'var(--primary)' : 'transparent', color: lang === l ? 'white' : 'var(--text-500)', transition: 'all 0.15s' }}>
-          {l === 'en' ? '🇬🇧 EN' : '🇹🇿 SW'}
+          {l === 'en' ? '🇺🇸 EN' : '🇹🇿 SW'}
         </span>
       ))}
     </button>

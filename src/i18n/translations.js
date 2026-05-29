@@ -102,6 +102,8 @@ const en = {
   products: 'Products',
   order: 'Order',
   browseProducts: '← Browse products',
+  showDetails: 'Discount, customer & payment',
+  hideDetails: 'Hide details',
   eachUnit: 'ea',
 
   // ── Inventory ────────────────────────────────────────────────────────────
@@ -164,6 +166,9 @@ const en = {
   transactions2: 'Transactions',
   amount: 'Amount',
   payment: 'Payment',
+  customer: 'Customer',
+  totalLabel: 'Total',
+  itemsCol: 'Items',
 
   // ── Employees ────────────────────────────────────────────────────────────
   employeesTitle: 'Employees',
@@ -327,6 +332,8 @@ const sw = {
   products: 'Bidhaa',
   order: 'Agizo',
   browseProducts: '← Angalia bidhaa',
+  showDetails: 'Punguzo, mteja na malipo',
+  hideDetails: 'Ficha maelezo',
   eachUnit: 'kila',
 
   // ── Inventory ────────────────────────────────────────────────────────────
@@ -389,6 +396,9 @@ const sw = {
   transactions2: 'Miamala',
   amount: 'Kiasi',
   payment: 'Malipo',
+  customer: 'Mteja',
+  totalLabel: 'Jumla',
+  itemsCol: 'Bidhaa',
 
   // ── Employees ────────────────────────────────────────────────────────────
   employeesTitle: 'Wafanyakazi',

@@ -190,9 +190,8 @@ export default function PointOfSale() {
         )}
 
         {mobileTab === 'order' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)' }}>
-            {/* Cart items */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)', minHeight: 0 }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {cart.length === 0 && (
                 <div style={{ textAlign: 'center', paddingTop: 48, color: 'var(--text-500)' }}>
                   <ShoppingCart size={40} strokeWidth={1.2} style={{ opacity: 0.25, marginBottom: 10 }} />
@@ -221,27 +220,26 @@ export default function PointOfSale() {
               ))}
             </div>
 
-            <div style={{ flexShrink: 0, background: 'var(--surface)', borderTop: '2px solid var(--outline)' }}>
-              <OrderCheckout
-                t={t}
-                cart={cart}
-                subtotal={subtotal}
-                vat={vat}
-                vatRate={data.settings.vatRate}
-                vatEnabled={data.settings.vatEnabled}
-                discountValue={discountValue}
-                setDiscountValue={setDiscountValue}
-                discountAmount={discountAmount}
-                total={total}
-                customer={customer}
-                setCustomer={setCustomer}
-                phone={phone}
-                setPhone={setPhone}
-                payment={payment}
-                setPayment={setPayment}
-                onCompleteSale={completeSale}
-              />
-            </div>
+            <OrderCheckout
+              compact
+              t={t}
+              cart={cart}
+              subtotal={subtotal}
+              vat={vat}
+              vatRate={data.settings.vatRate}
+              vatEnabled={data.settings.vatEnabled}
+              discountValue={discountValue}
+              setDiscountValue={setDiscountValue}
+              discountAmount={discountAmount}
+              total={total}
+              customer={customer}
+              setCustomer={setCustomer}
+              phone={phone}
+              setPhone={setPhone}
+              payment={payment}
+              setPayment={setPayment}
+              onCompleteSale={completeSale}
+            />
           </div>
         )}
       </div>
