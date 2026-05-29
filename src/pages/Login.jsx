@@ -120,7 +120,7 @@ function ForgotPassword({ onBack }) {
 
 // ─── Main Login view ─────────────────────────────────────────────────────────
 export default function Login() {
-  const { login, loginWithGoogle, data } = useApp()
+  const { login, loginWithGoogle, data, googleError, setGoogleError } = useApp()
   const [view, setView] = useState('login')   // 'login' | 'forgot'
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -145,13 +145,13 @@ export default function Login() {
 
   async function handleGoogle() {
     setError('')
+    setGoogleError(null)
     setGoogleLoading(true)
     try {
       await loginWithGoogle()
+      // Page redirects to Google — loading state stays true intentionally
     } catch (err) {
-      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-        setError(FIREBASE_ERRORS[err.code] || 'Google sign-in failed. Try again.')
-      }
+      setError(FIREBASE_ERRORS[err.code] || 'Google sign-in failed. Try again.')
       setGoogleLoading(false)
     }
   }
@@ -190,6 +190,14 @@ export default function Login() {
             <>
               <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>Sign in to your account</h2>
               <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 24 }}>Enter your credentials to continue</p>
+
+              {/* Google redirect error (shown after returning from Google) */}
+              {googleError && (
+                <div style={{ background: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16, fontWeight: 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{googleError}</span>
+                  <button onClick={() => setGoogleError(null)} style={{ color: 'var(--danger)', padding: '0 0 0 8px', fontSize: 16, lineHeight: 1 }}>×</button>
+                </div>
+              )}
 
               {/* Google */}
               <button onClick={handleGoogle} disabled={googleLoading || loading} style={{

@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut
 } from 'firebase/auth'
 import { auth, googleProvider } from './firebase'
@@ -65,9 +66,19 @@ function resolveEmployee(firebaseUser) {
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [googleError, setGoogleError] = useState(null)
   const [data, setData] = useState(() => getStore())
 
   useEffect(() => {
+    // Process the result when Google redirects back to the app
+    getRedirectResult(auth).catch(err => {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/account-exists-with-different-credential') {
+        setGoogleError('This Google account is not linked to any employee. Contact your administrator.')
+      } else if (err.code && err.code !== 'auth/cancelled-popup-request') {
+        setGoogleError('Google sign-in failed. Please try again.')
+      }
+    })
+
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const user = resolveEmployee(firebaseUser)
@@ -76,6 +87,7 @@ export default function App() {
         } else {
           await signOut(auth)
           setCurrentUser(null)
+          setGoogleError('Your Google account is not linked to any employee. Contact your administrator.')
         }
       } else {
         setCurrentUser(null)
@@ -95,7 +107,9 @@ export default function App() {
   }
 
   async function loginWithGoogle() {
-    await signInWithPopup(auth, googleProvider)
+    setGoogleError(null)
+    await signInWithRedirect(auth, googleProvider)
+    // Page redirects to Google — code below this line won't run
   }
 
   async function logout() {
@@ -122,7 +136,7 @@ export default function App() {
   }
 
   return (
-    <AppContext.Provider value={{ currentUser, data, updateData, login, loginWithGoogle, logout }}>
+    <AppContext.Provider value={{ currentUser, data, updateData, login, loginWithGoogle, logout, googleError, setGoogleError }}>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" replace />} />
