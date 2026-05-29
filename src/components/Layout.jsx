@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
 import { useLayoutMode } from '../hooks/useIsCompact'
@@ -52,6 +52,7 @@ function NavLinks({ items, onNavigate, showActiveDot }) {
 }
 
 const APP_BUILD = typeof __APP_BUILD__ !== 'undefined' ? __APP_BUILD__ : 'dev'
+const NAV_COLLAPSED_KEY = 'jeibe_nav_collapsed'
 
 export default function Layout() {
   const { currentUser, logout, data, saveError, setSaveError, syncError, setSyncError, lastSyncedAt, syncing, refreshData } = useApp()
@@ -61,18 +62,14 @@ export default function Layout() {
   const isTablet = layoutMode === 'tablet'
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [navCollapsed, setNavCollapsed] = useState(() => {
-    try { return localStorage.getItem('jeibe_nav_collapsed') === '1' } catch { return false }
+    try { return localStorage.getItem(NAV_COLLAPSED_KEY) === '1' } catch { return false }
   })
   const t = useT()
-
-  useEffect(() => {
-    if (isTablet) setNavCollapsed(true)
-  }, [isTablet])
 
   function toggleNavCollapsed() {
     setNavCollapsed(c => {
       const next = !c
-      try { localStorage.setItem('jeibe_nav_collapsed', next ? '1' : '0') } catch { /* ignore */ }
+      try { localStorage.setItem(NAV_COLLAPSED_KEY, next ? '1' : '0') } catch { /* ignore */ }
       return next
     })
   }
@@ -110,7 +107,9 @@ export default function Layout() {
     )
   }
 
-  function SidebarPanel({ onClose, width = 260, sticky = false, showActiveDot = false }) {
+  /** Sidebar: logo lives here only. Nav clicks never collapse (phone drawer is separate). */
+  function SidebarPanel({ width = 260, sticky = false, showActiveDot = false, dismissible = false, onDismiss, closeOnNavigate = false }) {
+    const afterNav = closeOnNavigate && onDismiss ? onDismiss : undefined
     return (
       <aside className="no-print" style={{
         width, flexShrink: 0, background: 'var(--surface)',
@@ -126,15 +125,15 @@ export default function Layout() {
               <div style={{ fontSize: 11, color: 'var(--text-500)' }}>Original Products USA</div>
             </div>
           </div>
-          {onClose && (
-            <button type="button" onClick={onClose} style={{ color: 'var(--text-500)', padding: 4, flexShrink: 0 }} aria-label="Close menu">
+          {dismissible && onDismiss && (
+            <button type="button" onClick={onDismiss} style={{ color: 'var(--text-500)', padding: 4, flexShrink: 0 }} aria-label="Close menu">
               <X size={18} />
             </button>
           )}
         </div>
         <nav style={{ flex: 1, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.08em', padding: '6px 8px 2px', textTransform: 'uppercase' }}>{t('menu')}</div>
-          <NavLinks items={visibleNav} onNavigate={onClose} showActiveDot={sticky} />
+          <NavLinks items={visibleNav} onNavigate={afterNav} showActiveDot={showActiveDot} />
         </nav>
         <div style={{ borderTop: '1px solid var(--outline)', padding: '10px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, background: 'var(--bg)', marginBottom: 4 }}>
@@ -152,7 +151,8 @@ export default function Layout() {
     )
   }
 
-  function TopBar({ showNavToggle, onNavToggle, navOpen }) {
+  /** Top bar for phone/tablet — logo only when sidebar is hidden. */
+  function CompactTopBar({ showNavToggle, onNavToggle, navOpen, showBranding }) {
     return (
       <header className="no-print" style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: isPhone ? '12px 16px' : '10px 16px',
@@ -167,15 +167,21 @@ export default function Layout() {
             style={{ color: 'var(--text-900)', padding: 6, flexShrink: 0, marginRight: 2 }}
             aria-label={navOpen ? 'Close menu' : 'Open menu'}
           >
-            {navOpen && isTablet ? <X size={22} /> : <Menu size={22} />}
+            <Menu size={22} />
           </button>
         )}
-        <img src={storeLogo} alt="" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-        <span style={{ fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-          {storeShortName}
-        </span>
+        {showBranding && (
+          <>
+            <img src={storeLogo} alt="" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+            <span style={{ fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+              {storeShortName}
+            </span>
+          </>
+        )}
+        {!showBranding && <div style={{ flex: 1 }} />}
+        {showBranding && <div style={{ flex: 1 }} />}
         <LangToggle />
-        <UserAvatar />
+        {(isPhone || isTablet) && <UserAvatar />}
       </header>
     )
   }
@@ -228,15 +234,20 @@ export default function Layout() {
     )
   }
 
-  // ── Phone: left menu + bottom nav ─────────────────────────────────────────
+  // ── Phone: drawer + bottom nav ────────────────────────────────────────────
   if (isPhone) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <TopBar showNavToggle onNavToggle={() => setDrawerOpen(true)} navOpen={drawerOpen} />
+        <CompactTopBar
+          showNavToggle
+          onNavToggle={() => setDrawerOpen(true)}
+          navOpen={drawerOpen}
+          showBranding
+        />
 
         {drawerOpen && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex' }}>
-            <SidebarPanel onClose={() => setDrawerOpen(false)} />
+            <SidebarPanel dismissible onDismiss={() => setDrawerOpen(false)} closeOnNavigate />
             <div style={{ flex: 1 }} onClick={() => setDrawerOpen(false)} aria-hidden />
           </div>
         )}
@@ -265,39 +276,53 @@ export default function Layout() {
     )
   }
 
-  // ── Tablet: collapsible left panel, no bottom nav ─────────────────────────
+  // ── Tablet: persistent sidebar; toggle only from top bar ─────────────────
   if (isTablet) {
     return (
       <div style={{ display: 'flex', minHeight: '100vh' }}>
-        {!navCollapsed && <SidebarPanel onClose={toggleNavCollapsed} sticky />}
+        {!navCollapsed && <SidebarPanel sticky showActiveDot />}
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh' }}>
-          <TopBar showNavToggle onNavToggle={toggleNavCollapsed} navOpen={!navCollapsed} />
+          <CompactTopBar
+            showNavToggle
+            onNavToggle={toggleNavCollapsed}
+            navOpen={!navCollapsed}
+            showBranding={navCollapsed}
+          />
           <MainContent showBuildFooter />
         </div>
       </div>
     )
   }
 
-  // ── Desktop: collapsible sidebar ──────────────────────────────────────────
+  // ── Desktop: persistent sidebar; one logo; toggle only from top bar ───────
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {!navCollapsed && <SidebarPanel sticky showActiveDot onClose={toggleNavCollapsed} />}
+      {!navCollapsed && <SidebarPanel sticky showActiveDot />}
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh' }}>
         <header className="no-print" style={{
           display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px',
           background: 'var(--surface)', borderBottom: '1px solid var(--outline)', flexShrink: 0,
         }}>
+          <button
+            type="button"
+            onClick={toggleNavCollapsed}
+            style={{ color: 'var(--text-900)', padding: 6, flexShrink: 0 }}
+            aria-label={navCollapsed ? 'Open menu' : 'Close menu'}
+          >
+            <Menu size={22} />
+          </button>
           {navCollapsed && (
-            <button type="button" onClick={toggleNavCollapsed} style={{ color: 'var(--text-900)', padding: 6, flexShrink: 0 }} aria-label="Open menu">
-              <Menu size={22} />
-            </button>
+            <>
+              <img src={storeLogo} alt="" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+              <span style={{ fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                {storeShortName}
+              </span>
+            </>
           )}
-          <img src={storeLogo} alt="" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-          <span style={{ fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-            {storeShortName}
-          </span>
+          {!navCollapsed && <div style={{ flex: 1 }} />}
+          {navCollapsed && <div style={{ flex: 1 }} />}
           <LangToggle />
         </header>
 
