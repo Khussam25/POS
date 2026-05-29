@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import { useApp } from '../App'
+import FormInput from '../components/FormInput'
 import { Store, DollarSign, Receipt, FileText, User, Save, CheckCircle2 } from 'lucide-react'
+
+function settingsToForm(settings) {
+  return {
+    ...settings,
+    exchangeRate: settings.exchangeRate != null ? String(settings.exchangeRate) : '',
+    vatRate: settings.vatRate != null ? String(settings.vatRate) : '',
+  }
+}
 
 const SECTIONS = [
   { key: 'store', label: 'Store Information', icon: Store },
@@ -13,14 +22,18 @@ const SECTIONS = [
 export default function Settings() {
   const { currentUser, data, updateData } = useApp()
   const [section, setSection] = useState('store')
-  const [form, setForm] = useState({ ...data.settings })
+  const [form, setForm] = useState(() => settingsToForm(data.settings))
   const [saved, setSaved] = useState(false)
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' })
   const [pwError, setPwError] = useState('')
   const [pwSaved, setPwSaved] = useState(false)
 
   function handleSave() {
-    updateData('settings', form)
+    updateData('settings', {
+      ...form,
+      exchangeRate: form.exchangeRate === '' ? 0 : +form.exchangeRate,
+      vatRate: form.vatRate === '' ? 0 : +form.vatRate,
+    })
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
@@ -36,22 +49,20 @@ export default function Settings() {
     setTimeout(() => setPwSaved(false), 2500)
   }
 
-  const Field = ({ label, desc, field, type = 'text', placeholder, disabled }) => (
+  const Field = ({ label, desc, field, type = 'text', placeholder, disabled, numeric }) => (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid var(--outline)' }}>
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{label}</div>
         {desc && <div style={{ fontSize: 12, color: 'var(--text-500)' }}>{desc}</div>}
       </div>
-      <input
-        type={type} value={form[field] ?? ''} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
-        placeholder={placeholder} disabled={disabled}
-        style={{
-          width: 280, padding: '9px 12px', border: '1.5px solid var(--outline)', borderRadius: 8,
-          outline: 'none', fontSize: 13, background: disabled ? 'var(--bg)' : 'var(--surface)',
-          color: disabled ? 'var(--text-500)' : 'var(--text-900)', transition: 'border-color 0.15s'
-        }}
-        onFocus={e => { if (!disabled) e.target.style.borderColor = 'var(--primary)' }}
-        onBlur={e => e.target.style.borderColor = 'var(--outline)'}
+      <FormInput
+        type={type}
+        numeric={numeric}
+        value={form[field]}
+        onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+        placeholder={placeholder}
+        disabled={disabled}
+        style={{ width: 280, background: disabled ? 'var(--bg)' : 'var(--surface)' }}
       />
     </div>
   )
@@ -139,14 +150,14 @@ export default function Settings() {
             {section === 'currency' && (
               <>
                 <Field label="Currency Code" desc="Primary display currency" field="currency" placeholder="TZS" />
-                <Field label="USD to TZS Rate" desc="Exchange rate used for buying price conversions" field="exchangeRate" type="number" />
+                <Field label="USD to TZS Rate" desc="Exchange rate used for buying price conversions" field="exchangeRate" numeric />
               </>
             )}
 
             {section === 'tax' && (
               <>
                 <Toggle label="Enable VAT" desc="Apply Value Added Tax to sales" field="vatEnabled" />
-                <Field label="VAT Rate (%)" desc="Percentage applied to each sale" field="vatRate" type="number" disabled={!form.vatEnabled} placeholder="18" />
+                <Field label="VAT Rate (%)" desc="Percentage applied to each sale" field="vatRate" numeric disabled={!form.vatEnabled} placeholder="18" />
               </>
             )}
 
@@ -179,9 +190,8 @@ export default function Settings() {
                   {[['Current Password', 'current'], ['New Password', 'next'], ['Confirm New Password', 'confirm']].map(([label, field]) => (
                     <div key={field}>
                       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{label}</label>
-                      <input type="password" value={passwordForm[field]} onChange={e => setPasswordForm(f => ({ ...f, [field]: e.target.value }))} placeholder="••••••••"
-                        style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 13, background: 'var(--bg)' }}
-                        onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'var(--outline)'} />
+                      <FormInput type="password" value={passwordForm[field]} onChange={e => setPasswordForm(f => ({ ...f, [field]: e.target.value }))} placeholder="••••••••"
+                        selectOnFocus={false} />
                     </div>
                   ))}
                 </div>

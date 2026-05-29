@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useApp } from '../App'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { useT } from '../i18n/LangContext'
+import FormInput from '../components/FormInput'
 import { Search, Plus, Minus, ShoppingCart, Banknote, Smartphone, CreditCard, FileText, CheckCircle2, X } from 'lucide-react'
 
 function fmt(n) { return 'TZS ' + Number(n).toLocaleString() }
@@ -14,6 +16,7 @@ const PAYMENT_METHODS = [
 export default function PointOfSale() {
   const { currentUser, data, updateData } = useApp()
   const isMobile = useIsMobile()
+  const t = useT()
   const [mobileTab, setMobileTab] = useState('products') // 'products' | 'order'
   const [search, setSearch] = useState('')
   const [cart, setCart] = useState([])
@@ -93,7 +96,7 @@ export default function PointOfSale() {
           <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
             <CheckCircle2 size={34} color="var(--success)" />
           </div>
-          <h2 style={{ fontSize: 21, fontWeight: 800, marginBottom: 8 }}>Sale Completed!</h2>
+          <h2 style={{ fontSize: 21, fontWeight: 800, marginBottom: 8 }}>{t('saleCompleted')}</h2>
           <p style={{ color: 'var(--text-500)', marginBottom: 6, fontSize: 14 }}>{success.customer}</p>
           <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 6 }}>{fmt(success.total)}</p>
           <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 28 }}>{success.paymentMethod}</p>
@@ -114,13 +117,13 @@ export default function PointOfSale() {
       <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
         {/* Tab bar */}
         <div style={{ display: 'flex', background: 'var(--surface)', borderBottom: '1px solid var(--outline)', flexShrink: 0 }}>
-          {[{ key: 'products', label: 'Products' }, { key: 'order', label: `Order${cartCount > 0 ? ` (${cartCount})` : ''}` }].map(t => (
-            <button key={t.key} onClick={() => setMobileTab(t.key)} style={{
+          {[{ key: 'products', label: t('products') }, { key: 'order', label: `${t('order')}${cartCount > 0 ? ` (${cartCount})` : ''}` }].map(tb => (
+            <button key={tb.key} onClick={() => setMobileTab(tb.key)} style={{
               flex: 1, padding: '13px', fontWeight: 700, fontSize: 14,
-              borderBottom: `3px solid ${mobileTab === t.key ? 'var(--primary)' : 'transparent'}`,
-              color: mobileTab === t.key ? 'var(--primary)' : 'var(--text-500)',
+              borderBottom: `3px solid ${mobileTab === tb.key ? 'var(--primary)' : 'transparent'}`,
+              color: mobileTab === tb.key ? 'var(--primary)' : 'var(--text-500)',
               background: 'transparent', transition: 'all 0.15s'
-            }}>{t.label}</button>
+            }}>{tb.label}</button>
           ))}
         </div>
 
@@ -128,9 +131,8 @@ export default function PointOfSale() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '16px' }}>
             <div style={{ position: 'relative', marginBottom: 12 }}>
               <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..."
-                style={{ width: '100%', padding: '10px 12px 10px 36px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', outline: 'none', fontSize: 13, background: 'var(--surface)' }}
-                onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'var(--outline)'} />
+              <FormInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..." selectOnFocus={false}
+                style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: 'var(--radius-sm)', background: 'var(--surface)' }} />
             </div>
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {products.map(p => {
@@ -194,9 +196,8 @@ export default function PointOfSale() {
               {/* Discount */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{ fontSize: 13, color: 'var(--text-500)' }}>Discount (TZS)</span>
-                <input type="number" min="0" value={discountValue} onChange={e => setDiscountValue(e.target.value)} placeholder="0"
-                  style={{ width: 100, padding: '6px 10px', border: '1.5px solid var(--outline)', borderRadius: 7, outline: 'none', fontSize: 13, textAlign: 'right', background: 'var(--bg)' }}
-                  onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'var(--outline)'} />
+                <FormInput numeric value={discountValue} onChange={e => setDiscountValue(e.target.value)} placeholder="0"
+                  style={{ width: 100, padding: '6px 10px', borderRadius: 7, fontSize: 13, textAlign: 'right' }} />
               </div>
               {/* Totals */}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
@@ -211,10 +212,10 @@ export default function PointOfSale() {
               </div>
               {/* Customer */}
               <div style={{ display: 'flex', gap: 8 }}>
-                <input value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Customer name"
-                  style={{ flex: 1, padding: '9px 10px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 12, background: 'var(--bg)' }} />
-                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone"
-                  style={{ flex: 1, padding: '9px 10px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 12, background: 'var(--bg)' }} />
+                <FormInput value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Customer name"
+                  style={{ flex: 1, padding: '9px 10px', fontSize: 12 }} />
+                <FormInput value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone"
+                  style={{ flex: 1, padding: '9px 10px', fontSize: 12 }} />
               </div>
               {/* Payment */}
               <div style={{ display: 'flex', gap: 6 }}>
@@ -258,12 +259,11 @@ export default function PointOfSale() {
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Point of Sale</h1>
         <div style={{ position: 'relative', marginBottom: 16 }}>
           <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
-          <input
+          <FormInput
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search products by name, category, or SKU..."
-            style={{ width: '100%', padding: '11px 14px 11px 42px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', outline: 'none', fontSize: 13, background: 'var(--surface)' }}
-            onFocus={e => e.target.style.borderColor = 'var(--primary)'}
-            onBlur={e => e.target.style.borderColor = 'var(--outline)'}
+            selectOnFocus={false}
+            style={{ width: '100%', padding: '11px 14px 11px 42px', borderRadius: 'var(--radius-sm)', background: 'var(--surface)' }}
           />
         </div>
 
@@ -405,17 +405,12 @@ export default function PointOfSale() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
               <span style={{ fontSize: 13, color: 'var(--text-500)', flexShrink: 0 }}>Discount (TZS)</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input
-                  type="number" min="0" value={discountValue}
+                <FormInput
+                  numeric
+                  value={discountValue}
                   onChange={e => setDiscountValue(e.target.value)}
                   placeholder="0"
-                  style={{
-                    width: 90, padding: '5px 8px', border: '1.5px solid var(--outline)',
-                    borderRadius: 7, outline: 'none', fontSize: 13, background: 'var(--bg)',
-                    textAlign: 'right'
-                  }}
-                  onFocus={e => e.target.style.borderColor = 'var(--primary)'}
-                  onBlur={e => e.target.style.borderColor = 'var(--outline)'}
+                  style={{ width: 90, padding: '5px 8px', borderRadius: 7, fontSize: 13, textAlign: 'right' }}
                 />
                 {discountAmount > 0 && (
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--success)', whiteSpace: 'nowrap' }}>
@@ -442,12 +437,10 @@ export default function PointOfSale() {
           <div style={{ padding: '12px 14px', background: 'var(--bg)', borderBottom: '1px solid var(--outline)' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Customer Details</div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <input value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Name"
-                style={{ flex: 1, padding: '9px 10px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 12, background: 'var(--surface)' }}
-                onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'var(--outline)'} />
-              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone"
-                style={{ flex: 1, padding: '9px 10px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 12, background: 'var(--surface)' }}
-                onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'var(--outline)'} />
+              <FormInput value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Name"
+                style={{ flex: 1, padding: '9px 10px', fontSize: 12, background: 'var(--surface)' }} />
+              <FormInput value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone"
+                style={{ flex: 1, padding: '9px 10px', fontSize: 12, background: 'var(--surface)' }} />
             </div>
           </div>
 

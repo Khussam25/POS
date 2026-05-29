@@ -2,7 +2,21 @@ import { useState } from 'react'
 import { sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useApp } from '../App'
+import { useT, useLang } from '../i18n/LangContext'
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react'
+
+function LangToggle() {
+  const { lang, toggleLang } = useLang()
+  return (
+    <button onClick={toggleLang} style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--outline)', borderRadius: 999, overflow: 'hidden', marginBottom: 20 }}>
+      {['en', 'sw'].map(l => (
+        <span key={l} style={{ padding: '5px 14px', fontSize: 12, fontWeight: 700, background: lang === l ? 'var(--primary)' : 'transparent', color: lang === l ? 'white' : 'var(--text-500)', transition: 'all 0.15s' }}>
+          {l === 'en' ? '🇬🇧 EN' : '🇹🇿 SW'}
+        </span>
+      ))}
+    </button>
+  )
+}
 
 const REDIRECT_URL = 'https://pos-git-main-khussam-mohameds-projects.vercel.app/login'
 
@@ -30,6 +44,7 @@ const FIREBASE_ERRORS = {
 
 // ─── Forgot Password view ────────────────────────────────────────────────────
 function ForgotPassword({ onBack }) {
+  const t = useT()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -38,19 +53,13 @@ function ForgotPassword({ onBack }) {
   async function handleReset(e) {
     e.preventDefault()
     if (!email.trim()) { setError('Please enter your email.'); return }
-    setLoading(true)
-    setError('')
+    setLoading(true); setError('')
     try {
-      await sendPasswordResetEmail(auth, email.trim(), {
-        url: REDIRECT_URL,   // after reset, Firebase redirects here
-        handleCodeInApp: false,
-      })
+      await sendPasswordResetEmail(auth, email.trim(), { url: REDIRECT_URL, handleCodeInApp: false })
       setSent(true)
     } catch (err) {
       setError(FIREBASE_ERRORS[err.code] || 'Failed to send reset email. Try again.')
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
   if (sent) {
@@ -59,19 +68,16 @@ function ForgotPassword({ onBack }) {
         <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
           <CheckCircle2 size={28} color="var(--success)" />
         </div>
-        <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Check your email</h3>
+        <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>{t('checkEmail')}</h3>
         <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>
-          A password reset link has been sent to <strong>{email}</strong>. Click the link in the email to set a new password.
+          {t('checkEmailSub')} <strong>{email}</strong>. {t('checkEmailSub2')}
         </p>
         <p style={{ color: 'var(--text-500)', fontSize: 12, marginBottom: 20 }}>
-          Didn't receive it? Check your spam folder or{' '}
-          <button onClick={() => setSent(false)} style={{ color: 'var(--primary)', fontWeight: 600, fontSize: 12 }}>try again</button>.
+          {t('didntReceive')}{' '}
+          <button onClick={() => setSent(false)} style={{ color: 'var(--primary)', fontWeight: 600, fontSize: 12 }}>{t('tryAgain')}</button>.
         </p>
-        <button onClick={onBack} style={{
-          display: 'flex', alignItems: 'center', gap: 6, margin: '0 auto',
-          color: 'var(--primary)', fontWeight: 600, fontSize: 13
-        }}>
-          <ArrowLeft size={14} /> Back to sign in
+        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 auto', color: 'var(--primary)', fontWeight: 600, fontSize: 13 }}>
+          <ArrowLeft size={14} /> {t('backToSignIn')}
         </button>
       </div>
     )
@@ -80,38 +86,26 @@ function ForgotPassword({ onBack }) {
   return (
     <>
       <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-500)', fontSize: 13, fontWeight: 500, marginBottom: 20 }}>
-        <ArrowLeft size={14} /> Back to sign in
+        <ArrowLeft size={14} /> {t('backToSignIn')}
       </button>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>Reset your password</h2>
-      <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>
-        Enter the email address linked to your account. We'll send you a reset link.
-      </p>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{t('resetTitle')}</h2>
+      <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>{t('resetSub')}</p>
       <form onSubmit={handleReset}>
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Email address</label>
+          <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{t('emailAddress')}</label>
           <div style={{ position: 'relative' }}>
             <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
-            <input
-              type="email" value={email} onChange={e => { setEmail(e.target.value); setError('') }}
+            <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError('') }}
               placeholder="you@example.com" autoFocus
-              style={{
-                width: '100%', padding: '11px 14px 11px 40px',
-                border: `1.5px solid ${error ? 'var(--danger)' : 'var(--outline)'}`,
-                borderRadius: 'var(--radius-sm)', outline: 'none', fontSize: 14,
-                background: 'var(--bg)', transition: 'border-color 0.15s'
-              }}
+              style={{ width: '100%', padding: '11px 14px 11px 40px', border: `1.5px solid ${error ? 'var(--danger)' : 'var(--outline)'}`, borderRadius: 'var(--radius-sm)', outline: 'none', fontSize: 14, background: 'var(--bg)', transition: 'border-color 0.15s' }}
               onFocus={e => { if (!error) e.target.style.borderColor = 'var(--primary)' }}
               onBlur={e => { if (!error) e.target.style.borderColor = 'var(--outline)' }}
             />
           </div>
           {error && <p style={{ color: 'var(--danger)', fontSize: 12, marginTop: 6, fontWeight: 500 }}>{error}</p>}
         </div>
-        <button type="submit" disabled={loading} style={{
-          width: '100%', padding: '13px', borderRadius: 'var(--radius-sm)',
-          background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: 14,
-          opacity: loading ? 0.8 : 1, transition: 'all 0.15s'
-        }}>
-          {loading ? 'Sending…' : 'Send Reset Link'}
+        <button type="submit" disabled={loading} style={{ width: '100%', padding: '13px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: 14, opacity: loading ? 0.8 : 1, transition: 'all 0.15s' }}>
+          {loading ? t('sending') : t('sendReset')}
         </button>
       </form>
     </>
@@ -121,6 +115,7 @@ function ForgotPassword({ onBack }) {
 // ─── Main Login view ─────────────────────────────────────────────────────────
 export default function Login() {
   const { login, loginWithGoogle, data, googleError, setGoogleError } = useApp()
+  const t = useT()
   const [view, setView] = useState('login')   // 'login' | 'forgot'
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -190,10 +185,10 @@ export default function Login() {
           ? <ForgotPassword onBack={() => { setView('login'); setError('') }} />
           : (
             <>
-              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>Sign in to your account</h2>
-              <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 24 }}>Enter your credentials to continue</p>
+              <LangToggle />
+              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{t('signInTitle')}</h2>
+              <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 24 }}>{t('signInSub')}</p>
 
-              {/* Google redirect error (shown after returning from Google) */}
               {googleError && (
                 <div style={{ background: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16, fontWeight: 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>{googleError}</span>
@@ -201,7 +196,6 @@ export default function Login() {
                 </div>
               )}
 
-              {/* Google */}
               <button onClick={handleGoogle} disabled={googleLoading || loading} style={{
                 width: '100%', padding: '11px', borderRadius: 'var(--radius-sm)',
                 border: '1.5px solid var(--outline)', background: 'var(--surface)',
@@ -211,54 +205,37 @@ export default function Login() {
               }}
                 onMouseEnter={e => { if (!googleLoading) e.currentTarget.style.borderColor = 'var(--primary)' }}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--outline)'}>
-                {googleLoading
-                  ? <div style={{ width: 18, height: 18, border: '2px solid var(--outline)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
-                  : <GoogleIcon />}
-                {googleLoading ? 'Signing in…' : 'Continue with Google'}
+                {googleLoading ? <div style={{ width: 18, height: 18, border: '2px solid var(--outline)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} /> : <GoogleIcon />}
+                {googleLoading ? t('signingIn') : t('continueGoogle')}
               </button>
 
-              {/* Divider */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--outline)' }} />
-                <span style={{ fontSize: 12, color: 'var(--text-500)', fontWeight: 500 }}>or sign in with email</span>
+                <span style={{ fontSize: 12, color: 'var(--text-500)', fontWeight: 500 }}>{t('orEmail')}</span>
                 <div style={{ flex: 1, height: 1, background: 'var(--outline)' }} />
               </div>
 
               <form onSubmit={handleSubmit}>
-                {/* Email field */}
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Email or Username</label>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{t('emailOrUsername')}</label>
                   <div style={{ position: 'relative' }}>
                     <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
-                    <input
-                      type="text" value={identifier} onChange={e => { setIdentifier(e.target.value); setError('') }}
-                      placeholder="you@jeibe.co.tz"
-                      style={{
-                        width: '100%', padding: '11px 14px 11px 40px',
-                        border: `1.5px solid ${error ? 'var(--danger)' : 'var(--outline)'}`,
-                        borderRadius: 'var(--radius-sm)', outline: 'none', fontSize: 14,
-                        background: 'var(--bg)', color: 'var(--text-900)', transition: 'border-color 0.15s'
-                      }}
+                    <input type="text" value={identifier} onChange={e => { setIdentifier(e.target.value); setError('') }}
+                      placeholder={t('emailPlaceholder')}
+                      style={{ width: '100%', padding: '11px 14px 11px 40px', border: `1.5px solid ${error ? 'var(--danger)' : 'var(--outline)'}`, borderRadius: 'var(--radius-sm)', outline: 'none', fontSize: 14, background: 'var(--bg)', color: 'var(--text-900)', transition: 'border-color 0.15s' }}
                       onFocus={e => { if (!error) e.target.style.borderColor = 'var(--primary)' }}
                       onBlur={e => { if (!error) e.target.style.borderColor = 'var(--outline)' }}
                     />
                   </div>
                 </div>
 
-                {/* Password field */}
                 <div style={{ marginBottom: 6 }}>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Password</label>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{t('password')}</label>
                   <div style={{ position: 'relative' }}>
                     <Lock size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-500)' }} />
-                    <input
-                      type={showPassword ? 'text' : 'password'} value={password} onChange={e => { setPassword(e.target.value); setError('') }}
-                      placeholder="Enter your password"
-                      style={{
-                        width: '100%', padding: '11px 40px 11px 40px',
-                        border: `1.5px solid ${error ? 'var(--danger)' : 'var(--outline)'}`,
-                        borderRadius: 'var(--radius-sm)', outline: 'none', fontSize: 14,
-                        background: 'var(--bg)', color: 'var(--text-900)', transition: 'border-color 0.15s'
-                      }}
+                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => { setPassword(e.target.value); setError('') }}
+                      placeholder={t('enterPassword')}
+                      style={{ width: '100%', padding: '11px 40px 11px 40px', border: `1.5px solid ${error ? 'var(--danger)' : 'var(--outline)'}`, borderRadius: 'var(--radius-sm)', outline: 'none', fontSize: 14, background: 'var(--bg)', color: 'var(--text-900)', transition: 'border-color 0.15s' }}
                       onFocus={e => { if (!error) e.target.style.borderColor = 'var(--primary)' }}
                       onBlur={e => { if (!error) e.target.style.borderColor = 'var(--outline)' }}
                     />
@@ -271,7 +248,7 @@ export default function Login() {
                 {/* Forgot password link */}
                 <div style={{ textAlign: 'right', marginBottom: 18 }}>
                   <button type="button" onClick={() => { setView('forgot'); setError('') }} style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>
-                    Forgot password?
+                    {t('forgotPassword')}
                   </button>
                 </div>
 
@@ -281,20 +258,14 @@ export default function Login() {
                   </div>
                 )}
 
-                <button type="submit" disabled={loading || googleLoading} style={{
-                  width: '100%', padding: '13px', borderRadius: 'var(--radius-sm)',
-                  background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: 15,
-                  opacity: loading ? 0.8 : 1, transition: 'all 0.15s'
-                }}
+                <button type="submit" disabled={loading || googleLoading} style={{ width: '100%', padding: '13px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: 15, opacity: loading ? 0.8 : 1, transition: 'all 0.15s' }}
                   onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--primary-hover)' }}
                   onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}>
-                  {loading ? 'Signing in…' : 'Sign In'}
+                  {loading ? t('signingIn') : t('signIn')}
                 </button>
               </form>
 
-              <p style={{ textAlign: 'center', marginTop: 20, color: 'var(--text-500)', fontSize: 12 }}>
-                Having trouble? Contact your administrator
-              </p>
+              <p style={{ textAlign: 'center', marginTop: 20, color: 'var(--text-500)', fontSize: 12 }}>{t('trouble')}</p>
             </>
           )}
       </div>

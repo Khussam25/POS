@@ -55,6 +55,13 @@ input, button, select, textarea {
   font-size: inherit;
 }
 
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 button { cursor: pointer; border: none; background: none; }
 
 /* Remove number input spinners */
@@ -91,4 +98,27 @@ input[type=number] { -moz-appearance: textfield; }
   .r-three-col { grid-template-columns: 1fr; gap: 10px; }
   .r-scroll table { min-width: 600px; }
   .settings-layout { flex-direction: column !important; }
+}
+
+/* Financial report print — hide app chrome, show report only */
+@media print {
+  .no-print { display: none !important; }
+
+  body, #root, main {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .r-page {
+    padding: 0 !important;
+  }
+
+  .financial-report-print {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
 }

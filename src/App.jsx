@@ -17,6 +17,7 @@ import Expenses from './pages/Expenses'
 import FinancialReports from './pages/FinancialReports'
 import Employees from './pages/Employees'
 import Settings from './pages/Settings'
+import { LangProvider } from './i18n/LangContext'
 import './index.css'
 
 export const AppContext = createContext(null)
@@ -125,6 +126,7 @@ export default function App() {
   }
 
   return (
+    <LangProvider>
     <AppContext.Provider value={{ currentUser, data, updateData, login, loginWithGoogle, logout, googleError, setGoogleError }}>
       <BrowserRouter>
         <Routes>
@@ -154,5 +156,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AppContext.Provider>
+    </LangProvider>
   )
 }

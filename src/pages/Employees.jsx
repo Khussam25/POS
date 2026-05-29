@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../App'
+import FormInput from '../components/FormInput'
 import { Plus, Pencil, RefreshCw, X, Shield, CreditCard } from 'lucide-react'
 
 const ROLES = ['Admin', 'Cashier', 'Manager']
@@ -15,9 +16,30 @@ export default function Employees() {
   const [errors, setErrors] = useState({})
   const [resetModal, setResetModal] = useState(null)
   const [newPassword, setNewPassword] = useState('')
+  const modalRef = useRef(null)
 
   function openAdd() { setForm(EMPTY); setErrors({}); setModal('add') }
-  function openEdit(emp) { setForm({ ...emp }); setErrors({}); setModal('edit') }
+  function openEdit(emp) {
+    setForm({
+      id: emp.id,
+      name: emp.name ?? '',
+      role: emp.role ?? 'Cashier',
+      phone: emp.phone ?? '',
+      username: emp.username ?? '',
+      status: emp.status ?? 'Active',
+    })
+    setErrors({})
+    setModal('edit')
+  }
+
+  useEffect(() => {
+    if (!modal) return
+    const t = setTimeout(() => {
+      const el = modalRef.current?.querySelector('input')
+      el?.focus()
+    }, 0)
+    return () => clearTimeout(t)
+  }, [modal])
 
   function validate() {
     const e = {}
@@ -37,7 +59,16 @@ export default function Employees() {
       const emp = { id: 'emp' + Date.now(), name: form.name.trim(), role: form.role, phone: form.phone.trim(), username: form.username.trim(), status: form.status, initials: getInitials(form.name), color: getColor(form.role) }
       updateData('employees', [...data.employees, emp])
     } else {
-      updateData('employees', data.employees.map(e => e.id === form.id ? { ...e, ...form, initials: getInitials(form.name), color: getColor(form.role) } : e))
+      updateData('employees', data.employees.map(e => e.id === form.id ? {
+        ...e,
+        name: form.name.trim(),
+        role: form.role,
+        phone: form.phone.trim(),
+        username: form.username.trim(),
+        status: form.status,
+        initials: getInitials(form.name.trim()),
+        color: getColor(form.role),
+      } : e))
     }
     setModal(null)
   }
@@ -51,8 +82,14 @@ export default function Employees() {
   const Field = ({ label, field, type = 'text', placeholder }) => (
     <div>
       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: errors[field] ? 'var(--danger)' : 'var(--text-900)' }}>{label}{errors[field] ? ` — ${errors[field]}` : ''}</label>
-      <input type={type} value={form[field] || ''} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))} placeholder={placeholder}
-        style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${errors[field] ? 'var(--danger)' : 'var(--outline)'}`, borderRadius: 8, outline: 'none', fontSize: 13, background: 'var(--bg)' }} />
+      <FormInput
+        type={type}
+        value={form[field]}
+        onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+        placeholder={placeholder}
+        error={!!errors[field]}
+        selectOnFocus={type !== 'password'}
+      />
     </div>
   )
 
@@ -128,7 +165,7 @@ export default function Employees() {
       {/* Add/Edit Modal */}
       {modal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 440, boxShadow: 'var(--shadow)' }}>
+          <div ref={modalRef} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 440, boxShadow: 'var(--shadow)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 800 }}>{modal === 'add' ? 'Add Employee' : 'Edit Employee'}</h2>
               <button onClick={() => setModal(null)} style={{ color: 'var(--text-500)', padding: 4 }}><X size={20} /></button>
@@ -170,8 +207,8 @@ export default function Employees() {
               <button onClick={() => setResetModal(null)} style={{ color: 'var(--text-500)', padding: 4 }}><X size={18} /></button>
             </div>
             <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 16 }}>Set a new password for <strong>{resetModal.name}</strong></p>
-            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="New password"
-              style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--outline)', borderRadius: 8, outline: 'none', fontSize: 13, background: 'var(--bg)', marginBottom: 16 }} />
+            <FormInput type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="New password"
+              selectOnFocus={false} style={{ marginBottom: 16 }} />
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setResetModal(null)} style={{ flex: 1, padding: '10px', border: '1.5px solid var(--outline)', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>Cancel</button>
               <button onClick={resetPassword} style={{ flex: 1, padding: '10px', background: 'var(--primary)', color: 'white', borderRadius: 8, fontWeight: 700, fontSize: 13 }}>Reset Password</button>
