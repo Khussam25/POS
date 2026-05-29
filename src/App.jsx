@@ -22,6 +22,30 @@ import './index.css'
 export const AppContext = createContext(null)
 export function useApp() { return useContext(AppContext) }
 
+// Define which roles can access each route
+export const PERMISSIONS = {
+  '/pos':        ['Admin', 'Cashier'],
+  '/inventory':  ['Admin'],
+  '/expenses':   ['Admin', 'Cashier'],
+  '/reports':    ['Admin'],
+  '/employees':  ['Admin'],
+  '/settings':   ['Admin'],
+  // '/' dashboard is open to all authenticated users
+}
+
+export function canAccess(role, path) {
+  if (!PERMISSIONS[path]) return true   // no restriction = all roles allowed
+  return PERMISSIONS[path].includes(role)
+}
+
+function ProtectedRoute({ path, children }) {
+  const { currentUser } = useApp()
+  if (!canAccess(currentUser?.role, path)) {
+    return <Navigate to="/" replace />
+  }
+  return children
+}
+
 function resolveEmployee(firebaseUser) {
   if (!firebaseUser) return null
   const { employees } = getStore()
@@ -104,12 +128,24 @@ export default function App() {
           <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" replace />} />
           <Route path="/" element={currentUser ? <Layout /> : <Navigate to="/login" replace />}>
             <Route index element={<Dashboard />} />
-            <Route path="pos" element={<PointOfSale />} />
-            <Route path="inventory" element={<Inventory />} />
-            <Route path="expenses" element={<Expenses />} />
-            <Route path="reports" element={<FinancialReports />} />
-            <Route path="employees" element={<Employees />} />
-            <Route path="settings" element={<Settings />} />
+            <Route path="pos" element={
+              <ProtectedRoute path="/pos"><PointOfSale /></ProtectedRoute>
+            } />
+            <Route path="inventory" element={
+              <ProtectedRoute path="/inventory"><Inventory /></ProtectedRoute>
+            } />
+            <Route path="expenses" element={
+              <ProtectedRoute path="/expenses"><Expenses /></ProtectedRoute>
+            } />
+            <Route path="reports" element={
+              <ProtectedRoute path="/reports"><FinancialReports /></ProtectedRoute>
+            } />
+            <Route path="employees" element={
+              <ProtectedRoute path="/employees"><Employees /></ProtectedRoute>
+            } />
+            <Route path="settings" element={
+              <ProtectedRoute path="/settings"><Settings /></ProtectedRoute>
+            } />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
