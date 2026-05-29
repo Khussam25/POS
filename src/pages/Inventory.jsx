@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../App'
-import { Search, Plus, Pencil, X, AlertTriangle, AlertCircle } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, X, AlertTriangle, AlertCircle } from 'lucide-react'
 
 function fmt(n) { return 'TZS ' + Number(n).toLocaleString() }
 
@@ -15,6 +15,7 @@ export default function Inventory() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   const filtered = data.products.filter(p => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase())
@@ -132,10 +133,16 @@ export default function Inventory() {
                   </td>
                   <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--text-500)' }}>{p.expiryDate}</td>
                   <td style={{ padding: '13px 16px' }}>
-                    <button onClick={() => openEdit(p)} style={{ color: 'var(--text-500)', padding: 4, transition: 'color 0.15s' }}
-                      onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-500)'}>
-                      <Pencil size={15} />
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button onClick={() => openEdit(p)} style={{ color: 'var(--text-500)', padding: 4, transition: 'color 0.15s' }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-500)'}>
+                        <Pencil size={15} />
+                      </button>
+                      <button onClick={() => setDeleteTarget(p)} style={{ color: 'var(--text-500)', padding: 4, transition: 'color 0.15s' }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-500)'}>
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -178,6 +185,30 @@ export default function Inventory() {
               <button onClick={() => setModal(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>Cancel</button>
               <button onClick={save} style={{ flex: 1, padding: '11px', background: 'var(--primary)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>
                 {modal === 'add' ? 'Add Product' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 380, boxShadow: 'var(--shadow)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--danger-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Trash2 size={22} color="var(--danger)" />
+            </div>
+            <h2 style={{ fontSize: 17, fontWeight: 800, textAlign: 'center', marginBottom: 8 }}>Delete Product?</h2>
+            <p style={{ color: 'var(--text-500)', fontSize: 13, textAlign: 'center', marginBottom: 24, lineHeight: 1.6 }}>
+              <strong>{deleteTarget.name}</strong> will be permanently removed from inventory. This cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setDeleteTarget(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>
+                Cancel
+              </button>
+              <button onClick={() => { updateData('products', data.products.filter(p => p.id !== deleteTarget.id)); setDeleteTarget(null) }}
+                style={{ flex: 1, padding: '11px', background: 'var(--danger)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>
+                Delete
               </button>
             </div>
           </div>

@@ -3,8 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signOut
 } from 'firebase/auth'
 import { auth, googleProvider } from './firebase'
@@ -70,15 +69,6 @@ export default function App() {
   const [data, setData] = useState(() => getStore())
 
   useEffect(() => {
-    // Process the result when Google redirects back to the app
-    getRedirectResult(auth).catch(err => {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/account-exists-with-different-credential') {
-        setGoogleError('This Google account is not linked to any employee. Contact your administrator.')
-      } else if (err.code && err.code !== 'auth/cancelled-popup-request') {
-        setGoogleError('Google sign-in failed. Please try again.')
-      }
-    })
-
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const user = resolveEmployee(firebaseUser)
@@ -108,8 +98,7 @@ export default function App() {
 
   async function loginWithGoogle() {
     setGoogleError(null)
-    await signInWithRedirect(auth, googleProvider)
-    // Page redirects to Google — code below this line won't run
+    await signInWithPopup(auth, googleProvider)
   }
 
   async function logout() {

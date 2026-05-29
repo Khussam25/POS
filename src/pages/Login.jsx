@@ -149,9 +149,13 @@ export default function Login() {
     setGoogleLoading(true)
     try {
       await loginWithGoogle()
-      // Page redirects to Google — loading state stays true intentionally
+      // onAuthStateChanged handles the redirect — googleLoading will reset on remount
     } catch (err) {
-      setError(FIREBASE_ERRORS[err.code] || 'Google sign-in failed. Try again.')
+      if (err.code === 'auth/popup-blocked') {
+        setError('Popup blocked. Please allow popups for this site in your browser settings, then try again.')
+      } else if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+        setError(FIREBASE_ERRORS[err.code] || 'Google sign-in failed. Try again.')
+      }
       setGoogleLoading(false)
     }
   }

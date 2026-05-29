@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider, setPersistence, browserSessionPersistence } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: "AIzaSyD5uBXaVikFxT3TirvZmZb9y8lbI2TztQI",
@@ -13,3 +13,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const googleProvider = new GoogleAuthProvider()
+
+// Session-only persistence: closing/reopening the browser tab requires a fresh login
+setPersistence(auth, browserSessionPersistence)
