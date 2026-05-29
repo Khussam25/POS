@@ -17,6 +17,8 @@ export default function PointOfSale() {
   const [customer, setCustomer] = useState('')
   const [phone, setPhone] = useState('')
   const [payment, setPayment] = useState('Cash')
+  const [discountType, setDiscountType] = useState('amount') // 'amount' | 'percent'
+  const [discountValue, setDiscountValue] = useState('')
   const [success, setSuccess] = useState(null)
 
   const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0
@@ -52,7 +54,11 @@ export default function PointOfSale() {
 
   const subtotal = cart.reduce((a, i) => a + i.price * i.qty, 0)
   const vat = Math.round(subtotal * vatRate)
-  const total = subtotal + vat
+  const rawDiscount = parseFloat(discountValue) || 0
+  const discountAmount = discountType === 'percent'
+    ? Math.round(subtotal * (Math.min(rawDiscount, 100) / 100))
+    : Math.min(rawDiscount, subtotal)
+  const total = Math.max(0, subtotal + vat - discountAmount)
 
   function completeSale() {
     if (cart.length === 0) return
@@ -63,7 +69,7 @@ export default function PointOfSale() {
       time: now.toTimeString().slice(0, 5),
       customer: customer.trim() || 'Walk-in Customer',
       items: cart.map(i => ({ productId: i.productId, name: i.name, qty: i.qty, price: i.price })),
-      subtotal, vat, total, paymentMethod: payment,
+      subtotal, vat, discountAmount, discountType, total, paymentMethod: payment,
       soldBy: currentUser.name
     }
     updateData('sales', [sale, ...data.sales])
@@ -76,6 +82,8 @@ export default function PointOfSale() {
     setCustomer('')
     setPhone('')
     setPayment('Cash')
+    setDiscountValue('')
+    setDiscountType('amount')
     setSearch('')
   }
 
@@ -189,7 +197,7 @@ export default function PointOfSale() {
         </div>
 
         {/* Cart items */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {cart.length === 0 && (
             <div style={{ textAlign: 'center', paddingTop: 40, color: 'var(--text-500)' }}>
               <ShoppingCart size={36} strokeWidth={1.2} style={{ opacity: 0.3, marginBottom: 10 }} />
@@ -241,20 +249,56 @@ export default function PointOfSale() {
         </div>
 
         {/* Totals + bottom controls */}
-        <div style={{ flexShrink: 0, borderTop: '1px solid var(--outline)' }}>
-          {/* Subtotal / Tax / Total */}
-          <div style={{ padding: '14px 18px', background: 'var(--surface)', borderBottom: '1px solid var(--outline)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
+        <div style={{ flexShrink: 0, borderTop: '2px solid var(--outline)' }}>
+          {/* Subtotal / Discount / Tax / Total */}
+          <div style={{ padding: '16px 18px 14px', background: 'var(--surface)', borderBottom: '1px solid var(--outline)' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
               <span style={{ color: 'var(--text-500)' }}>Subtotal</span>
               <span style={{ fontWeight: 500 }}>{fmt(subtotal)}</span>
             </div>
+
+            {/* Discount row */}
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, color: 'var(--text-500)', minWidth: 58 }}>Discount</span>
+                {/* Type toggle */}
+                <div style={{ display: 'flex', border: '1.5px solid var(--outline)', borderRadius: 7, overflow: 'hidden', flexShrink: 0 }}>
+                  {['amount', 'percent'].map(t => (
+                    <button key={t} onClick={() => { setDiscountType(t); setDiscountValue('') }} style={{
+                      padding: '4px 8px', fontSize: 11, fontWeight: 700,
+                      background: discountType === t ? 'var(--primary)' : 'transparent',
+                      color: discountType === t ? 'white' : 'var(--text-500)',
+                      transition: 'all 0.15s', borderRight: t === 'amount' ? '1px solid var(--outline)' : 'none'
+                    }}>{t === 'percent' ? '%' : 'TZS'}</button>
+                  ))}
+                </div>
+                <input
+                  type="number" min="0" value={discountValue}
+                  onChange={e => setDiscountValue(e.target.value)}
+                  placeholder={discountType === 'percent' ? '0' : '0'}
+                  style={{
+                    flex: 1, padding: '5px 8px', border: '1.5px solid var(--outline)',
+                    borderRadius: 7, outline: 'none', fontSize: 13, background: 'var(--bg)',
+                    textAlign: 'right'
+                  }}
+                  onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--outline)'}
+                />
+                <span style={{ fontSize: 13, fontWeight: 600, color: discountAmount > 0 ? 'var(--success)' : 'var(--text-500)', minWidth: 60, textAlign: 'right' }}>
+                  {discountAmount > 0 ? `- ${fmt(discountAmount)}` : fmt(0)}
+                </span>
+              </div>
+            </div>
+
             {data.settings.vatEnabled && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
                 <span style={{ color: 'var(--text-500)' }}>Tax ({data.settings.vatRate}%)</span>
                 <span style={{ fontWeight: 500 }}>{fmt(vat)}</span>
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--outline)' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1.5px solid var(--outline)' }}>
               <span style={{ fontSize: 17, fontWeight: 800 }}>Total</span>
               <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>{fmt(total)}</span>
             </div>
