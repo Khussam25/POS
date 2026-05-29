@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
@@ -6,12 +6,25 @@ import FormField from '../components/FormField'
 import { formatPhoneDisplay } from '../utils/phone'
 import { Store, DollarSign, Receipt, FileText, User, Save, CheckCircle2 } from 'lucide-react'
 
+const DEFAULT_LOGO = '/Jeibe_Logo.jpg'
+const MAX_LOGO_BYTES = 2 * 1024 * 1024
+
 function settingsToForm(settings) {
   return {
     ...settings,
+    storeLogo: settings.storeLogo ?? DEFAULT_LOGO,
     phone: formatPhoneDisplay(settings.phone ?? ''),
     exchangeRate: settings.exchangeRate != null ? String(settings.exchangeRate) : '',
     vatRate: settings.vatRate != null ? String(settings.vatRate) : '',
+  }
+}
+
+function settingsToPayload(form) {
+  return {
+    ...form,
+    phone: formatPhoneDisplay(form.phone.trim()),
+    exchangeRate: form.exchangeRate === '' ? 0 : +form.exchangeRate,
+    vatRate: form.vatRate === '' ? 0 : +form.vatRate,
   }
 }
 
@@ -53,18 +66,39 @@ export default function Settings() {
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' })
   const [pwError, setPwError] = useState('')
   const [pwSaved, setPwSaved] = useState(false)
+  const [logoError, setLogoError] = useState('')
+  const logoInputRef = useRef(null)
 
   function handleSave() {
-    const next = {
-      ...form,
-      phone: formatPhoneDisplay(form.phone.trim()),
-      exchangeRate: form.exchangeRate === '' ? 0 : +form.exchangeRate,
-      vatRate: form.vatRate === '' ? 0 : +form.vatRate,
-    }
+    const next = settingsToPayload(form)
     updateData('settings', next)
     setForm(settingsToForm(next))
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
+  }
+
+  function handleLogoPick(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setLogoError('')
+    if (!file.type.startsWith('image/')) {
+      setLogoError(t('logoInvalidType'))
+      return
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setLogoError(t('logoTooLarge'))
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const storeLogo = reader.result
+      const next = settingsToPayload({ ...form, storeLogo })
+      setForm(settingsToForm(next))
+      updateData('settings', next)
+    }
+    reader.onerror = () => setLogoError(t('logoInvalidType'))
+    reader.readAsDataURL(file)
   }
 
   function handlePasswordChange() {
@@ -134,15 +168,35 @@ export default function Settings() {
                   inputStyle={{ width: 320, maxWidth: '100%' }}
                 />
                 <FormField layout="row" label="Email Address" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} />
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Store Logo</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-500)' }}>Upload a logo to display on receipts</div>
+                <div style={{ padding: '16px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{t('storeLogo')}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-500)' }}>{t('updateLogoDesc')}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <img src={form.storeLogo || DEFAULT_LOGO} alt="" style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover', border: '1px solid var(--outline)' }} />
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoPick}
+                        style={{ display: 'none' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => logoInputRef.current?.click()}
+                        style={{ padding: '8px 14px', border: '1.5px solid var(--outline)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--text-500)', transition: 'all 0.15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-500)' }}
+                      >
+                        {t('updateLogo')}
+                      </button>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <img src="/Jeibe_Logo.jpg" alt="JEIBE Logo" style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover' }} />
-                    <button style={{ padding: '8px 14px', border: '1.5px solid var(--outline)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--text-500)' }}>Upload Logo</button>
-                  </div>
+                  {logoError && (
+                    <p style={{ color: 'var(--danger)', fontSize: 12, marginTop: 8, fontWeight: 500 }}>{logoError}</p>
+                  )}
                 </div>
               </>
             )}

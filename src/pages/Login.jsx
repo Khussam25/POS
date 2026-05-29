@@ -163,7 +163,7 @@ export default function Login() {
     }}>
       {/* Brand */}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <img src="/Jeibe_Logo.jpg" alt="JEIBE Logo" style={{
+        <img src={data.settings.storeLogo || '/Jeibe_Logo.jpg'} alt="JEIBE Logo" style={{
           width: 80, height: 80, borderRadius: 16, objectFit: 'cover',
           margin: '0 auto 16px', display: 'block',
           boxShadow: '0 8px 24px rgba(30,78,140,0.25)'

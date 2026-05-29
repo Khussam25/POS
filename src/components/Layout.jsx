@@ -30,6 +30,7 @@ function LangToggle() {
 
 export default function Layout() {
   const { currentUser, logout, data } = useApp()
+  const storeLogo = data.settings.storeLogo || '/Jeibe_Logo.jpg'
   const navigate = useNavigate()
   const isMobile = useIsMobile()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -60,8 +61,10 @@ export default function Layout() {
           boxShadow: 'var(--shadow-sm)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <img src="/Jeibe_Logo.jpg" alt="JEIBE" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
-            <span style={{ fontWeight: 800, fontSize: 16 }}>JEIBE</span>
+            <img src={storeLogo} alt="JEIBE" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
+            <span style={{ fontWeight: 800, fontSize: 16, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {data.settings.storeName.split(' ')[0]}
+            </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <LangToggle />
@@ -81,7 +84,7 @@ export default function Layout() {
             <aside className="no-print" style={{ position: 'relative', width: 260, background: 'var(--surface)', display: 'flex', flexDirection: 'column', height: '100%', boxShadow: '4px 0 20px rgba(26,35,50,0.15)' }}>
               <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--outline)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <img src="/Jeibe_Logo.jpg" alt="JEIBE" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
+                  <img src={storeLogo} alt="JEIBE" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{data.settings.storeName.split(' ')[0]}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-500)' }}>Original Products USA</div>
@@ -126,16 +129,21 @@ export default function Layout() {
 
         <main style={{ flex: 1, overflow: 'auto', paddingBottom: 70 }}><Outlet /></main>
 
-        <nav className="no-print" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40, background: 'var(--surface)', borderTop: '1px solid var(--outline)', display: 'flex', boxShadow: '0 -2px 12px rgba(26,35,50,0.08)' }}>
-          {visibleNav.slice(0, 5).map(({ to, label, icon: Icon, end }) => (
+        <nav className="no-print" style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
+          background: 'var(--surface)', borderTop: '1px solid var(--outline)',
+          display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+          boxShadow: '0 -2px 12px rgba(26,35,50,0.08)',
+        }}>
+          {visibleNav.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end} style={({ isActive }) => ({
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              padding: '8px 4px', textDecoration: 'none', gap: 3,
+              flex: '0 0 auto', minWidth: 68, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '8px 10px', textDecoration: 'none', gap: 3,
               color: isActive ? 'var(--primary)' : 'var(--text-500)',
               borderTop: isActive ? '2px solid var(--primary)' : '2px solid transparent',
-              fontSize: 10, fontWeight: 600
+              fontSize: 10, fontWeight: 600,
             })}>
-              {({ isActive }) => <><Icon size={20} strokeWidth={isActive ? 2.2 : 1.6} />{label.split(' ')[0]}</>}
+              {({ isActive }) => <><Icon size={20} strokeWidth={isActive ? 2.2 : 1.6} /><span style={{ whiteSpace: 'nowrap' }}>{label.split(' ')[0]}</span></>}
             </NavLink>
           ))}
         </nav>
@@ -149,7 +157,7 @@ export default function Layout() {
       <aside className="no-print" style={{ width: 260, flexShrink: 0, background: 'var(--surface)', borderRight: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh' }}>
         <div style={{ padding: '20px 20px 14px', borderBottom: '1px solid var(--outline)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-            <img src="/Jeibe_Logo.jpg" alt="JEIBE" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0, boxShadow: 'var(--shadow-sm)' }} />
+            <img src={storeLogo} alt="JEIBE" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0, boxShadow: 'var(--shadow-sm)' }} />
             <div>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{data.settings.storeName.split(' ')[0]}</div>
               <div style={{ fontSize: 11, color: 'var(--text-500)' }}>Original Products USA</div>

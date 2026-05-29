@@ -35,6 +35,7 @@ const SEED = {
     vatEnabled: false,
     receiptHeader: 'Thank you for shopping at JEIBE!',
     receiptFooter: 'Original Products From USA',
+    storeLogo: '/Jeibe_Logo.jpg',
   },
 };
 
@@ -61,7 +62,7 @@ function getStore() {
     sales: load('sales') ?? SEED.sales,
     expenses: load('expenses') ?? SEED.expenses,
     employees: load('employees') ?? SEED.employees,
-    settings: load('settings') ?? SEED.settings,
+    settings: { storeLogo: '/Jeibe_Logo.jpg', ...(load('settings') ?? SEED.settings) },
   };
 }
 
