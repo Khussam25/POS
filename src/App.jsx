@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, useRef, createContext, useContext } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import {
   onAuthStateChanged,
@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth'
 import { auth, googleProvider } from './firebase'
 import { getStore, saveStore, saveStoreBatch } from './store'
+import { startCloudSync, scheduleCloudPush, pushCloudBatch, isApplyingCloudRemote } from './sync/cloudSync'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -70,6 +71,23 @@ export default function App() {
   const [googleError, setGoogleError] = useState(null)
   const [saveError, setSaveError] = useState(null)
   const [data, setData] = useState(() => getStore())
+  const syncStarted = useRef(false)
+
+  function refreshCurrentUserFromStore() {
+    const fb = auth.currentUser
+    if (!fb) return
+    const user = resolveEmployee(fb)
+    if (user) setCurrentUser(user)
+  }
+
+  function applyStoreFromRemote(store) {
+    setData(prev => ({ ...prev, ...store }))
+    refreshCurrentUserFromStore()
+  }
+
+  function reloadLocalStore() {
+    applyStoreFromRemote(getStore())
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -103,11 +121,37 @@ export default function App() {
   useEffect(() => {
     function onStorage(e) {
       if (!e.key?.startsWith('jeibe_') || e.key === 'jeibe_version' || e.key === 'jeibe_lang') return
-      setData(getStore())
+      reloadLocalStore()
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])
+
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible') reloadLocalStore()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', reloadLocalStore)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', reloadLocalStore)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!currentUser) {
+      syncStarted.current = false
+      return
+    }
+    if (syncStarted.current) return
+    syncStarted.current = true
+    const stop = startCloudSync({ onRemoteUpdate: applyStoreFromRemote })
+    return () => {
+      syncStarted.current = false
+      stop()
+    }
+  }, [currentUser?.id])
 
   function updateData(key, value) {
     if (!saveStore(key, value)) {
@@ -116,6 +160,7 @@ export default function App() {
     }
     setSaveError(null)
     setData(prev => ({ ...prev, [key]: value }))
+    if (!isApplyingCloudRemote()) scheduleCloudPush({ [key]: value })
     return true
   }
 
@@ -126,6 +171,7 @@ export default function App() {
     }
     setSaveError(null)
     setData(prev => ({ ...prev, ...updates }))
+    if (!isApplyingCloudRemote()) pushCloudBatch(updates)
     return true
   }
 

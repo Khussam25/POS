@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
@@ -62,7 +62,17 @@ export default function Settings() {
   const t = useT()
   const [section, setSection] = useState('store')
   const [form, setForm] = useState(() => settingsToForm(data.settings))
+  const formDirtyRef = useRef(false)
   const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (!formDirtyRef.current) setForm(settingsToForm(data.settings))
+  }, [data.settings])
+
+  function patchForm(updater) {
+    formDirtyRef.current = true
+    setForm(updater)
+  }
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' })
   const [pwError, setPwError] = useState('')
   const [pwSaved, setPwSaved] = useState(false)
@@ -72,6 +82,7 @@ export default function Settings() {
   function handleSave() {
     const next = settingsToPayload(form)
     updateData('settings', next)
+    formDirtyRef.current = false
     setForm(settingsToForm(next))
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
@@ -156,17 +167,17 @@ export default function Settings() {
 
             {section === 'store' && (
               <>
-                <FormField layout="row" label={t('storeName')} desc={t('storeNameDesc')} value={form.storeName} onChange={v => setForm(f => ({ ...f, storeName: v }))} />
-                <FormField layout="row" label={t('address')} desc={t('addressDesc')} value={form.address} onChange={v => setForm(f => ({ ...f, address: v }))} />
+                <FormField layout="row" label={t('storeName')} desc={t('storeNameDesc')} value={form.storeName} onChange={v => patchForm(f => ({ ...f, storeName: v }))} />
+                <FormField layout="row" label={t('address')} desc={t('addressDesc')} value={form.address} onChange={v => patchForm(f => ({ ...f, address: v }))} />
                 <FormField
                   layout="row"
                   label={t('phoneNumber')}
                   phone
                   value={form.phone}
-                  onChange={phone => setForm(f => ({ ...f, phone }))}
+                  onChange={phone => patchForm(f => ({ ...f, phone }))}
                   placeholder="+255 712 345 678"
                 />
-                <FormField layout="row" label={t('emailAddressLabel')} type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} />
+                <FormField layout="row" label={t('emailAddressLabel')} type="email" value={form.email} onChange={v => patchForm(f => ({ ...f, email: v }))} />
                 <div style={{ padding: '16px 0' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
@@ -202,22 +213,22 @@ export default function Settings() {
 
             {section === 'currency' && (
               <>
-                <FormField layout="row" label={t('currencyCode')} desc={t('currencyCodeDesc')} value={form.currency} onChange={v => setForm(f => ({ ...f, currency: v }))} placeholder="TZS" />
-                <FormField layout="row" label={t('exchangeRate')} desc={t('exchangeRateDesc')} value={form.exchangeRate} onChange={v => setForm(f => ({ ...f, exchangeRate: v }))} numeric />
+                <FormField layout="row" label={t('currencyCode')} desc={t('currencyCodeDesc')} value={form.currency} onChange={v => patchForm(f => ({ ...f, currency: v }))} placeholder="TZS" />
+                <FormField layout="row" label={t('exchangeRate')} desc={t('exchangeRateDesc')} value={form.exchangeRate} onChange={v => patchForm(f => ({ ...f, exchangeRate: v }))} numeric />
               </>
             )}
 
             {section === 'tax' && (
               <>
-                <SettingsToggle label={t('enableVAT')} desc={t('enableVATDesc')} checked={form.vatEnabled} onChange={vatEnabled => setForm(f => ({ ...f, vatEnabled }))} />
-                <FormField layout="row" label={t('vatRate')} desc={t('vatRateDesc')} value={form.vatRate} onChange={v => setForm(f => ({ ...f, vatRate: v }))} numeric disabled={!form.vatEnabled} placeholder="18" />
+                <SettingsToggle label={t('enableVAT')} desc={t('enableVATDesc')} checked={form.vatEnabled} onChange={vatEnabled => patchForm(f => ({ ...f, vatEnabled }))} />
+                <FormField layout="row" label={t('vatRate')} desc={t('vatRateDesc')} value={form.vatRate} onChange={v => patchForm(f => ({ ...f, vatRate: v }))} numeric disabled={!form.vatEnabled} placeholder="18" />
               </>
             )}
 
             {section === 'receipt' && (
               <>
-                <FormField layout="row" label={t('receiptHeader')} desc={t('receiptHeaderDesc')} value={form.receiptHeader} onChange={v => setForm(f => ({ ...f, receiptHeader: v }))} placeholder="Thank you for shopping!" />
-                <FormField layout="row" label={t('receiptFooter')} desc={t('receiptFooterDesc')} value={form.receiptFooter} onChange={v => setForm(f => ({ ...f, receiptFooter: v }))} placeholder="Come again!" />
+                <FormField layout="row" label={t('receiptHeader')} desc={t('receiptHeaderDesc')} value={form.receiptHeader} onChange={v => patchForm(f => ({ ...f, receiptHeader: v }))} placeholder="Thank you for shopping!" />
+                <FormField layout="row" label={t('receiptFooter')} desc={t('receiptFooterDesc')} value={form.receiptFooter} onChange={v => patchForm(f => ({ ...f, receiptFooter: v }))} placeholder="Come again!" />
               </>
             )}
 
