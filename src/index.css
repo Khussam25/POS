@@ -141,6 +141,72 @@ select.form-select--inline {
   border-radius: 8px;
 }
 
+.reports-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.reports-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.reports-tab {
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-500);
+  background: transparent;
+  transition: background 0.15s, color 0.15s;
+}
+
+.reports-tab--active {
+  background: var(--accent);
+  color: white;
+}
+
+.reports-period {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.reports-period-label {
+  font-weight: 700;
+  font-size: 13;
+  color: var(--text-900);
+  white-space: nowrap;
+}
+
+.reports-period-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 17.5rem;
+  flex-shrink: 0;
+}
+
+.reports-period-type {
+  width: 6.5rem;
+  flex-shrink: 0;
+}
+
+.reports-period-value {
+  flex: 1;
+  min-width: 0;
+}
+
 input:not([type="checkbox"]):not([type="radio"]),
 textarea,
 select {

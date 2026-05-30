@@ -32,11 +32,6 @@ function formatMonthLabel(ym, locale) {
   return new Date(y, m - 1, 1).toLocaleString(locale, { month: 'long', year: 'numeric' })
 }
 
-function formatMonthName(ym, locale) {
-  const [y, m] = ym.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleString(locale, { month: 'long' })
-}
-
 export default function FinancialReports() {
   const { data, batchUpdateData } = useApp()
   const t = useT()
@@ -61,10 +56,18 @@ export default function FinancialReports() {
     [data.sales, data.expenses, currentYear]
   )
 
-  const monthOptions = useMemo(() => {
-    const y = periodType === 'monthly' ? selectedMonth.slice(0, 4) : String(selectedYear)
-    return Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}`)
-  }, [periodType, selectedMonth, selectedYear])
+  const monthYearOptions = useMemo(() => {
+    const opts = new Set([currentMonth, selectedMonth])
+    data.sales.forEach(s => { if (s.date?.length >= 7) opts.add(s.date.slice(0, 7)) })
+    data.expenses.forEach(e => { if (e.date?.length >= 7) opts.add(e.date.slice(0, 7)) })
+    for (const y of yearOptions) {
+      for (let m = 1; m <= 12; m++) {
+        const ym = `${y}-${String(m).padStart(2, '0')}`
+        if (ym <= currentMonth) opts.add(ym)
+      }
+    }
+    return [...opts].sort((a, b) => b.localeCompare(a))
+  }, [data.sales, data.expenses, yearOptions, currentMonth, selectedMonth])
 
   const periodLabel = periodType === 'monthly'
     ? formatMonthLabel(selectedMonth, locale)
@@ -99,14 +102,6 @@ export default function FinancialReports() {
   function handlePeriodTypeChange(next) {
     setPeriodType(next)
     if (next === 'yearly') setSelectedYear(Number(selectedMonth.slice(0, 4)) || currentYear)
-  }
-
-  function handleYearChange(y) {
-    const year = Number(y)
-    setSelectedYear(year)
-    if (periodType === 'monthly') {
-      setSelectedMonth(`${y}-${selectedMonth.slice(5, 7)}`)
-    }
   }
 
   function openEditSale(sale) {
@@ -213,69 +208,45 @@ export default function FinancialReports() {
         ))}
       </div>
 
-      {/* Tabs + period (same row, same height) */}
-      <div className="no-print reports-toolbar" style={{
-        display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
-        gap: 10, marginBottom: 24,
-      }}>
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '6px', display: 'inline-flex', gap: 4, boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
+      {/* Tabs + period (fixed width — no shift when switching monthly/yearly) */}
+      <div className="no-print reports-toolbar">
+        <div className="reports-tabs">
           {TAB_KEYS.map(key => (
-            <button key={key} onClick={() => setTab(key)} style={{
-              padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
-              background: tab === key ? 'var(--accent)' : 'transparent',
-              color: tab === key ? 'white' : 'var(--text-500)',
-            }}>{t(key)}</button>
+            <button key={key} type="button" onClick={() => setTab(key)} className={tab === key ? 'reports-tab reports-tab--active' : 'reports-tab'}>
+              {t(key)}
+            </button>
           ))}
         </div>
-        <div className="reports-period" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-900)', whiteSpace: 'nowrap' }}>{t('reportPeriod')}</span>
-          <select
-            className="form-select form-select--inline"
-            value={periodType}
-            onChange={e => handlePeriodTypeChange(e.target.value)}
-            aria-label={t('reportPeriod')}
-          >
-            <option value="monthly">{t('periodMonthly')}</option>
-            <option value="yearly">{t('periodYearly')}</option>
-          </select>
-          {periodType === 'monthly' && (
-            <>
-              <select
-                className="form-select form-select--inline"
-                value={selectedMonth.slice(5, 7)}
-                onChange={e => setSelectedMonth(`${selectedMonth.slice(0, 4)}-${e.target.value}`)}
-                aria-label={t('selectMonth')}
-              >
-                {monthOptions.map(ym => (
-                  <option key={ym} value={ym.slice(5, 7)}>
-                    {formatMonthName(ym, locale)}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="form-select form-select--inline"
-                value={selectedMonth.slice(0, 4)}
-                onChange={e => handleYearChange(e.target.value)}
-                aria-label={t('selectYear')}
-              >
-                {yearOptions.map(y => (
+        <div className="reports-period">
+          <span className="reports-period-label">{t('reportPeriod')}</span>
+          <div className="reports-period-controls">
+            <select
+              className="form-select form-select--inline reports-period-type"
+              value={periodType}
+              onChange={e => handlePeriodTypeChange(e.target.value)}
+              aria-label={t('reportPeriod')}
+            >
+              <option value="monthly">{t('periodMonthly')}</option>
+              <option value="yearly">{t('periodYearly')}</option>
+            </select>
+            <select
+              className="form-select form-select--inline reports-period-value"
+              value={periodType === 'monthly' ? selectedMonth : String(selectedYear)}
+              onChange={e => {
+                if (periodType === 'monthly') setSelectedMonth(e.target.value)
+                else setSelectedYear(Number(e.target.value))
+              }}
+              aria-label={periodType === 'monthly' ? t('selectMonth') : t('selectYear')}
+            >
+              {periodType === 'monthly'
+                ? monthYearOptions.map(ym => (
+                  <option key={ym} value={ym}>{formatMonthLabel(ym, locale)}</option>
+                ))
+                : yearOptions.map(y => (
                   <option key={y} value={y}>{y}</option>
                 ))}
-              </select>
-            </>
-          )}
-          {periodType === 'yearly' && (
-            <select
-              className="form-select form-select--inline"
-              value={selectedYear}
-              onChange={e => setSelectedYear(Number(e.target.value))}
-              aria-label={t('selectYear')}
-            >
-              {yearOptions.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
             </select>
-          )}
+          </div>
         </div>
       </div>
 
