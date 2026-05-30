@@ -4,7 +4,7 @@ import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
 import { fmtMoney, roundTz } from '../utils/money'
-import { Search, Plus, Pencil, Trash2, X, AlertTriangle, ArrowUpDown } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, X, AlertTriangle, ArrowUpDown, Filter } from 'lucide-react'
 
 const fmt = fmtMoney
 
@@ -52,6 +52,7 @@ export default function Inventory() {
   const t = useT()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
   const [sortKey, setSortKey] = useState('nameAsc')
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
@@ -65,14 +66,24 @@ export default function Inventory() {
     return () => clearTimeout(timer)
   }, [modal])
 
+  const categoryOptions = useMemo(() => {
+    const fromProducts = new Set(data.products.map(p => p.category).filter(Boolean))
+    const merged = [...CATEGORIES]
+    fromProducts.forEach(c => {
+      if (!merged.includes(c)) merged.push(c)
+    })
+    return merged
+  }, [data.products])
+
   const filtered = useMemo(() => {
     const list = data.products.filter(p => {
       const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase())
       const matchFilter = filter === 'all' || (filter === 'inStock' && p.qty > p.lowStockThreshold) || (filter === 'lowStock' && p.qty > 0 && p.qty <= p.lowStockThreshold) || (filter === 'outOfStock' && p.qty === 0)
-      return matchSearch && matchFilter
+      const matchCategory = categoryFilter === 'all' || p.category === categoryFilter
+      return matchSearch && matchFilter && matchCategory
     })
     return sortProducts(list, sortKey)
-  }, [data.products, search, filter, sortKey])
+  }, [data.products, search, filter, categoryFilter, sortKey])
 
   const formProfitPreview = useMemo(() => {
     const buy = parseFloat(form.buyingPriceTZS)
@@ -175,7 +186,7 @@ export default function Inventory() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         {[['all', t('all')], ['inStock', t('inStock')], ['lowStock', t('lowStock')], ['outOfStock', t('outOfStock')]].map(([key, label]) => (
           <button key={key} onClick={() => setFilter(key)} style={{
             padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
@@ -184,6 +195,19 @@ export default function Inventory() {
             border: filter === key ? 'none' : '1.5px solid var(--outline)'
           }}>{label}</button>
         ))}
+        <Filter size={15} color="var(--text-500)" aria-hidden />
+        <select
+          className="form-select"
+          value={categoryFilter}
+          onChange={e => setCategoryFilter(e.target.value)}
+          aria-label={t('category')}
+          style={{ width: 'auto', minWidth: 160 }}
+        >
+          <option value="all">{t('allCategories')}</option>
+          {categoryOptions.map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
       </div>
 
       <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>

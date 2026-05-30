@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useApp } from '../App'
-import { useT } from '../i18n/LangContext'
-import { Printer, Download, DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
+import { useT, useLang } from '../i18n/LangContext'
+import { Printer, Download, DollarSign, TrendingDown, TrendingUp, Calendar } from 'lucide-react'
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
@@ -14,10 +14,36 @@ function fmtSign(n) { return (n < 0 ? '(' : '') + fmt(Math.abs(n)) + (n < 0 ? ')
 const TAB_KEYS = ['profitLoss', 'incomeStatement', 'expenseSummary', 'salesSummary']
 const EXPENSE_CATS = ['Wages & Salary', 'Shipment', 'Rent', 'Electricity', 'Internet', 'Deliveries', 'Packaging', 'Miscellaneous', 'Other']
 
+function collectYears(sales, expenses, fallbackYear) {
+  const years = new Set([String(fallbackYear)])
+  sales.forEach(s => { if (s.date?.length >= 4) years.add(s.date.slice(0, 4)) })
+  expenses.forEach(e => { if (e.date?.length >= 4) years.add(e.date.slice(0, 4)) })
+  return [...years].sort((a, b) => b.localeCompare(a))
+}
+
+function inPeriod(date, periodType, selectedMonth, selectedYear) {
+  if (!date) return false
+  if (periodType === 'monthly') return date.startsWith(selectedMonth)
+  return date.startsWith(String(selectedYear))
+}
+
+function formatMonthLabel(ym, locale) {
+  const [y, m] = ym.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleString(locale, { month: 'long', year: 'numeric' })
+}
+
+function formatMonthName(ym, locale) {
+  const [y, m] = ym.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleString(locale, { month: 'long' })
+}
+
 export default function FinancialReports() {
   const { data, batchUpdateData } = useApp()
   const t = useT()
+  const { lang } = useLang()
+  const locale = lang === 'sw' ? 'sw-TZ' : 'en-US'
   const [tab, setTab] = useState('profitLoss')
+  const [periodType, setPeriodType] = useState('monthly')
   const [pdfLoading, setPdfLoading] = useState(false)
   const [editSale, setEditSale] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -25,25 +51,63 @@ export default function FinancialReports() {
   const reportRef = useRef(null)
   const today = new Date()
   const currentMonth = today.toISOString().slice(0, 7)
+  const currentYear = today.getFullYear()
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth)
+  const [selectedYear, setSelectedYear] = useState(currentYear)
   const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0
 
-  const monthSales = data.sales.filter(s => s.date.startsWith(currentMonth))
-  const monthExpenses = data.expenses.filter(e => e.date.startsWith(currentMonth))
+  const yearOptions = useMemo(
+    () => collectYears(data.sales, data.expenses, currentYear),
+    [data.sales, data.expenses, currentYear]
+  )
 
-  const revenue = monthSales.reduce((a, s) => a + saleNetRevenue(s), 0)
-  const totalExpenses = monthExpenses.reduce((a, e) => a + e.amount, 0)
+  const monthOptions = useMemo(() => {
+    const y = periodType === 'monthly' ? selectedMonth.slice(0, 4) : String(selectedYear)
+    return Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}`)
+  }, [periodType, selectedMonth, selectedYear])
 
-  const cogs = monthSales.reduce((a, s) => a + saleCogs(s, data.products), 0)
+  const periodLabel = periodType === 'monthly'
+    ? formatMonthLabel(selectedMonth, locale)
+    : String(selectedYear)
 
+  const periodKey = periodType === 'monthly' ? selectedMonth : String(selectedYear)
+
+  const periodSales = useMemo(
+    () => data.sales.filter(s => inPeriod(s.date, periodType, selectedMonth, selectedYear)),
+    [data.sales, periodType, selectedMonth, selectedYear]
+  )
+  const periodExpenses = useMemo(
+    () => data.expenses.filter(e => inPeriod(e.date, periodType, selectedMonth, selectedYear)),
+    [data.expenses, periodType, selectedMonth, selectedYear]
+  )
+
+  const revenue = periodSales.reduce((a, s) => a + saleNetRevenue(s), 0)
+  const totalExpenses = periodExpenses.reduce((a, e) => a + e.amount, 0)
+  const cogs = periodSales.reduce((a, s) => a + saleCogs(s, data.products), 0)
   const grossProfit = revenue - cogs
   const netProfit = grossProfit - totalExpenses
 
-  const expenseByCat = {}
-  EXPENSE_CATS.forEach(c => { expenseByCat[c] = 0 })
-  monthExpenses.forEach(e => { expenseByCat[e.category] = (expenseByCat[e.category] || 0) + e.amount })
+  const expenseByCat = useMemo(() => {
+    const byCat = {}
+    EXPENSE_CATS.forEach(c => { byCat[c] = 0 })
+    periodExpenses.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + e.amount })
+    return byCat
+  }, [periodExpenses])
 
-  const monthName = today.toLocaleString('en-US', { month: 'long', year: 'numeric' })
   const storeName = data.settings.storeName
+
+  function handlePeriodTypeChange(next) {
+    setPeriodType(next)
+    if (next === 'yearly') setSelectedYear(Number(selectedMonth.slice(0, 4)) || currentYear)
+  }
+
+  function handleYearChange(y) {
+    const year = Number(y)
+    setSelectedYear(year)
+    if (periodType === 'monthly') {
+      setSelectedMonth(`${y}-${selectedMonth.slice(5, 7)}`)
+    }
+  }
 
   function openEditSale(sale) {
     setSaleError('')
@@ -106,7 +170,7 @@ export default function FinancialReports() {
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
         heightLeft -= pageHeight
       }
-      const filename = `${t(tab).replace(/\s+/g, '-')}-${currentMonth}.pdf`
+      const filename = `${t(tab).replace(/\s+/g, '-')}-${periodKey}.pdf`
       pdf.save(filename)
     } finally {
       hidden.forEach(node => { node.style.display = '' })
@@ -123,9 +187,80 @@ export default function FinancialReports() {
 
   return (
     <div className="r-page">
-      <div className="no-print" style={{ marginBottom: 24 }}>
+      <div className="no-print" style={{ marginBottom: 16 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>{t('reportsTitle')}</h1>
-        <p style={{ color: 'var(--text-500)', fontSize: 13 }}>{monthName} · {storeName}</p>
+        <p style={{ color: 'var(--text-500)', fontSize: 13 }}>{storeName}</p>
+      </div>
+
+      {/* Period selector */}
+      <div className="no-print" style={{
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
+        marginBottom: 20, padding: '14px 18px',
+        background: 'var(--primary-soft)', border: '2px solid var(--primary)',
+        borderRadius: 12, boxShadow: 'var(--shadow-sm)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <Calendar size={20} color="var(--primary)" strokeWidth={2.2} aria-hidden />
+          <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--primary)' }}>{t('reportPeriod')}</span>
+        </div>
+        <select
+          className="form-select"
+          value={periodType}
+          onChange={e => handlePeriodTypeChange(e.target.value)}
+          aria-label={t('reportPeriod')}
+          style={{ fontWeight: 700, minWidth: 120, borderColor: 'var(--primary)' }}
+        >
+          <option value="monthly">{t('periodMonthly')}</option>
+          <option value="yearly">{t('periodYearly')}</option>
+        </select>
+        {periodType === 'monthly' && (
+          <>
+            <select
+              className="form-select"
+              value={selectedMonth.slice(5, 7)}
+              onChange={e => setSelectedMonth(`${selectedMonth.slice(0, 4)}-${e.target.value}`)}
+              aria-label={t('selectMonth')}
+              style={{ fontWeight: 600, minWidth: 140 }}
+            >
+              {monthOptions.map(ym => (
+                <option key={ym} value={ym.slice(5, 7)}>
+                  {formatMonthName(ym, locale)}
+                </option>
+              ))}
+            </select>
+            <select
+              className="form-select"
+              value={selectedMonth.slice(0, 4)}
+              onChange={e => handleYearChange(e.target.value)}
+              aria-label={t('selectYear')}
+              style={{ fontWeight: 600, minWidth: 100 }}
+            >
+              {yearOptions.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </>
+        )}
+        {periodType === 'yearly' && (
+          <select
+            className="form-select"
+            value={selectedYear}
+            onChange={e => setSelectedYear(Number(e.target.value))}
+            aria-label={t('selectYear')}
+            style={{ fontWeight: 600, minWidth: 100 }}
+          >
+            {yearOptions.map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        )}
+        <span style={{
+          marginLeft: 'auto', fontWeight: 800, fontSize: 15, color: 'var(--primary)',
+          padding: '6px 12px', background: 'var(--surface)', borderRadius: 8,
+          border: '1px solid var(--outline)',
+        }}>
+          {periodLabel}
+        </span>
       </div>
 
       {/* Summary cards */}
@@ -164,7 +299,7 @@ export default function FinancialReports() {
       <div ref={reportRef} className="financial-report-print" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '28px 32px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
         <div className="report-pdf-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingBottom: 16, borderBottom: '2px solid var(--outline)' }}>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 800 }}>{t(tab)} — {monthName}</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 800 }}>{t(tab)} — {periodLabel}</h2>
             <p style={{ fontSize: 12, color: 'var(--text-500)', marginTop: 4 }}>{storeName}</p>
           </div>
           <div className="no-print report-actions" style={{ display: 'flex', gap: 10 }}>
@@ -230,13 +365,13 @@ export default function FinancialReports() {
                 {EXPENSE_CATS.filter(c => expenseByCat[c] > 0).map(c => (
                   <tr key={c} style={{ borderBottom: '1px solid var(--outline)' }}>
                     <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: 13 }}>{c}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-500)' }}>{monthExpenses.filter(e => e.category === c).length}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-500)' }}>{periodExpenses.filter(e => e.category === c).length}</td>
                     <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: 13 }}>{fmt(expenseByCat[c])}</td>
                   </tr>
                 ))}
                 <tr style={{ borderTop: '2px solid var(--outline)', background: 'var(--bg)' }}>
                   <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>{t('totalLabel')}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: 13 }}>{monthExpenses.length}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: 13 }}>{periodExpenses.length}</td>
                   <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--warning)' }}>{fmt(totalExpenses)}</td>
                 </tr>
               </tbody>
@@ -258,7 +393,7 @@ export default function FinancialReports() {
                 </tr>
               </thead>
               <tbody>
-                {monthSales.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')).map(s => (
+                {periodSales.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')).map(s => (
                   <tr key={s.id} style={{ borderBottom: '1px solid var(--outline)' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -280,10 +415,10 @@ export default function FinancialReports() {
                     </td>
                   </tr>
                 ))}
-                {monthSales.length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noSalesThisMonth')}</td></tr>
+                {periodSales.length === 0 && (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noSalesThisPeriod')}</td></tr>
                 )}
-                {monthSales.length > 0 && (
+                {periodSales.length > 0 && (
                 <tr style={{ borderTop: '2px solid var(--outline)', background: 'var(--bg)' }}>
                   <td colSpan={5} style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>{t('totalRevenue')}</td>
                   <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--primary)' }}>{fmt(revenue)}</td>

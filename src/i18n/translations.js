@@ -171,6 +171,12 @@ const en = {
 
   // ── Financial Reports ────────────────────────────────────────────────────
   reportsTitle: 'Financial Reports',
+  reportPeriod: 'Report period',
+  periodMonthly: 'Monthly',
+  periodYearly: 'Yearly',
+  selectMonth: 'Month',
+  selectYear: 'Year',
+  noSalesThisPeriod: 'No sales in this period',
   profitLoss: 'Profit & Loss',
   incomeStatement: 'Income Statement',
   expenseSummary: 'Expense Summary',
@@ -435,6 +441,12 @@ const sw = {
 
   // ── Financial Reports ────────────────────────────────────────────────────
   reportsTitle: 'Ripoti za Fedha',
+  reportPeriod: 'Kipindi cha ripoti',
+  periodMonthly: 'Kwa mwezi',
+  periodYearly: 'Kwa mwaka',
+  selectMonth: 'Mwezi',
+  selectYear: 'Mwaka',
+  noSalesThisPeriod: 'Hakuna mauzo katika kipindi hiki',
   profitLoss: 'Faida na Hasara',
   incomeStatement: 'Taarifa ya Mapato',
   expenseSummary: 'Muhtasari wa Matumizi',
