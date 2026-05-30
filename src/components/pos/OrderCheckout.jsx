@@ -37,11 +37,11 @@ export default function OrderCheckout({
 
   const totalsBlock = (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: compact ? 6 : 8, fontSize: compact ? 12 : 13 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: compact ? 6 : 5, fontSize: compact ? 12 : 12 }}>
         <span style={{ color: 'var(--text-500)' }}>{t('subtotal')}</span>
         <span style={{ fontWeight: 500 }}>{fmt(subtotal)}</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: compact ? 6 : 8, gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: compact ? 6 : 5, gap: 8 }}>
         <span style={{ fontSize: compact ? 12 : 13, color: 'var(--text-500)', flexShrink: 0 }}>{t('discountTZS')}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <FormInput
@@ -71,7 +71,7 @@ export default function OrderCheckout({
   const customerBlock = (
     <div style={{ marginTop: compact ? 8 : 0 }}>
       {!compact && (
-        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
           {t('customerDetails')}
         </div>
       )}
@@ -90,7 +90,7 @@ export default function OrderCheckout({
   const paymentBlock = (
     <div style={{ marginTop: compact ? 10 : 0 }}>
       {!compact && (
-        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
           {t('paymentMethod')}
         </div>
       )}
@@ -102,7 +102,7 @@ export default function OrderCheckout({
           const active = payment === key
           return (
             <button key={key} type="button" onClick={() => setPayment(key)} style={{
-              flex: 1, padding: compact ? '7px 2px' : '9px 4px', borderRadius: compact ? 8 : 10, fontSize: 10, fontWeight: 700,
+              flex: 1, padding: compact ? '7px 2px' : '7px 4px', borderRadius: compact ? 8 : 8, fontSize: 10, fontWeight: 700,
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 3 : 5,
               border: `2px solid ${active ? 'var(--primary)' : 'var(--outline)'}`,
               background: active ? 'var(--primary-soft)' : 'var(--surface)',
@@ -121,7 +121,7 @@ export default function OrderCheckout({
     <div style={{ display: 'flex', gap: 8, marginTop: compact ? 10 : 0 }}>
       <button type="button" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        padding: compact ? '10px 12px' : '12px 14px',
+        padding: compact ? '10px 12px' : '10px 12px',
         border: '2px solid var(--outline)', borderRadius: 'var(--radius-sm)',
         background: 'var(--surface)', color: 'var(--text-900)', fontWeight: 600, fontSize: compact ? 12 : 13,
         flexShrink: 0,
@@ -129,7 +129,7 @@ export default function OrderCheckout({
         <FileText size={compact ? 14 : 15} /> {!compact && t('receipt')}
       </button>
       <button type="button" onClick={onCompleteSale} disabled={cart.length === 0} style={{
-        flex: 1, padding: compact ? '10px' : '12px', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: compact ? 13 : 14,
+        flex: 1, padding: compact ? '10px' : '10px', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: compact ? 13 : 13,
         background: cart.length === 0 ? 'var(--outline)' : 'var(--primary)',
         color: cart.length === 0 ? 'var(--text-500)' : 'white',
       }}>
@@ -178,23 +178,23 @@ export default function OrderCheckout({
 
   return (
     <>
-      <div style={{ padding: '16px 18px 14px', background: 'var(--surface)', borderBottom: '1px solid var(--outline)' }}>
+      <div style={{ padding: '10px 14px', background: 'var(--surface)', borderBottom: '1px solid var(--outline)' }}>
         {totalsBlock}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1.5px solid var(--outline)' }}>
-          <span style={{ fontSize: 17, fontWeight: 800 }}>{t('total')}</span>
-          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>{fmt(total)}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, paddingTop: 6, borderTop: '1.5px solid var(--outline)' }}>
+          <span style={{ fontSize: 14, fontWeight: 800 }}>{t('total')}</span>
+          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--primary)' }}>{fmt(total)}</span>
         </div>
       </div>
 
-      <div style={{ padding: '12px 14px', background: 'var(--bg)', borderBottom: '1px solid var(--outline)' }}>
+      <div style={{ padding: '8px 12px', background: 'var(--bg)', borderBottom: '1px solid var(--outline)' }}>
         {customerBlock}
       </div>
 
-      <div style={{ padding: '12px 14px', background: 'var(--bg)', borderBottom: '1px solid var(--outline)' }}>
+      <div style={{ padding: '8px 12px', background: 'var(--bg)', borderBottom: '1px solid var(--outline)' }}>
         {paymentBlock}
       </div>
 
-      <div style={{ padding: '12px 14px', background: 'var(--bg)' }}>
+      <div style={{ padding: '8px 12px', background: 'var(--bg)' }}>
         {actionButtons}
       </div>
     </>

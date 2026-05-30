@@ -292,7 +292,7 @@ export default function PointOfSale() {
 
   // ── Desktop layout ─────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div className="pos-page-desktop">
 
       {/* ── Left: Product list ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '28px 24px 28px 32px' }}>
@@ -357,10 +357,10 @@ export default function PointOfSale() {
       </div>
 
       {/* ── Right: Order panel ── */}
-      <div style={{ width: 310, background: 'var(--bg)', borderLeft: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', overflow: 'hidden', marginTop: 20, borderRadius: '12px 0 0 0', boxShadow: '-2px 0 12px rgba(26,35,50,0.06)' }}>
+      <div style={{ width: 300, background: 'var(--bg)', borderLeft: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0, boxShadow: '-2px 0 12px rgba(26,35,50,0.06)' }}>
 
         {/* Header */}
-        <div style={{ background: 'var(--primary)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ background: 'var(--primary)', padding: '11px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'white' }}>
             <ShoppingCart size={17} strokeWidth={2.2} />
             <span style={{ fontWeight: 700, fontSize: 15 }}>{t('currentOrder')}</span>
@@ -378,12 +378,12 @@ export default function PointOfSale() {
         </div>
 
         {/* Cart items */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {cart.length === 0 && (
-            <div style={{ textAlign: 'center', paddingTop: 40, color: 'var(--text-500)' }}>
-              <ShoppingCart size={36} strokeWidth={1.2} style={{ opacity: 0.3, marginBottom: 10 }} />
-              <div style={{ fontSize: 13, fontWeight: 500 }}>{t('noItemsYet')}</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>{t('clickAdd')}</div>
+            <div style={{ textAlign: 'center', paddingTop: 16, paddingBottom: 8, color: 'var(--text-500)' }}>
+              <ShoppingCart size={28} strokeWidth={1.2} style={{ opacity: 0.3, marginBottom: 6 }} />
+              <div style={{ fontSize: 12, fontWeight: 500 }}>{t('noItemsYet')}</div>
+              <div style={{ fontSize: 11, marginTop: 2 }}>{t('clickAdd')}</div>
             </div>
           )}
           {cart.map(item => (

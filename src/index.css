@@ -373,6 +373,13 @@ input[type=number] { -moz-appearance: textfield; }
   }
 }
 
+.pos-page-desktop {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 @media (max-width: 768px) {
   .r-page { padding: 16px; }
   .r-stats { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
