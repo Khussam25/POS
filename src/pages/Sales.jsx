@@ -22,7 +22,8 @@ export default function Sales() {
   const filtered = data.sales.filter(s => {
     if (tab === 'today') return s.date === today
     if (tab === 'thisMonth') return s.date.startsWith(currentMonth)
-    return true
+    if (tab === 'all') return true
+    return s.date.startsWith(currentMonth)
   })
   const sorted = [...filtered].sort((a, b) =>
     b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')
@@ -67,10 +68,10 @@ export default function Sales() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {[['today', t('today')], ['thisMonth', t('thisMonth')], ['all', t('all')]].map(([key, label]) => (
             <button key={key} type="button" onClick={() => setTab(key)} style={{
-              padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600,
+              padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
               background: tab === key ? 'var(--accent)' : 'transparent',
               color: tab === key ? 'white' : 'var(--text-500)',
               border: tab === key ? 'none' : '1.5px solid var(--outline)',
@@ -78,7 +79,7 @@ export default function Sales() {
           ))}
         </div>
         <div style={{ fontSize: 13, fontWeight: 700 }}>
-          {t('total')}: <span style={{ color: 'var(--primary)' }}>{fmt(total)}</span>
+          {t('totalLabel')}: <span style={{ color: 'var(--primary)' }}>{fmt(total)}</span>
         </div>
       </div>
 
