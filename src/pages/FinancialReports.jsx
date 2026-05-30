@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import { useApp } from '../App'
 import { useT, useLang } from '../i18n/LangContext'
-import { Printer, Download, DollarSign, TrendingDown, TrendingUp, Calendar } from 'lucide-react'
+import { Printer, Download, DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
@@ -192,77 +192,6 @@ export default function FinancialReports() {
         <p style={{ color: 'var(--text-500)', fontSize: 13 }}>{storeName}</p>
       </div>
 
-      {/* Period selector */}
-      <div className="no-print" style={{
-        display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
-        marginBottom: 20, padding: '14px 18px',
-        background: 'var(--primary-soft)', border: '2px solid var(--primary)',
-        borderRadius: 12, boxShadow: 'var(--shadow-sm)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <Calendar size={20} color="var(--primary)" strokeWidth={2.2} aria-hidden />
-          <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--primary)' }}>{t('reportPeriod')}</span>
-        </div>
-        <select
-          className="form-select"
-          value={periodType}
-          onChange={e => handlePeriodTypeChange(e.target.value)}
-          aria-label={t('reportPeriod')}
-          style={{ fontWeight: 700, minWidth: 120, borderColor: 'var(--primary)' }}
-        >
-          <option value="monthly">{t('periodMonthly')}</option>
-          <option value="yearly">{t('periodYearly')}</option>
-        </select>
-        {periodType === 'monthly' && (
-          <>
-            <select
-              className="form-select"
-              value={selectedMonth.slice(5, 7)}
-              onChange={e => setSelectedMonth(`${selectedMonth.slice(0, 4)}-${e.target.value}`)}
-              aria-label={t('selectMonth')}
-              style={{ fontWeight: 600, minWidth: 140 }}
-            >
-              {monthOptions.map(ym => (
-                <option key={ym} value={ym.slice(5, 7)}>
-                  {formatMonthName(ym, locale)}
-                </option>
-              ))}
-            </select>
-            <select
-              className="form-select"
-              value={selectedMonth.slice(0, 4)}
-              onChange={e => handleYearChange(e.target.value)}
-              aria-label={t('selectYear')}
-              style={{ fontWeight: 600, minWidth: 100 }}
-            >
-              {yearOptions.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          </>
-        )}
-        {periodType === 'yearly' && (
-          <select
-            className="form-select"
-            value={selectedYear}
-            onChange={e => setSelectedYear(Number(e.target.value))}
-            aria-label={t('selectYear')}
-            style={{ fontWeight: 600, minWidth: 100 }}
-          >
-            {yearOptions.map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-        )}
-        <span style={{
-          marginLeft: 'auto', fontWeight: 800, fontSize: 15, color: 'var(--primary)',
-          padding: '6px 12px', background: 'var(--surface)', borderRadius: 8,
-          border: '1px solid var(--outline)',
-        }}>
-          {periodLabel}
-        </span>
-      </div>
-
       {/* Summary cards */}
       <div className="r-three-col no-print" style={{ marginBottom: 28 }}>
         {[
@@ -284,15 +213,70 @@ export default function FinancialReports() {
         ))}
       </div>
 
-      {/* Tabs */}
-      <div className="no-print" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '6px', display: 'inline-flex', gap: 4, marginBottom: 24, boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
-        {TAB_KEYS.map(key => (
-          <button key={key} onClick={() => setTab(key)} style={{
-            padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
-            background: tab === key ? 'var(--accent)' : 'transparent',
-            color: tab === key ? 'white' : 'var(--text-500)',
-          }}>{t(key)}</button>
-        ))}
+      {/* Tabs + period (same row, same height) */}
+      <div className="no-print reports-toolbar" style={{
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
+        gap: 10, marginBottom: 24,
+      }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '6px', display: 'inline-flex', gap: 4, boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
+          {TAB_KEYS.map(key => (
+            <button key={key} onClick={() => setTab(key)} style={{
+              padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
+              background: tab === key ? 'var(--accent)' : 'transparent',
+              color: tab === key ? 'white' : 'var(--text-500)',
+            }}>{t(key)}</button>
+          ))}
+        </div>
+        <div className="reports-period" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-900)', whiteSpace: 'nowrap' }}>{t('reportPeriod')}</span>
+          <select
+            className="form-select form-select--inline"
+            value={periodType}
+            onChange={e => handlePeriodTypeChange(e.target.value)}
+            aria-label={t('reportPeriod')}
+          >
+            <option value="monthly">{t('periodMonthly')}</option>
+            <option value="yearly">{t('periodYearly')}</option>
+          </select>
+          {periodType === 'monthly' && (
+            <>
+              <select
+                className="form-select form-select--inline"
+                value={selectedMonth.slice(5, 7)}
+                onChange={e => setSelectedMonth(`${selectedMonth.slice(0, 4)}-${e.target.value}`)}
+                aria-label={t('selectMonth')}
+              >
+                {monthOptions.map(ym => (
+                  <option key={ym} value={ym.slice(5, 7)}>
+                    {formatMonthName(ym, locale)}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="form-select form-select--inline"
+                value={selectedMonth.slice(0, 4)}
+                onChange={e => handleYearChange(e.target.value)}
+                aria-label={t('selectYear')}
+              >
+                {yearOptions.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </>
+          )}
+          {periodType === 'yearly' && (
+            <select
+              className="form-select form-select--inline"
+              value={selectedYear}
+              onChange={e => setSelectedYear(Number(e.target.value))}
+              aria-label={t('selectYear')}
+            >
+              {yearOptions.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
       {/* Report body */}

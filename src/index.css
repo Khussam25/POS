@@ -132,6 +132,15 @@ select.form-select {
   outline: none;
 }
 
+select.form-select--inline {
+  display: inline-block;
+  width: auto;
+  padding: 8px 28px 8px 10px;
+  font-weight: 600;
+  background: var(--surface);
+  border-radius: 8px;
+}
+
 input:not([type="checkbox"]):not([type="radio"]),
 textarea,
 select {
