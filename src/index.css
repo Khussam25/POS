@@ -176,8 +176,9 @@ select.form-select--inline {
 
 .reports-period {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -186,25 +187,26 @@ select.form-select--inline {
   font-weight: 700;
   font-size: 13;
   color: var(--text-900);
-  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .reports-period-controls {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 6.5rem 7.5rem 5.25rem;
   gap: 8px;
-  width: 17.5rem;
   flex-shrink: 0;
 }
 
-.reports-period-type {
-  width: 6.5rem;
-  flex-shrink: 0;
-}
-
-.reports-period-value {
-  flex: 1;
+.reports-period-type,
+.reports-period-month,
+.reports-period-year {
+  width: 100%;
   min-width: 0;
+}
+
+.reports-period-month--hidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 input:not([type="checkbox"]):not([type="radio"]),
