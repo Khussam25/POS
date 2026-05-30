@@ -231,8 +231,8 @@ export default function PointOfSale() {
         )}
 
         {mobileTab === 'order' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)', minHeight: 0 }}>
-            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="pos-order-panel" style={{ flex: 1, background: 'var(--bg)' }}>
+            <div className="pos-order-cart" style={{ padding: '12px 16px' }}>
               {cart.length === 0 && (
                 <div style={{ textAlign: 'center', paddingTop: 48, color: 'var(--text-500)' }}>
                   <ShoppingCart size={40} strokeWidth={1.2} style={{ opacity: 0.25, marginBottom: 10 }} />
@@ -357,7 +357,7 @@ export default function PointOfSale() {
       </div>
 
       {/* ── Right: Order panel ── */}
-      <div style={{ width: 300, background: 'var(--bg)', borderLeft: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0, boxShadow: '-2px 0 12px rgba(26,35,50,0.06)' }}>
+      <div className="pos-order-panel" style={{ width: 300, background: 'var(--bg)', borderLeft: '1px solid var(--outline)', boxShadow: '-2px 0 12px rgba(26,35,50,0.06)' }}>
 
         {/* Header */}
         <div style={{ background: 'var(--primary)', padding: '11px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -377,8 +377,8 @@ export default function PointOfSale() {
           )}
         </div>
 
-        {/* Cart items */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Cart items — scrolls; panel height stays fixed */}
+        <div className="pos-order-cart">
           {cart.length === 0 && (
             <div style={{ textAlign: 'center', paddingTop: 16, paddingBottom: 8, color: 'var(--text-500)' }}>
               <ShoppingCart size={28} strokeWidth={1.2} style={{ opacity: 0.3, marginBottom: 6 }} />

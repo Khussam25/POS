@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Outlet, NavLink } from 'react-router-dom'
+import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
 import { useLayoutMode } from '../hooks/useIsCompact'
 import { useT, useLang } from '../i18n/LangContext'
@@ -73,6 +73,7 @@ export default function Layout() {
     try { return localStorage.getItem(NAV_COLLAPSED_KEY) === '1' } catch { return false }
   })
   const t = useT()
+  const isPosRoute = useLocation().pathname === '/pos'
 
   useEffect(() => {
     if (!isDesktop) setNavCollapsed(false)
@@ -233,7 +234,7 @@ export default function Layout() {
           {showCompactHeader && <UserAvatar />}
         </header>
 
-        <main className={`app-main ${isPhone ? 'app-main--phone' : ''}`}>
+        <main className={`app-main ${isPhone ? 'app-main--phone' : ''} ${isPosRoute ? 'app-main--pos' : ''}`}>
           <StatusBanners />
           <div className="app-outlet">
             <Outlet />
