@@ -230,6 +230,16 @@ export default function FinancialReports() {
               <option value="yearly">{t('periodYearly')}</option>
             </select>
             <select
+              className="form-select form-select--inline reports-period-year"
+              value={periodType === 'monthly' ? selectedMonth.slice(0, 4) : String(selectedYear)}
+              onChange={e => handleYearChange(e.target.value)}
+              aria-label={t('selectYear')}
+            >
+              {yearOptions.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            <select
               className={`form-select form-select--inline reports-period-month${periodType !== 'monthly' ? ' reports-period-month--hidden' : ''}`}
               value={selectedMonth.slice(5, 7)}
               onChange={e => setSelectedMonth(`${selectedMonth.slice(0, 4)}-${e.target.value}`)}
@@ -239,16 +249,6 @@ export default function FinancialReports() {
             >
               {MONTH_NUMS.map(m => (
                 <option key={m} value={m}>{formatMonthName(m, locale)}</option>
-              ))}
-            </select>
-            <select
-              className="form-select form-select--inline reports-period-year"
-              value={periodType === 'monthly' ? selectedMonth.slice(0, 4) : String(selectedYear)}
-              onChange={e => handleYearChange(e.target.value)}
-              aria-label={t('selectYear')}
-            >
-              {yearOptions.map(y => (
-                <option key={y} value={y}>{y}</option>
               ))}
             </select>
           </div>
