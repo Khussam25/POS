@@ -87,7 +87,7 @@ export default function Inventory() {
   function validate() {
     const e = {}
     if (!form.name.trim()) e.name = 'Required'
-    if (!form.buyingPriceTZS || isNaN(form.buyingPriceTZS) || +form.buyingPriceTZS <= 0) e.buyingPriceTZS = 'Enter valid price'
+    if (form.buyingPriceTZS && (isNaN(form.buyingPriceTZS) || +form.buyingPriceTZS < 0)) e.buyingPriceTZS = 'Enter valid price'
     if (!form.sellingPriceTZS || isNaN(form.sellingPriceTZS) || +form.sellingPriceTZS <= 0) e.sellingPriceTZS = 'Enter valid price'
     if (!form.qty || isNaN(form.qty) || +form.qty < 0) e.qty = 'Enter valid qty'
     setErrors(e)
@@ -98,10 +98,10 @@ export default function Inventory() {
     if (!validate()) return
     if (modal === 'add') {
       const id = nextProductId(data.products)
-      const newProduct = { ...form, id, sku: id, buyingPriceTZS: +form.buyingPriceTZS, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 }
+      const newProduct = { ...form, id, sku: id, buyingPriceTZS: +form.buyingPriceTZS || 0, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 }
       updateData('products', [newProduct, ...data.products])
     } else {
-      updateData('products', data.products.map(p => p.id === form.id ? { ...form, buyingPriceTZS: +form.buyingPriceTZS, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 } : p))
+      updateData('products', data.products.map(p => p.id === form.id ? { ...form, buyingPriceTZS: +form.buyingPriceTZS || 0, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 } : p))
     }
     setModal(null)
   }
