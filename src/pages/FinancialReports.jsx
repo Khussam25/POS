@@ -1,26 +1,34 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
-import { Printer, Download, DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
+import FormInput from '../components/FormInput'
+import { Printer, Download, DollarSign, TrendingDown, TrendingUp, Pencil, Trash2, X } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { fmtMoney, saleNetRevenue, saleCogs } from '../utils/money'
+import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale } from '../utils/salesOps'
 
 const fmt = fmtMoney
 function fmtSign(n) { return (n < 0 ? '(' : '') + fmt(Math.abs(n)) + (n < 0 ? ')' : '') }
 
 const TAB_KEYS = ['profitLoss', 'incomeStatement', 'expenseSummary', 'salesSummary']
+const PAYMENT_METHODS = ['Cash', 'Mobile Money', 'Card']
 
 const EXPENSE_CATS = ['Wages & Salary', 'Shipment', 'Rent', 'Electricity', 'Internet', 'Deliveries', 'Packaging', 'Miscellaneous', 'Other']
 
 export default function FinancialReports() {
-  const { data } = useApp()
+  const { data, batchUpdateData } = useApp()
   const t = useT()
   const [tab, setTab] = useState('profitLoss')
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [editSale, setEditSale] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [saleError, setSaleError] = useState('')
   const reportRef = useRef(null)
+  const editModalRef = useRef(null)
   const today = new Date()
   const currentMonth = today.toISOString().slice(0, 7)
+  const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0
 
   const monthSales = data.sales.filter(s => s.date.startsWith(currentMonth))
   const monthExpenses = data.expenses.filter(e => e.date.startsWith(currentMonth))
@@ -39,6 +47,42 @@ export default function FinancialReports() {
 
   const monthName = today.toLocaleString('en-US', { month: 'long', year: 'numeric' })
   const storeName = data.settings.storeName
+
+  const editPreview = useMemo(() => {
+    if (!editSale) return null
+    return recalculateSale(editSale, vatRate)
+  }, [editSale, vatRate])
+
+  function openEditSale(sale) {
+    setSaleError('')
+    setEditSale(cloneSaleForEdit(sale))
+    setTimeout(() => editModalRef.current?.querySelector('input')?.focus(), 0)
+  }
+
+  function saveEditedSale() {
+    if (!editSale) return
+    const result = updateSaleRecord(data.products, data.sales, editSale, vatRate)
+    if (!result.ok) {
+      if (result.error === 'insufficientStock') setSaleError(t('saleStockError'))
+      else if (result.error === 'emptySale') setSaleError(t('saleEmptyError'))
+      else setSaleError(t('saveFailed'))
+      return
+    }
+    if (!batchUpdateData({ products: result.products, sales: result.sales })) {
+      setSaleError(t('saveFailed'))
+      return
+    }
+    setEditSale(null)
+    setSaleError('')
+  }
+
+  function confirmDeleteSale() {
+    if (!deleteTarget) return
+    const result = deleteSaleRecord(data.products, data.sales, deleteTarget.id)
+    if (!result.ok) return
+    batchUpdateData({ products: result.products, sales: result.sales })
+    setDeleteTarget(null)
+  }
 
   function handlePrint() { window.print() }
 
@@ -214,38 +258,172 @@ export default function FinancialReports() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-                  {[t('dateLabel'), t('customer'), t('itemsCol'), t('payment'), t('amount')].map(h => (
-                    <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                  {[t('dateLabel'), t('customer'), t('itemsCol'), t('payment'), t('amount'), ''].map(h => (
+                    <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: h ? 'nowrap' : undefined }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {monthSales.slice().sort((a, b) => b.date.localeCompare(a.date)).map(s => (
+                {monthSales.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')).map(s => (
                   <tr key={s.id} style={{ borderBottom: '1px solid var(--outline)' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-500)' }}>{s.date}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: 13 }}>{s.customer}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-500)' }}>{s.items.length}</td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td style={{ padding: '11px 12px', fontSize: 13, color: 'var(--text-500)', whiteSpace: 'nowrap' }}>
+                      {s.date}{s.time ? ` · ${s.time}` : ''}
+                    </td>
+                    <td style={{ padding: '11px 12px', fontWeight: 600, fontSize: 13 }}>{s.customer}</td>
+                    <td style={{ padding: '11px 12px', fontSize: 13, color: 'var(--text-500)' }}>{s.items.length}</td>
+                    <td style={{ padding: '11px 12px' }}>
                       <span style={{
                         fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999,
                         background: s.paymentMethod === 'Cash' ? 'var(--success-light)' : s.paymentMethod === 'Card' ? 'var(--primary-light)' : 'var(--warning-light)',
                         color: s.paymentMethod === 'Cash' ? 'var(--success)' : s.paymentMethod === 'Card' ? 'var(--primary)' : 'var(--warning)'
                       }}>{s.paymentMethod}</span>
                     </td>
-                    <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: 13 }}>{fmt(s.total)}</td>
+                    <td style={{ padding: '11px 12px', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(s.total)}</td>
+                    <td className="no-print" style={{ padding: '11px 8px 11px 12px', width: 72 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                        <button type="button" onClick={() => openEditSale(s)} aria-label={t('edit')} title={t('edit')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent' }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button type="button" onClick={() => setDeleteTarget(s)} aria-label={t('delete')} title={t('delete')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
+                {monthSales.length === 0 && (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noSalesThisMonth')}</td></tr>
+                )}
+                {monthSales.length > 0 && (
                 <tr style={{ borderTop: '2px solid var(--outline)', background: 'var(--bg)' }}>
-                  <td colSpan={4} style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>{t('totalRevenue')}</td>
+                  <td colSpan={5} style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>{t('totalRevenue')}</td>
                   <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--primary)' }}>{fmt(revenue)}</td>
                 </tr>
+                )}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {editSale && (
+        <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div ref={editModalRef} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800 }}>{t('editSaleTitle')}</h2>
+              <button type="button" onClick={() => { setEditSale(null); setSaleError('') }} style={{ color: 'var(--text-500)', padding: 4 }}><X size={20} /></button>
+            </div>
+
+            {saleError && (
+              <div style={{ background: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16 }}>{saleError}</div>
+            )}
+
+            <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('dateLabel')}</label>
+                  <FormInput type="date" value={editSale.date} onChange={e => setEditSale(s => ({ ...s, date: e.target.value }))} selectOnFocus={false} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('payment')}</label>
+                  <select className="form-select" value={editSale.paymentMethod} onChange={e => setEditSale(s => ({ ...s, paymentMethod: e.target.value }))}>
+                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('customer')}</label>
+                <FormInput value={editSale.customer} onChange={e => setEditSale(s => ({ ...s, customer: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('discountTZS')}</label>
+                <FormInput numeric value={String(editSale.discountAmount ?? '')} onChange={e => setEditSale(s => ({ ...s, discountAmount: e.target.value }))} />
+              </div>
+            </div>
+
+            <div style={{ border: '1px solid var(--outline)', borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg)' }}>
+                    {[t('productName'), t('quantity'), t('unitPrice'), ''].map(h => (
+                      <th key={h || 'rm'} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {editSale.items.map((item, idx) => (
+                    <tr key={`${item.productId}-${idx}`} style={{ borderTop: '1px solid var(--outline)' }}>
+                      <td style={{ padding: '8px 10px', fontSize: 13, fontWeight: 600 }}>{item.name}</td>
+                      <td style={{ padding: '8px 10px', width: 88 }}>
+                        <FormInput numeric value={String(item.qty)} onChange={e => setEditSale(s => ({
+                          ...s,
+                          items: s.items.map((it, i) => i === idx ? { ...it, qty: e.target.value } : it),
+                        }))} />
+                      </td>
+                      <td style={{ padding: '8px 10px', width: 120 }}>
+                        <FormInput numeric value={String(item.price)} onChange={e => setEditSale(s => ({
+                          ...s,
+                          items: s.items.map((it, i) => i === idx ? { ...it, price: e.target.value } : it),
+                        }))} />
+                      </td>
+                      <td style={{ padding: '8px 10px', width: 40 }}>
+                        <button type="button" aria-label={t('delete')} onClick={() => setEditSale(s => ({ ...s, items: s.items.filter((_, i) => i !== idx) }))}
+                          style={{ color: 'var(--text-500)', padding: 4 }}>
+                          <X size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {editPreview && (
+              <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><span>{t('subtotal')}</span><span>{fmt(editPreview.subtotal)}</span></div>
+                {data.settings.vatEnabled && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><span>{t('tax')}</span><span>{fmt(editPreview.vat)}</span></div>
+                )}
+                {editPreview.discountAmount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><span>{t('discountTZS')}</span><span>- {fmt(editPreview.discountAmount)}</span></div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, paddingTop: 8, borderTop: '1px solid var(--outline)' }}>
+                  <span>{t('total')}</span><span>{fmt(editPreview.total)}</span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-500)', marginTop: 8 }}>{t('soldBy')}: {editSale.soldBy}</div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" onClick={() => { setEditSale(null); setSaleError('') }} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>
+              <button type="button" onClick={saveEditedSale} style={{ flex: 1, padding: '11px', background: 'var(--primary)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>{t('saveChanges')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 380, boxShadow: 'var(--shadow)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--danger-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Trash2 size={22} color="var(--danger)" />
+            </div>
+            <h2 style={{ fontSize: 17, fontWeight: 800, textAlign: 'center', marginBottom: 8 }}>{t('deleteSaleTitle')}</h2>
+            <p style={{ color: 'var(--text-500)', fontSize: 13, textAlign: 'center', marginBottom: 8, lineHeight: 1.6 }}>
+              <strong>{deleteTarget.customer}</strong> · {fmt(deleteTarget.total)}
+            </p>
+            <p style={{ color: 'var(--text-500)', fontSize: 13, textAlign: 'center', marginBottom: 24, lineHeight: 1.6 }}>{t('deleteSaleMsg')}</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" onClick={() => setDeleteTarget(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>
+              <button type="button" onClick={confirmDeleteSale} style={{ flex: 1, padding: '11px', background: 'var(--danger)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>{t('delete')}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

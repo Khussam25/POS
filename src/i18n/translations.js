@@ -184,6 +184,14 @@ const en = {
   customer: 'Customer',
   totalLabel: 'Total',
   itemsCol: 'Items',
+  editSaleTitle: 'Edit Sale',
+  deleteSaleTitle: 'Delete Sale?',
+  deleteSaleMsg: 'This sale will be removed and stock will be restored. This cannot be undone.',
+  saleStockError: 'Not enough stock to save this sale. Check quantities.',
+  saleEmptyError: 'A sale must include at least one item.',
+  soldBy: 'Sold by',
+  noSalesThisMonth: 'No sales this month',
+  unitPrice: 'Unit price',
 
   // ── Employees ────────────────────────────────────────────────────────────
   employeesTitle: 'Employees',
@@ -432,6 +440,14 @@ const sw = {
   customer: 'Mteja',
   totalLabel: 'Jumla',
   itemsCol: 'Bidhaa',
+  editSaleTitle: 'Hariri Mauzo',
+  deleteSaleTitle: 'Futa Mauzo?',
+  deleteSaleMsg: 'Mauzo haya yataondolewa na hisa itarejeshwa. Hii haiwezi kutenduliwa.',
+  saleStockError: 'Hisa haitoshi kuhifadhi mauzo haya. Angalia idadi.',
+  saleEmptyError: 'Mauzo lazima yawe na angalau bidhaa moja.',
+  soldBy: 'Imeuza',
+  noSalesThisMonth: 'Hakuna mauzo mwezi huu',
+  unitPrice: 'Bei kwa kipande',
 
   // ── Employees ────────────────────────────────────────────────────────────
   employeesTitle: 'Wafanyakazi',

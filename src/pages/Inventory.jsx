@@ -166,8 +166,8 @@ export default function Inventory() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-              {[t('productName'), t('qty'), t('sellingPrice'), t('profitPerUnit'), t('stockStatus'), ''].map(h => (
-                <th key={h || 'actions'} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</th>
+              {[t('productName'), t('qty'), t('buyingPrice'), t('sellingPrice'), t('profitPerUnit'), t('stockStatus'), ''].map(h => (
+                <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -181,36 +181,39 @@ export default function Inventory() {
                 <tr key={p.id} style={{ borderBottom: '1px solid var(--outline)' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <td style={{ padding: '13px 16px' }}>
+                  <td style={{ padding: '11px 12px' }}>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-500)', marginTop: 2 }}>{p.category}</div>
                   </td>
-                  <td style={{ padding: '13px 16px' }}>
+                  <td style={{ padding: '11px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontWeight: 700, fontSize: 14, color: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--text-900)' }}>{p.qty}</span>
                       {isLow && <AlertTriangle size={13} color="var(--warning)" />}
                     </div>
                   </td>
-                  <td style={{ padding: '13px 16px', fontWeight: 600, fontSize: 13 }}>{fmt(p.sellingPriceTZS)}</td>
-                  <td style={{ padding: '13px 16px', fontWeight: 700, fontSize: 13, color: profitColor }}>{fmt(profit)}</td>
-                  <td style={{ padding: '13px 16px' }}>
+                  <td style={{ padding: '11px 12px', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(p.buyingPriceTZS)}</td>
+                  <td style={{ padding: '11px 12px', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(p.sellingPriceTZS)}</td>
+                  <td style={{ padding: '11px 12px', fontWeight: 700, fontSize: 13, color: profitColor, whiteSpace: 'nowrap' }}>{fmt(profit)}</td>
+                  <td style={{ padding: '11px 12px' }}>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
                       background: isOut ? 'var(--danger-light)' : isLow ? 'var(--warning-light)' : 'var(--success-light)',
                       color: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)'
                     }}>{isOut ? t('outOfStock') : isLow ? t('lowStock') : t('inStock')}</span>
                   </td>
-                  <td style={{ padding: '13px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <button onClick={() => openEdit(p)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', border: '1.5px solid var(--outline)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: 'var(--text-500)', background: 'transparent', transition: 'all 0.15s' }}
+                  <td style={{ padding: '11px 8px 11px 12px', width: 72 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                      <button type="button" onClick={() => openEdit(p)} aria-label={t('edit')} title={t('edit')}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent', transition: 'all 0.15s' }}
                         onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }}
                         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-500)' }}>
-                        <Pencil size={12} /> {t('edit')}
+                        <Pencil size={14} />
                       </button>
-                      <button onClick={() => setDeleteTarget(p)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', border: '1.5px solid var(--outline)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: 'var(--text-500)', background: 'transparent', transition: 'all 0.15s' }}
+                      <button type="button" onClick={() => setDeleteTarget(p)} aria-label={t('delete')} title={t('delete')}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent', transition: 'all 0.15s' }}
                         onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)' }}
                         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-500)' }}>
-                        <Trash2 size={12} /> {t('delete')}
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </td>
@@ -218,7 +221,7 @@ export default function Inventory() {
               )
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noProductsFound')}</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noProductsFound')}</td></tr>
             )}
           </tbody>
         </table>
