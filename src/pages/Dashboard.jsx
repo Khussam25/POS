@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useApp } from '../App'
+import { useApp, canAccess } from '../App'
 import { useT } from '../i18n/LangContext'
 import { ShoppingBag, TrendingUp, Receipt, Package2, Plus, ShoppingCart, BarChart2, AlertTriangle, AlertCircle, ArrowRight, Circle } from 'lucide-react'
 import { fmtMoney, saleNetRevenue, saleCogs } from '../utils/money'
@@ -101,7 +101,7 @@ export default function Dashboard() {
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '20px 22px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div style={{ fontWeight: 700, fontSize: 15 }}>{t('recentSales')}</div>
-            <button onClick={() => navigate('/pos')} style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button onClick={() => navigate(canAccess(currentUser.role, '/sales') ? '/sales' : '/pos')} style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
               {t('viewAll')} <ArrowRight size={13} />
             </button>
           </div>

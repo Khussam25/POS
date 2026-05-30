@@ -19,6 +19,7 @@ import PointOfSale from './pages/PointOfSale'
 import Inventory from './pages/Inventory'
 import Expenses from './pages/Expenses'
 import FinancialReports from './pages/FinancialReports'
+import Sales from './pages/Sales'
 import Employees from './pages/Employees'
 import Settings from './pages/Settings'
 import { LangProvider } from './i18n/LangContext'
@@ -32,6 +33,7 @@ export const PERMISSIONS = {
   '/pos':        ['Admin', 'Cashier'],
   '/inventory':  ['Admin'],
   '/expenses':   ['Admin', 'Cashier'],
+  '/sales':      ['Admin'],
   '/reports':    ['Admin'],
   '/employees':  ['Admin'],
   '/settings':   ['Admin'],
@@ -286,6 +288,9 @@ export default function App() {
             } />
             <Route path="expenses" element={
               <ProtectedRoute path="/expenses"><Expenses /></ProtectedRoute>
+            } />
+            <Route path="sales" element={
+              <ProtectedRoute path="/sales"><Sales /></ProtectedRoute>
             } />
             <Route path="reports" element={
               <ProtectedRoute path="/reports"><FinancialReports /></ProtectedRoute>

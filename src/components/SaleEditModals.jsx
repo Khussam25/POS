@@ -1,0 +1,150 @@
+import { useMemo } from 'react'
+import FormInput from './FormInput'
+import { Pencil, Trash2, X } from 'lucide-react'
+import { fmtMoney } from '../utils/money'
+import { recalculateSale } from '../utils/salesOps'
+
+const fmt = fmtMoney
+const PAYMENT_METHODS = ['Cash', 'Mobile Money', 'Card']
+
+export function SaleEditModal({ t, editSale, setEditSale, saleError, onSave, onClose, vatEnabled, vatRate }) {
+  const editPreview = useMemo(() => {
+    if (!editSale) return null
+    return recalculateSale(editSale, vatRate)
+  }, [editSale, vatRate])
+
+  if (!editSale) return null
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800 }}>{t('editSaleTitle')}</h2>
+          <button type="button" onClick={onClose} style={{ color: 'var(--text-500)', padding: 4 }}><X size={20} /></button>
+        </div>
+
+        {saleError && (
+          <div style={{ background: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16 }}>{saleError}</div>
+        )}
+
+        <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('dateLabel')}</label>
+              <FormInput type="date" value={editSale.date} onChange={e => setEditSale(s => ({ ...s, date: e.target.value }))} selectOnFocus={false} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('payment')}</label>
+              <select className="form-select" value={editSale.paymentMethod} onChange={e => setEditSale(s => ({ ...s, paymentMethod: e.target.value }))}>
+                {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('customer')}</label>
+            <FormInput value={editSale.customer} onChange={e => setEditSale(s => ({ ...s, customer: e.target.value }))} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('discountTZS')}</label>
+            <FormInput numeric value={String(editSale.discountAmount ?? '')} onChange={e => setEditSale(s => ({ ...s, discountAmount: e.target.value }))} />
+          </div>
+        </div>
+
+        <div style={{ border: '1px solid var(--outline)', borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--bg)' }}>
+                {[t('productName'), t('quantity'), t('unitPrice'), ''].map(h => (
+                  <th key={h || 'rm'} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {editSale.items.map((item, idx) => (
+                <tr key={`${item.productId}-${idx}`} style={{ borderTop: '1px solid var(--outline)' }}>
+                  <td style={{ padding: '8px 10px', fontSize: 13, fontWeight: 600 }}>{item.name}</td>
+                  <td style={{ padding: '8px 10px', width: 88 }}>
+                    <FormInput numeric value={String(item.qty)} onChange={e => setEditSale(s => ({
+                      ...s,
+                      items: s.items.map((it, i) => i === idx ? { ...it, qty: e.target.value } : it),
+                    }))} />
+                  </td>
+                  <td style={{ padding: '8px 10px', width: 120 }}>
+                    <FormInput numeric value={String(item.price)} onChange={e => setEditSale(s => ({
+                      ...s,
+                      items: s.items.map((it, i) => i === idx ? { ...it, price: e.target.value } : it),
+                    }))} />
+                  </td>
+                  <td style={{ padding: '8px 10px', width: 40 }}>
+                    <button type="button" aria-label={t('delete')} onClick={() => setEditSale(s => ({ ...s, items: s.items.filter((_, i) => i !== idx) }))}
+                      style={{ color: 'var(--text-500)', padding: 4 }}>
+                      <X size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {editPreview && (
+          <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><span>{t('subtotal')}</span><span>{fmt(editPreview.subtotal)}</span></div>
+            {vatEnabled && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><span>{t('tax')}</span><span>{fmt(editPreview.vat)}</span></div>
+            )}
+            {editPreview.discountAmount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><span>{t('discountTZS')}</span><span>- {fmt(editPreview.discountAmount)}</span></div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, paddingTop: 8, borderTop: '1px solid var(--outline)' }}>
+              <span>{t('total')}</span><span>{fmt(editPreview.total)}</span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-500)', marginTop: 8 }}>{t('soldBy')}: {editSale.soldBy}</div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button type="button" onClick={onClose} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>
+          <button type="button" onClick={onSave} style={{ flex: 1, padding: '11px', background: 'var(--primary)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>{t('saveChanges')}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function SaleDeleteModal({ t, sale, onConfirm, onClose }) {
+  if (!sale) return null
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 380, boxShadow: 'var(--shadow)' }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--danger-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+          <Trash2 size={22} color="var(--danger)" />
+        </div>
+        <h2 style={{ fontSize: 17, fontWeight: 800, textAlign: 'center', marginBottom: 8 }}>{t('deleteSaleTitle')}</h2>
+        <p style={{ color: 'var(--text-500)', fontSize: 13, textAlign: 'center', marginBottom: 8, lineHeight: 1.6 }}>
+          <strong>{sale.customer}</strong> · {fmt(sale.total)}
+        </p>
+        <p style={{ color: 'var(--text-500)', fontSize: 13, textAlign: 'center', marginBottom: 24, lineHeight: 1.6 }}>{t('deleteSaleMsg')}</p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button type="button" onClick={onClose} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>
+          <button type="button" onClick={onConfirm} style={{ flex: 1, padding: '11px', background: 'var(--danger)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>{t('delete')}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function SaleRowActions({ sale, t, onEdit, onDelete }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+      <button type="button" onClick={() => onEdit(sale)} aria-label={t('edit')} title={t('edit')}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent' }}>
+        <Pencil size={14} />
+      </button>
+      <button type="button" onClick={() => onDelete(sale)} aria-label={t('delete')} title={t('delete')}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent' }}>
+        <Trash2 size={14} />
+      </button>
+    </div>
+  )
+}

@@ -4,7 +4,7 @@ import { useApp, canAccess } from '../App'
 import { useLayoutMode } from '../hooks/useIsCompact'
 import { useT, useLang } from '../i18n/LangContext'
 import {
-  LayoutDashboard, ShoppingCart, Package, Receipt,
+  LayoutDashboard, ShoppingCart, Package, Receipt, History,
   BarChart2, Users, Settings, LogOut, Menu, X
 } from 'lucide-react'
 
@@ -97,6 +97,7 @@ export default function Layout() {
     { to: '/pos',       label: t('pos'),       icon: ShoppingCart },
     { to: '/inventory', label: t('inventory'), icon: Package },
     { to: '/expenses',  label: t('expenses'),  icon: Receipt },
+    { to: '/sales',     label: t('salesHistory'), icon: History },
     { to: '/reports',   label: t('reports'),   icon: BarChart2 },
     { to: '/employees', label: t('employees'), icon: Users },
     { to: '/settings',  label: t('settings'),  icon: Settings },
