@@ -115,6 +115,8 @@ const en = {
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Inventory',
   productsTotal: 'products total',
+  productsTotalLabel: 'Products',
+  totalQuantity: 'Total quantity',
   searchProductsPlaceholder: 'Search products...',
   all: 'All',
   qty: 'QTY',
@@ -377,6 +379,8 @@ const sw = {
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Ghala',
   productsTotal: 'bidhaa jumla',
+  productsTotalLabel: 'Bidhaa',
+  totalQuantity: 'Jumla ya idadi',
   searchProductsPlaceholder: 'Tafuta bidhaa...',
   all: 'Zote',
   qty: 'IDADI',

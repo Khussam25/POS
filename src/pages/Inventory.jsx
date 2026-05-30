@@ -106,6 +106,11 @@ export default function Inventory() {
     setModal(null)
   }
 
+  const totalQty = useMemo(
+    () => data.products.reduce((sum, p) => sum + (Number(p.qty) || 0), 0),
+    [data.products]
+  )
+
   const sortLabels = {
     nameAsc: t('sortNameAZ'),
     nameDesc: t('sortNameZA'),
@@ -117,10 +122,29 @@ export default function Inventory() {
 
   return (
     <div className="r-page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>{t('inventoryTitle')}</h1>
-          <p style={{ color: 'var(--text-500)', fontSize: 13 }}>{data.products.length} {t('productsTotal')}</p>
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 12 }}>{t('inventoryTitle')}</h1>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{
+              background: 'var(--surface)', border: '1.5px solid var(--outline)', borderRadius: 10,
+              padding: '10px 16px', minWidth: 140, boxShadow: 'var(--shadow-sm)',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                {t('productsTotalLabel')}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>{data.products.length}</div>
+            </div>
+            <div style={{
+              background: 'var(--surface)', border: '1.5px solid var(--outline)', borderRadius: 10,
+              padding: '10px 16px', minWidth: 140, boxShadow: 'var(--shadow-sm)',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                {t('totalQuantity')}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-900)' }}>{totalQty.toLocaleString()}</div>
+            </div>
+          </div>
         </div>
         <button onClick={openAdd} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'var(--accent)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>
           <Plus size={15} /> {t('addProductTitle')}
