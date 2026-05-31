@@ -5,6 +5,22 @@ export function roundTz(n) {
   return Math.round(x)
 }
 
+/** USD buying price → TZS (NY sales tax 8.625%, then × 2,650 TZS/USD). */
+export const USD_TO_TZS = 2650
+export const NY_SALES_TAX_RATE = 0.08625
+
+export function buyingUsdToTzs(usd) {
+  const n = Number(usd)
+  if (!Number.isFinite(n) || n <= 0) return 0
+  return roundTz(n * (1 + NY_SALES_TAX_RATE) * USD_TO_TZS)
+}
+
+export function buyingTzsToUsd(tzs) {
+  const n = Number(tzs)
+  if (!Number.isFinite(n) || n <= 0) return 0
+  return n / ((1 + NY_SALES_TAX_RATE) * USD_TO_TZS)
+}
+
 export function fmtMoney(n) {
   return 'TZS ' + roundTz(n).toLocaleString()
 }

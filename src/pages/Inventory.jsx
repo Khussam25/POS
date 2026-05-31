@@ -3,20 +3,12 @@ import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
-import { fmtMoney, roundTz } from '../utils/money'
+import { fmtMoney, roundTz, buyingUsdToTzs, buyingTzsToUsd } from '../utils/money'
 import { Search, Plus, Pencil, Trash2, X, AlertTriangle, ArrowUpDown } from 'lucide-react'
 
 const fmt = fmtMoney
 
 const EMPTY = { name: '', buyingPriceUSD: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10 }
-
-// Buying prices are entered in USD, get NY sales tax added, then convert to TZS.
-const USD_TO_TZS = 2650
-const NY_TAX_RATE = 0.08625
-
-function buyingUsdToTzs(usd) {
-  return roundTz(usd * (1 + NY_TAX_RATE) * USD_TO_TZS)
-}
 
 const SORT_KEYS = ['nameAsc', 'nameDesc', 'qtyDesc', 'qtyAsc', 'profitDesc', 'profitAsc']
 
@@ -97,7 +89,7 @@ export default function Inventory() {
   function openEdit(p) {
     const usd = p.buyingPriceUSD != null
       ? p.buyingPriceUSD
-      : (p.buyingPriceTZS ? p.buyingPriceTZS / ((1 + NY_TAX_RATE) * USD_TO_TZS) : '')
+      : (p.buyingPriceTZS ? String(Math.round(buyingTzsToUsd(p.buyingPriceTZS) * 100) / 100) : '')
     setForm({ ...p, buyingPriceUSD: usd === '' ? '' : String(usd), sellingPriceTZS: String(p.sellingPriceTZS), qty: String(p.qty), lowStockThreshold: String(p.lowStockThreshold) })
     setErrors({})
     setModal('edit')
@@ -291,10 +283,10 @@ export default function Inventory() {
                 <FormField label={t('buyingPriceUSD')} value={form.buyingPriceUSD ?? ''} onChange={buyingPriceUSD => setForm(f => ({ ...f, buyingPriceUSD }))} error={errors.buyingPriceUSD} numeric placeholder="e.g. 14.00" />
                 <FormField label={t('sellingPrice')} value={form.sellingPriceTZS ?? ''} onChange={sellingPriceTZS => setForm(f => ({ ...f, sellingPriceTZS }))} error={errors.sellingPriceTZS} numeric placeholder="e.g. 55000" />
                 {buyingTzsPreview != null && (
-                  <div style={{ gridColumn: '1 / -1', fontSize: 12, color: 'var(--text-500)' }}>
-                    {t('buyingTzsResult')}: <strong style={{ color: 'var(--text-900)' }}>{fmt(buyingTzsPreview)}</strong>
-                    <span style={{ marginLeft: 6, opacity: 0.85 }}>{t('buyingTzsNote')}</span>
-                  </div>
+                  <p style={{ gridColumn: '1 / -1', margin: 0, fontSize: 12, color: 'var(--text-500)' }}>
+                    → <strong style={{ color: 'var(--text-900)' }}>{fmt(buyingTzsPreview)}</strong>
+                    <span style={{ marginLeft: 6 }}>{t('buyingTzsNote')}</span>
+                  </p>
                 )}
               </div>
               {formProfitPreview != null && (
