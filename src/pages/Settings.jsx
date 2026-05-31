@@ -1,4 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
+import {
+  EmailAuthProvider, linkWithCredential, updatePassword,
+  reauthenticateWithCredential, reauthenticateWithPopup,
+} from 'firebase/auth'
+import { auth, googleProvider } from '../firebase'
 import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import { useIsCompact } from '../hooks/useIsCompact'
@@ -91,6 +96,10 @@ export default function Settings() {
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' })
   const [pwError, setPwError] = useState('')
   const [pwSaved, setPwSaved] = useState(false)
+  const [pwLoading, setPwLoading] = useState(false)
+  const [hasPassword, setHasPassword] = useState(
+    () => auth.currentUser?.providerData?.some(p => p.providerId === 'password') ?? false
+  )
   const [logoError, setLogoError] = useState('')
   const logoInputRef = useRef(null)
 
@@ -127,15 +136,68 @@ export default function Settings() {
     reader.readAsDataURL(file)
   }
 
-  function handlePasswordChange() {
-    setPwError('')
-    if (!passwordForm.current) { setPwError('Enter current password'); return }
-    if (!passwordForm.next) { setPwError('Enter new password'); return }
-    if (passwordForm.next !== passwordForm.confirm) { setPwError('Passwords do not match'); return }
-    if (passwordForm.next.length < 6) { setPwError('Password must be at least 6 characters'); return }
-    setPwSaved(true)
-    setPasswordForm({ current: '', next: '', confirm: '' })
-    setTimeout(() => setPwSaved(false), 2500)
+  function mapPwError(err) {
+    switch (err?.code) {
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Current password is incorrect.'
+      case 'auth/weak-password':
+        return 'Password must be at least 6 characters.'
+      case 'auth/requires-recent-login':
+        return 'Please sign out and sign in again, then retry.'
+      case 'auth/credential-already-in-use':
+      case 'auth/email-already-in-use':
+        return 'This email already has a password on another account.'
+      case 'auth/popup-blocked':
+        return 'Popup blocked. Allow popups for this site, then retry.'
+      case 'auth/popup-closed-by-user':
+      case 'auth/cancelled-popup-request':
+        return 'Verification was cancelled. Please try again.'
+      default:
+        return 'Could not update password. Please try again.'
+    }
+  }
+
+  async function handlePasswordChange() {
+    setPwError(''); setPwSaved(false)
+    const { current, next, confirm } = passwordForm
+    if (hasPassword && !current) { setPwError('Enter current password'); return }
+    if (!next) { setPwError('Enter new password'); return }
+    if (next.length < 6) { setPwError('Password must be at least 6 characters'); return }
+    if (next !== confirm) { setPwError('Passwords do not match'); return }
+
+    const user = auth.currentUser
+    if (!user?.email) { setPwError('You are not signed in.'); return }
+
+    setPwLoading(true)
+    try {
+      if (hasPassword) {
+        // Existing password account → re-authenticate, then update.
+        await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, current))
+        await updatePassword(user, next)
+      } else {
+        // Google-only account → link a password credential to the same account.
+        const cred = EmailAuthProvider.credential(user.email, next)
+        try {
+          await linkWithCredential(user, cred)
+        } catch (err) {
+          if (err.code === 'auth/requires-recent-login') {
+            await reauthenticateWithPopup(user, googleProvider)
+            await linkWithCredential(user, cred)
+          } else {
+            throw err
+          }
+        }
+        setHasPassword(true)
+      }
+      setPwSaved(true)
+      setPasswordForm({ current: '', next: '', confirm: '' })
+      setTimeout(() => setPwSaved(false), 4000)
+    } catch (err) {
+      setPwError(mapPwError(err))
+    } finally {
+      setPwLoading(false)
+    }
   }
 
   return (
@@ -271,17 +333,24 @@ export default function Settings() {
                     <div style={{ fontSize: 13, color: 'var(--text-500)' }}>{currentUser.role}</div>
                   </div>
                 </div>
-                <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t('changePassword')}</h3>
+                <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: hasPassword ? 16 : 6 }}>{hasPassword ? t('changePassword') : t('setPassword')}</h3>
+                {!hasPassword && (
+                  <p style={{ fontSize: 13, color: 'var(--text-500)', marginBottom: 16, lineHeight: 1.5 }}>{t('setPasswordDesc')}</p>
+                )}
                 {pwSaved && (
                   <div style={{ background: 'var(--success-light)', color: 'var(--success)', borderRadius: 8, padding: '10px 14px', fontSize: 13, fontWeight: 500, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CheckCircle2 size={15} /> {t('passwordChanged')}
+                    <CheckCircle2 size={15} /> {hasPassword ? t('passwordChanged') : t('passwordSet')}
                   </div>
                 )}
                 {pwError && (
                   <div style={{ background: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, fontWeight: 500, marginBottom: 16 }}>{pwError}</div>
                 )}
                 <div style={{ display: 'grid', gap: 12 }}>
-                  {[[t('currentPassword'), 'current'], [t('newPasswordLabel'), 'next'], [t('confirmPassword'), 'confirm']].map(([label, field]) => (
+                  {[
+                    ...(hasPassword ? [[t('currentPassword'), 'current']] : []),
+                    [t('newPasswordLabel'), 'next'],
+                    [t('confirmPassword'), 'confirm'],
+                  ].map(([label, field]) => (
                     <div key={field}>
                       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{label}</label>
                       <FormInput type="password" value={passwordForm[field]} onChange={e => setPasswordForm(f => ({ ...f, [field]: e.target.value }))} placeholder="••••••••"
@@ -289,8 +358,8 @@ export default function Settings() {
                     </div>
                   ))}
                 </div>
-                <button onClick={handlePasswordChange} style={{ marginTop: 20, padding: '11px 22px', background: 'var(--primary)', color: 'white', borderRadius: 8, fontWeight: 700, fontSize: 13 }}>
-                  {t('changePassword')}
+                <button onClick={handlePasswordChange} disabled={pwLoading} style={{ marginTop: 20, padding: '11px 22px', background: 'var(--primary)', color: 'white', borderRadius: 8, fontWeight: 700, fontSize: 13, opacity: pwLoading ? 0.7 : 1 }}>
+                  {pwLoading ? t('signingIn') : (hasPassword ? t('changePassword') : t('setPassword'))}
                 </button>
               </div>
             )}
