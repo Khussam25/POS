@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
 import { useT } from '../i18n/LangContext'
-import { ShoppingBag, TrendingUp, Receipt, Package2, Plus, ShoppingCart, BarChart2, AlertTriangle, AlertCircle, ArrowRight, Circle } from 'lucide-react'
+import { ShoppingBag, Plus, ShoppingCart, BarChart2, AlertTriangle, AlertCircle, ArrowRight, Circle } from 'lucide-react'
 import { fmtMoney, saleNetRevenue, saleCogs } from '../utils/money'
 
 const fmt = fmtMoney
@@ -26,6 +26,7 @@ export default function Dashboard() {
   const { currentUser, data } = useApp()
   const navigate = useNavigate()
   const t = useT()
+  const isAdmin = currentUser.role === 'Admin'
   const today = new Date().toISOString().split('T')[0]
   const now = new Date()
   const hour = now.getHours()
@@ -71,8 +72,8 @@ export default function Dashboard() {
       {/* Stat cards */}
       <div className="r-stats">
         <StatCard label={t('todaySales')} value={fmt(todayRevenue)} sub={`${todaySales.length} ${todaySales.length !== 1 ? t('transactions') : t('transaction')}`} subColor="#1E4E8C" />
-        <StatCard label={t('todayProfit')} value={fmt(todayProfit)} sub={t('afterExpenses')} subColor={todayProfit >= 0 ? '#1A9E6B' : 'var(--danger)'} />
-        <StatCard label={t('todayExpenses')} value={fmt(todayExpenses)} sub={`${data.expenses.filter(e => e.date === today).length} ${t('expenseRecorded')}`} subColor="#E07B20" />
+        {isAdmin && <StatCard label={t('todayProfit')} value={fmt(todayProfit)} sub={t('afterExpenses')} subColor={todayProfit >= 0 ? '#1A9E6B' : 'var(--danger)'} />}
+        {isAdmin && <StatCard label={t('todayExpenses')} value={fmt(todayExpenses)} sub={`${data.expenses.filter(e => e.date === today).length} ${t('expenseRecorded')}`} subColor="#E07B20" />}
         <StatCard label={t('stockValue')} value={fmt(stockValue)} sub={t('allProducts')} subColor="#7A8694" />
       </div>
 
@@ -83,15 +84,21 @@ export default function Dashboard() {
           <button onClick={() => navigate('/pos')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 'var(--radius-sm)', background: 'var(--accent)', color: 'white', fontWeight: 600, fontSize: 13, transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}>
             <ShoppingCart size={15} /> {t('newSale')}
           </button>
-          <button onClick={() => navigate('/inventory')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', color: 'var(--text-900)', fontWeight: 600, fontSize: 13, transition: 'all 0.15s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
-            <Plus size={15} /> {t('addProduct')}
-          </button>
-          <button onClick={() => navigate('/expenses')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', color: 'var(--text-900)', fontWeight: 600, fontSize: 13, transition: 'all 0.15s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
-            <Plus size={15} /> {t('addExpense')}
-          </button>
-          <button onClick={() => navigate('/reports')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', color: 'var(--text-900)', fontWeight: 600, fontSize: 13, transition: 'all 0.15s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
-            <BarChart2 size={15} /> {t('financialStatement')}
-          </button>
+          {isAdmin && (
+            <button onClick={() => navigate('/inventory')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', color: 'var(--text-900)', fontWeight: 600, fontSize: 13, transition: 'all 0.15s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
+              <Plus size={15} /> {t('addProduct')}
+            </button>
+          )}
+          {isAdmin && (
+            <button onClick={() => navigate('/expenses')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', color: 'var(--text-900)', fontWeight: 600, fontSize: 13, transition: 'all 0.15s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
+              <Plus size={15} /> {t('addExpense')}
+            </button>
+          )}
+          {isAdmin && (
+            <button onClick={() => navigate('/reports')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', color: 'var(--text-900)', fontWeight: 600, fontSize: 13, transition: 'all 0.15s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
+              <BarChart2 size={15} /> {t('financialStatement')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -156,27 +163,29 @@ export default function Dashboard() {
       </div>
 
       {/* Monthly Summary */}
-      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '20px 22px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>
-          {t('monthlySummary')} — {now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-        </div>
-        <div className="r-three-col">
-          <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '16px 18px' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-500)', marginBottom: 6 }}>{t('totalRevenue')}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.02em' }}>{fmt(monthRevenue)}</div>
+      {isAdmin && (
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '20px 22px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>
+            {t('monthlySummary')} — {now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
           </div>
-          <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '16px 18px' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-500)', marginBottom: 6 }}>{t('totalExpenses')}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--warning)', letterSpacing: '-0.02em' }}>{fmt(monthExpenses)}</div>
-          </div>
-          <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '16px 18px' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-500)', marginBottom: 6 }}>{t('netProfit')}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: monthProfit >= 0 ? 'var(--success)' : 'var(--danger)', letterSpacing: '-0.02em' }}>
-              {monthProfit < 0 ? '- ' : ''}{fmt(Math.abs(monthProfit))}
+          <div className="r-three-col">
+            <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '16px 18px' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-500)', marginBottom: 6 }}>{t('totalRevenue')}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.02em' }}>{fmt(monthRevenue)}</div>
+            </div>
+            <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '16px 18px' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-500)', marginBottom: 6 }}>{t('totalExpenses')}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--warning)', letterSpacing: '-0.02em' }}>{fmt(monthExpenses)}</div>
+            </div>
+            <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '16px 18px' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-500)', marginBottom: 6 }}>{t('netProfit')}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: monthProfit >= 0 ? 'var(--success)' : 'var(--danger)', letterSpacing: '-0.02em' }}>
+                {monthProfit < 0 ? '- ' : ''}{fmt(Math.abs(monthProfit))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

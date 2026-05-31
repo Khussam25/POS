@@ -31,12 +31,12 @@ export function useApp() { return useContext(AppContext) }
 // Define which roles can access each route
 export const PERMISSIONS = {
   '/pos':        ['Admin', 'Cashier'],
-  '/inventory':  ['Admin'],
-  '/expenses':   ['Admin', 'Cashier'],
+  '/inventory':  ['Admin', 'Cashier'],
+  '/expenses':   ['Admin'],
   '/sales':      ['Admin'],
   '/reports':    ['Admin'],
   '/employees':  ['Admin'],
-  '/settings':   ['Admin'],
+  '/settings':   ['Admin', 'Cashier'],
   // '/' dashboard is open to all authenticated users
 }
 

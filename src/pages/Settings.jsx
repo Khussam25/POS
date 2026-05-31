@@ -69,7 +69,9 @@ export default function Settings() {
   const t = useT()
   const isCompact = useIsCompact()
   const fieldLayout = isCompact ? 'stack' : 'row'
-  const [section, setSection] = useState('store')
+  const isAdmin = currentUser.role === 'Admin'
+  const sections = isAdmin ? SECTIONS : SECTIONS.filter(s => s.key === 'account')
+  const [section, setSection] = useState(isAdmin ? 'store' : 'account')
   const [form, setForm] = useState(() => settingsToForm(data.settings))
   const formDirtyRef = useRef(false)
   const [saved, setSaved] = useState(false)
@@ -226,7 +228,7 @@ export default function Settings() {
         {/* Sidebar */}
         <div className="settings-nav" style={{ width: 220, flexShrink: 0 }}>
           <div className="settings-nav-inner" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 8, boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {SECTIONS.map(({ key, labelKey, icon: Icon }) => (
+            {sections.map(({ key, labelKey, icon: Icon }) => (
               <button key={key} onClick={() => setSection(key)} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
                 borderRadius: 8, fontSize: 13, fontWeight: 600, textAlign: 'left', transition: 'all 0.15s',

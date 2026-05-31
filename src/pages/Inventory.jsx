@@ -46,8 +46,9 @@ function sortProducts(list, sortKey) {
 }
 
 export default function Inventory() {
-  const { data, updateData } = useApp()
+  const { currentUser, data, updateData } = useApp()
   const t = useT()
+  const isAdmin = currentUser.role === 'Admin'
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [sortKey, setSortKey] = useState('nameAsc')
@@ -144,9 +145,11 @@ export default function Inventory() {
             </div>
           </div>
         </div>
-        <button onClick={openAdd} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'var(--accent)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>
-          <Plus size={15} /> {t('addProductTitle')}
-        </button>
+        {isAdmin && (
+          <button onClick={openAdd} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'var(--accent)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>
+            <Plus size={15} /> {t('addProductTitle')}
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -166,7 +169,7 @@ export default function Inventory() {
               maxWidth: 220,
             }}
           >
-            {SORT_KEYS.map(key => (
+            {(isAdmin ? SORT_KEYS : SORT_KEYS.filter(k => k !== 'profitDesc' && k !== 'profitAsc')).map(key => (
               <option key={key} value={key}>{sortLabels[key]}</option>
             ))}
           </select>
@@ -188,7 +191,10 @@ export default function Inventory() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-              {[t('productName'), t('qty'), t('buyingPrice'), t('sellingPrice'), t('profitPerUnit'), t('stockStatus'), ''].map(h => (
+              {(isAdmin
+                ? [t('productName'), t('qty'), t('buyingPrice'), t('sellingPrice'), t('profitPerUnit'), t('stockStatus'), '']
+                : [t('productName'), t('qty'), t('sellingPrice'), t('stockStatus')]
+              ).map(h => (
                 <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 1 }}>{h}</th>
               ))}
             </tr>
@@ -212,9 +218,9 @@ export default function Inventory() {
                       {isLow && <AlertTriangle size={13} color="var(--warning)" />}
                     </div>
                   </td>
-                  <td style={{ padding: '11px 12px', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(p.buyingPriceTZS)}</td>
+                  {isAdmin && <td style={{ padding: '11px 12px', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(p.buyingPriceTZS)}</td>}
                   <td style={{ padding: '11px 12px', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(p.sellingPriceTZS)}</td>
-                  <td style={{ padding: '11px 12px', fontWeight: 700, fontSize: 13, color: profitColor, whiteSpace: 'nowrap' }}>{fmt(profit)}</td>
+                  {isAdmin && <td style={{ padding: '11px 12px', fontWeight: 700, fontSize: 13, color: profitColor, whiteSpace: 'nowrap' }}>{fmt(profit)}</td>}
                   <td style={{ padding: '11px 12px' }}>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
@@ -222,27 +228,29 @@ export default function Inventory() {
                       color: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)'
                     }}>{isOut ? t('outOfStock') : isLow ? t('lowStock') : t('inStock')}</span>
                   </td>
-                  <td style={{ padding: '11px 8px 11px 12px', width: 72 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
-                      <button type="button" onClick={() => openEdit(p)} aria-label={t('edit')} title={t('edit')}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent', transition: 'all 0.15s' }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-500)' }}>
-                        <Pencil size={14} />
-                      </button>
-                      <button type="button" onClick={() => setDeleteTarget(p)} aria-label={t('delete')} title={t('delete')}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent', transition: 'all 0.15s' }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)' }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-500)' }}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
+                  {isAdmin && (
+                    <td style={{ padding: '11px 8px 11px 12px', width: 72 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                        <button type="button" onClick={() => openEdit(p)} aria-label={t('edit')} title={t('edit')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent', transition: 'all 0.15s' }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-500)' }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button type="button" onClick={() => setDeleteTarget(p)} aria-label={t('delete')} title={t('delete')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent', transition: 'all 0.15s' }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-500)' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               )
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noProductsFound')}</td></tr>
+              <tr><td colSpan={isAdmin ? 7 : 4} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noProductsFound')}</td></tr>
             )}
           </tbody>
         </table>
