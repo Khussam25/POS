@@ -162,12 +162,12 @@ export default function Expenses() {
         <div style={{ fontSize: 13, fontWeight: 700 }}>{t('totalLabel')}: <span style={{ color: 'var(--primary)' }}>{fmt(total)}</span></div>
       </div>
 
-      <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
+      <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
               {[t('dateLabel'), t('categoryLabel'), t('descriptionLabel'), t('amountTZS'), t('addedBy'), ''].map(h => (
-                <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</th>
+                <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase', position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 1 }}>{h}</th>
               ))}
             </tr>
           </thead>

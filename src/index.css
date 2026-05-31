@@ -259,6 +259,15 @@ input[type=number] { -moz-appearance: textfield; }
   min-height: 100dvh;
 }
 
+/* On the POS route, lock the column to the viewport so the product list and
+   order panel scroll internally instead of stretching the page. */
+.app-main-column--pos {
+  min-height: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
 .app-sidebar {
   width: 260px;
   flex-shrink: 0;

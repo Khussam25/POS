@@ -83,12 +83,12 @@ export default function Sales() {
         </div>
       </div>
 
-      <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
+      <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
               {[t('dateLabel'), t('customer'), t('itemsCol'), t('payment'), t('amount'), t('soldBy'), ''].map(h => (
-                <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: h ? 'nowrap' : undefined }}>{h}</th>
+                <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: h ? 'nowrap' : undefined, position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 1 }}>{h}</th>
               ))}
             </tr>
           </thead>

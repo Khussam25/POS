@@ -211,7 +211,7 @@ export default function Layout() {
         <SidebarPanel sticky showActiveDot />
       )}
 
-      <div className="app-main-column">
+      <div className={`app-main-column ${isPosRoute ? 'app-main-column--pos' : ''}`}>
         <header className={`no-print app-topbar ${isPhone ? 'app-topbar--phone' : ''}`}>
           {(showCompactHeader || isDesktop) && (
             <button
