@@ -118,8 +118,8 @@ export default function Inventory() {
   }
 
   const totalQty = useMemo(
-    () => data.products.reduce((sum, p) => sum + (Number(p.qty) || 0), 0),
-    [data.products]
+    () => filtered.reduce((sum, p) => sum + (Number(p.qty) || 0), 0),
+    [filtered]
   )
 
   const sortLabels = {
@@ -144,7 +144,7 @@ export default function Inventory() {
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
                 {t('productsTotalLabel')}
               </div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>{data.products.length}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>{filtered.length}</div>
             </div>
             <div style={{
               background: 'var(--surface)', border: '1.5px solid var(--outline)', borderRadius: 10,
@@ -210,12 +210,12 @@ export default function Inventory() {
         </select>
       </div>
 
-      <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
+      <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
               {[t('productName'), t('qty'), t('buyingPrice'), t('sellingPrice'), t('profitPerUnit'), t('stockStatus'), ''].map(h => (
-                <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 1 }}>{h}</th>
               ))}
             </tr>
           </thead>

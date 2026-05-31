@@ -133,7 +133,7 @@ export default function Dashboard() {
             <div style={{ fontWeight: 700, fontSize: 15 }}>{t('lowStockAlerts')}</div>
             {lowStockAlerts.length > 0 && <span style={{ background: 'var(--accent)', color: 'white', borderRadius: 999, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{lowStockAlerts.length}</span>}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 340, overflowY: 'auto', paddingRight: 4 }}>
             {lowStockAlerts.length === 0 && <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--success)', fontSize: 13, fontWeight: 500 }}>{t('wellStocked')}</div>}
             {lowStockAlerts.map(p => (
               <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
