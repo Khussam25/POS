@@ -224,6 +224,8 @@ const en = {
   fullName: 'Full Name',
   initialPassword: 'Set initial password',
   usernameTaken: 'Username taken',
+  deleteUserTitle: 'Remove User?',
+  deleteUserMsg: 'will be permanently removed and will lose access. This cannot be undone.',
 
   // ── Settings ─────────────────────────────────────────────────────────────
   settingsTitle: 'Settings',
@@ -497,6 +499,8 @@ const sw = {
   fullName: 'Jina Kamili',
   initialPassword: 'Weka nywila ya awali',
   usernameTaken: 'Jina la mtumiaji limechukuliwa',
+  deleteUserTitle: 'Ondoa Mtumiaji?',
+  deleteUserMsg: 'ataondolewa kabisa na atapoteza ufikiaji. Hii haiwezi kutenduliwa.',
 
   // ── Settings ─────────────────────────────────────────────────────────────
   settingsTitle: 'Mipangilio',

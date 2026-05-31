@@ -4,10 +4,10 @@ import { useRefreshDataOnMount } from '../hooks/useRefreshData'
 import { useT } from '../i18n/LangContext'
 import FormField from '../components/FormField'
 import { formatPhoneDisplay } from '../utils/phone'
-import { Plus, Pencil, X, Shield, CreditCard } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Shield, CreditCard } from 'lucide-react'
 
 const ROLES = ['Admin', 'Cashier', 'Manager']
-const EMPTY = { name: '', role: 'Cashier', phone: '', username: '', status: 'Active' }
+const EMPTY = { name: '', email: '', role: 'Cashier', phone: '', username: '', status: 'Active' }
 
 function getInitials(name) { return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) }
 function getColor(role) { return role === 'Admin' ? '#C92B36' : '#1E4E8C' }
@@ -19,13 +19,21 @@ export default function Employees() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const modalRef = useRef(null)
+
+  function confirmDelete() {
+    if (!deleteTarget) return
+    updateData('employees', data.employees.filter(e => e.id !== deleteTarget.id))
+    setDeleteTarget(null)
+  }
 
   function openAdd() { setForm(EMPTY); setErrors({}); setModal('add') }
   function openEdit(emp) {
     setForm({
       id: emp.id,
       name: emp.name ?? '',
+      email: emp.email ?? '',
       role: emp.role ?? 'Cashier',
       phone: formatPhoneDisplay(emp.phone ?? ''),
       username: emp.username ?? '',
@@ -47,6 +55,8 @@ export default function Employees() {
   function validate() {
     const e = {}
     if (!form.name.trim()) e.name = 'Required'
+    if (!form.email.trim()) e.email = 'Required'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = 'Invalid email'
     if (!form.username.trim()) e.username = 'Required'
     if (!form.phone.trim()) e.phone = 'Required'
     if (modal === 'add' && !form.password) e.password = 'Required'
@@ -59,12 +69,15 @@ export default function Employees() {
     if (modal === 'add') {
       const exists = data.employees.some(e => e.username === form.username.trim())
       if (exists) { setErrors(e => ({ ...e, username: 'Username taken' })); return }
-      const emp = { id: 'emp' + Date.now(), name: form.name.trim(), role: form.role, phone: form.phone.trim(), username: form.username.trim(), status: form.status, initials: getInitials(form.name), color: getColor(form.role) }
+      const emailTaken = data.employees.some(e => e.email?.toLowerCase() === form.email.trim().toLowerCase())
+      if (emailTaken) { setErrors(e => ({ ...e, email: 'Email taken' })); return }
+      const emp = { id: 'emp' + Date.now(), name: form.name.trim(), email: form.email.trim().toLowerCase(), role: form.role, phone: form.phone.trim(), username: form.username.trim(), status: form.status, initials: getInitials(form.name), color: getColor(form.role) }
       updateData('employees', [...data.employees, emp])
     } else {
       updateData('employees', data.employees.map(e => e.id === form.id ? {
         ...e,
         name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
         role: form.role,
         phone: form.phone.trim(),
         username: form.username.trim(),
@@ -139,6 +152,14 @@ export default function Employees() {
                 }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
                   <Pencil size={13} /> {t('edit')}
                 </button>
+                {emp.id !== currentUser.id && (
+                  <button onClick={() => setDeleteTarget(emp)} style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    padding: '8px', border: '1.5px solid var(--outline)', borderRadius: 8, fontSize: 12, fontWeight: 600, transition: 'all 0.15s', color: 'var(--text-900)'
+                  }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
+                    <Trash2 size={13} /> {t('delete')}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -156,6 +177,7 @@ export default function Employees() {
             <div style={{ display: 'grid', gap: 14 }}>
               <FormField label={t('fullName')} value={form.name} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. Amina Hassan" />
               <FormField label={t('username')} value={form.username} onChange={username => setForm(f => ({ ...f, username }))} error={errors.username} placeholder="e.g. amina.hassan" />
+              <FormField label={t('emailAddressLabel')} type="email" value={form.email} onChange={email => setForm(f => ({ ...f, email }))} error={errors.email} placeholder={t('emailPlaceholder')} />
               <FormField label={t('phone')} phone value={form.phone} onChange={phone => setForm(f => ({ ...f, phone }))} error={errors.phone} placeholder="+255 712 345 678" />
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('role')}</label>
@@ -179,6 +201,22 @@ export default function Employees() {
               <button onClick={save} style={{ flex: 1, padding: '11px', background: 'var(--primary)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>
                 {modal === 'add' ? t('addEmployee') : t('saveChanges')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 400, boxShadow: 'var(--shadow)' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>{t('deleteUserTitle')}</h2>
+            <p style={{ fontSize: 14, color: 'var(--text-500)', marginBottom: 24 }}>
+              <strong style={{ color: 'var(--text-900)' }}>{deleteTarget.name}</strong> {t('deleteUserMsg')}
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setDeleteTarget(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>
+              <button onClick={confirmDelete} style={{ flex: 1, padding: '11px', background: 'var(--danger)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>{t('delete')}</button>
             </div>
           </div>
         </div>
