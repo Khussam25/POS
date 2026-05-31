@@ -52,7 +52,7 @@ export default function OrderCheckout({
             placeholder="0"
             style={{ width: compact ? 72 : 90, textAlign: 'right' }}
           />
-          {discountAmount > 0 && (
+          {discountAmount > 0 && discountAmount < (parseFloat(discountValue) || 0) && (
             <span style={{ fontSize: compact ? 11 : 13, fontWeight: 600, color: 'var(--success)', whiteSpace: 'nowrap' }}>
               - {fmt(discountAmount)}
             </span>

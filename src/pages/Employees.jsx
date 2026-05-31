@@ -2,10 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../App'
 import { useRefreshDataOnMount } from '../hooks/useRefreshData'
 import { useT } from '../i18n/LangContext'
-import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
 import { formatPhoneDisplay } from '../utils/phone'
-import { Plus, Pencil, RefreshCw, X, Shield, CreditCard } from 'lucide-react'
+import { Plus, Pencil, X, Shield, CreditCard } from 'lucide-react'
 
 const ROLES = ['Admin', 'Cashier', 'Manager']
 const EMPTY = { name: '', role: 'Cashier', phone: '', username: '', status: 'Active' }
@@ -20,8 +19,6 @@ export default function Employees() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
-  const [resetModal, setResetModal] = useState(null)
-  const [newPassword, setNewPassword] = useState('')
   const modalRef = useRef(null)
 
   function openAdd() { setForm(EMPTY); setErrors({}); setModal('add') }
@@ -77,12 +74,6 @@ export default function Employees() {
       } : e))
     }
     setModal(null)
-  }
-
-  function resetPassword() {
-    if (!newPassword) return
-    setResetModal(null)
-    setNewPassword('')
   }
 
   return (
@@ -142,12 +133,6 @@ export default function Employees() {
                 }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
                   <Pencil size={13} /> {t('edit')}
                 </button>
-                <button onClick={() => { setResetModal(emp); setNewPassword('') }} style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  padding: '8px', border: '1.5px solid var(--outline)', borderRadius: 8, fontSize: 12, fontWeight: 600, transition: 'all 0.15s', color: 'var(--text-900)'
-                }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--outline)'; e.currentTarget.style.color = 'var(--text-900)' }}>
-                  <RefreshCw size={13} /> {t('resetPassword')}
-                </button>
               </div>
             )}
           </div>
@@ -193,24 +178,6 @@ export default function Employees() {
         </div>
       )}
 
-      {/* Reset Password Modal */}
-      {resetModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 360, boxShadow: 'var(--shadow)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 800 }}>{t('resetPassword')}</h2>
-              <button onClick={() => setResetModal(null)} style={{ color: 'var(--text-500)', padding: 4 }}><X size={18} /></button>
-            </div>
-            <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 16 }}>{t('setNewPassword')} <strong>{resetModal.name}</strong></p>
-            <FormInput type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder={t('newPassword')}
-              selectOnFocus={false} style={{ marginBottom: 16 }} />
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setResetModal(null)} style={{ flex: 1, padding: '10px', border: '1.5px solid var(--outline)', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>
-              <button onClick={resetPassword} style={{ flex: 1, padding: '10px', background: 'var(--primary)', color: 'white', borderRadius: 8, fontWeight: 700, fontSize: 13 }}>{t('resetPassword')}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
