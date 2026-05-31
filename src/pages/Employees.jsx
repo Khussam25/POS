@@ -92,7 +92,13 @@ export default function Employees() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 20 }}>
-        {data.employees.map(emp => (
+        {[...data.employees]
+          .sort((a, b) => {
+            const ra = a.name?.toLowerCase().startsWith('rhoda') ? 0 : 1
+            const rb = b.name?.toLowerCase().startsWith('rhoda') ? 0 : 1
+            return ra - rb
+          })
+          .map(emp => (
           <div key={`${emp.id}-${dataRevision}`} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '22px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
