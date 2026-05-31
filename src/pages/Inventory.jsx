@@ -4,13 +4,11 @@ import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
 import { fmtMoney, roundTz } from '../utils/money'
-import { Search, Plus, Pencil, Trash2, X, AlertTriangle, ArrowUpDown, Filter } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, X, AlertTriangle, ArrowUpDown } from 'lucide-react'
 
 const fmt = fmtMoney
 
-const CATEGORIES = ['Moisturizers', 'Serums', 'Eye Care', 'Sunscreen', 'Foundation', 'Lip Care', 'Body Care', 'Body Wash', 'Toners', 'Cleansers', 'Other']
-
-const EMPTY = { name: '', category: 'Moisturizers', buyingPriceTZS: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10 }
+const EMPTY = { name: '', buyingPriceTZS: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10 }
 
 const SORT_KEYS = ['nameAsc', 'nameDesc', 'qtyDesc', 'qtyAsc', 'profitDesc', 'profitAsc']
 
@@ -52,7 +50,6 @@ export default function Inventory() {
   const t = useT()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
-  const [categoryFilter, setCategoryFilter] = useState('all')
   const [sortKey, setSortKey] = useState('nameAsc')
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
@@ -66,24 +63,14 @@ export default function Inventory() {
     return () => clearTimeout(timer)
   }, [modal])
 
-  const categoryOptions = useMemo(() => {
-    const fromProducts = new Set(data.products.map(p => p.category).filter(Boolean))
-    const merged = [...CATEGORIES]
-    fromProducts.forEach(c => {
-      if (!merged.includes(c)) merged.push(c)
-    })
-    return merged
-  }, [data.products])
-
   const filtered = useMemo(() => {
     const list = data.products.filter(p => {
-      const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase())
+      const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase())
       const matchFilter = filter === 'all' || (filter === 'inStock' && p.qty > p.lowStockThreshold) || (filter === 'lowStock' && p.qty > 0 && p.qty <= p.lowStockThreshold) || (filter === 'outOfStock' && p.qty === 0)
-      const matchCategory = categoryFilter === 'all' || p.category === categoryFilter
-      return matchSearch && matchFilter && matchCategory
+      return matchSearch && matchFilter
     })
     return sortProducts(list, sortKey)
-  }, [data.products, search, filter, categoryFilter, sortKey])
+  }, [data.products, search, filter, sortKey])
 
   const formProfitPreview = useMemo(() => {
     const buy = parseFloat(form.buyingPriceTZS)
@@ -195,19 +182,6 @@ export default function Inventory() {
             border: filter === key ? 'none' : '1.5px solid var(--outline)'
           }}>{label}</button>
         ))}
-        <Filter size={15} color="var(--text-500)" aria-hidden />
-        <select
-          className="form-select"
-          value={categoryFilter}
-          onChange={e => setCategoryFilter(e.target.value)}
-          aria-label={t('category')}
-          style={{ width: 'auto', minWidth: 160 }}
-        >
-          <option value="all">{t('allCategories')}</option>
-          {categoryOptions.map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
       </div>
 
       <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
@@ -231,7 +205,6 @@ export default function Inventory() {
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <td style={{ padding: '11px 12px' }}>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-500)', marginTop: 2 }}>{p.category}</div>
                   </td>
                   <td style={{ padding: '11px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -284,12 +257,6 @@ export default function Inventory() {
             </div>
             <div style={{ display: 'grid', gap: 14 }}>
               <FormField label={t('productName')} value={form.name ?? ''} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. CeraVe Moisturizing Cream" />
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('category')}</label>
-                <select className="form-select" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label={t('buyingPrice')} value={form.buyingPriceTZS ?? ''} onChange={buyingPriceTZS => setForm(f => ({ ...f, buyingPriceTZS }))} error={errors.buyingPriceTZS} numeric placeholder="e.g. 37000" />
                 <FormField label={t('sellingPrice')} value={form.sellingPriceTZS ?? ''} onChange={sellingPriceTZS => setForm(f => ({ ...f, sellingPriceTZS }))} error={errors.sellingPriceTZS} numeric placeholder="e.g. 55000" />

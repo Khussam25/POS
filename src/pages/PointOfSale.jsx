@@ -65,10 +65,7 @@ export default function PointOfSale() {
   const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0
 
   const products = data.products.filter(p =>
-    p.qty > 0 && (
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.category.toLowerCase().includes(search.toLowerCase())
-    )
+    p.qty > 0 && p.name.toLowerCase().includes(search.toLowerCase())
   )
 
   function addToCart(product) {
@@ -212,7 +209,6 @@ export default function PointOfSale() {
                   <div key={p.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '12px 14px', border: '1px solid var(--outline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>{p.name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-500)' }}>{p.category}</div>
                       <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>{fmt(p.sellingPriceTZS)}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, marginLeft: 12 }}>
@@ -312,7 +308,7 @@ export default function PointOfSale() {
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--surface)', borderRadius: 'var(--radius)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
             <thead>
               <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-                {[t('productName'), t('category'), t('priceTZS'), t('stock'), ''].map(h => (
+                {[t('productName'), t('priceTZS'), t('stock'), ''].map(h => (
                   <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</th>
                 ))}
               </tr>
@@ -325,7 +321,6 @@ export default function PointOfSale() {
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <td style={{ padding: '13px 16px', fontWeight: 600, fontSize: 13 }}>{p.name}</td>
-                    <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--text-500)' }}>{p.category}</td>
                     <td style={{ padding: '13px 16px', fontWeight: 700, fontSize: 13 }}>{fmt(p.sellingPriceTZS)}</td>
                     <td style={{ padding: '13px 16px' }}>
                       <span style={{
@@ -349,7 +344,7 @@ export default function PointOfSale() {
                 )
               })}
               {products.length === 0 && (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noProductsFound')}</td></tr>
+                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noProductsFound')}</td></tr>
               )}
             </tbody>
           </table>
