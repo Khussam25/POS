@@ -366,7 +366,7 @@ export default function PointOfSale() {
             <span style={{ fontWeight: 700, fontSize: 15 }}>{t('currentOrder')}</span>
           </div>
           {cart.length > 0 && (
-            <button onClick={() => setCart([])} style={{
+            <button onClick={() => { setCart([]); setDiscountValue('') }} style={{
               background: 'rgba(255,255,255,0.18)', color: 'white', borderRadius: 999,
               padding: '4px 12px', fontSize: 12, fontWeight: 600, transition: 'background 0.15s'
             }}

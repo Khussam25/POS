@@ -47,8 +47,8 @@ export default function OrderCheckout({
           <FormInput
             numeric
             variant="compact"
-            value={discountValue}
-            onChange={e => setDiscountValue(e.target.value)}
+            value={discountValue === '' ? '' : Number(discountValue).toLocaleString('en-US')}
+            onChange={e => setDiscountValue(e.target.value.replace(/[^\d]/g, ''))}
             placeholder="0"
             style={{ width: compact ? 72 : 90, textAlign: 'right' }}
           />
