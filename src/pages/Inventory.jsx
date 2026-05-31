@@ -8,7 +8,15 @@ import { Search, Plus, Pencil, Trash2, X, AlertTriangle, ArrowUpDown } from 'luc
 
 const fmt = fmtMoney
 
-const EMPTY = { name: '', buyingPriceTZS: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10 }
+const EMPTY = { name: '', buyingPriceUSD: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10 }
+
+// Buying prices are entered in USD, get NY sales tax added, then convert to TZS.
+const USD_TO_TZS = 2650
+const NY_TAX_RATE = 0.08625
+
+function buyingUsdToTzs(usd) {
+  return roundTz(usd * (1 + NY_TAX_RATE) * USD_TO_TZS)
+}
 
 const SORT_KEYS = ['nameAsc', 'nameDesc', 'qtyDesc', 'qtyAsc', 'profitDesc', 'profitAsc']
 
@@ -73,20 +81,32 @@ export default function Inventory() {
     return sortProducts(list, sortKey)
   }, [data.products, search, filter, sortKey])
 
+  const buyingTzsPreview = useMemo(() => {
+    const usd = parseFloat(form.buyingPriceUSD)
+    if (!Number.isFinite(usd) || usd <= 0) return null
+    return buyingUsdToTzs(usd)
+  }, [form.buyingPriceUSD])
+
   const formProfitPreview = useMemo(() => {
-    const buy = parseFloat(form.buyingPriceTZS)
     const sell = parseFloat(form.sellingPriceTZS)
-    if (!Number.isFinite(buy) || !Number.isFinite(sell) || buy <= 0 || sell <= 0) return null
-    return roundTz(sell - buy)
-  }, [form.buyingPriceTZS, form.sellingPriceTZS])
+    if (buyingTzsPreview == null || !Number.isFinite(sell) || sell <= 0) return null
+    return roundTz(sell - buyingTzsPreview)
+  }, [buyingTzsPreview, form.sellingPriceTZS])
 
   function openAdd() { setForm(EMPTY); setErrors({}); setModal('add') }
-  function openEdit(p) { setForm({ ...p, buyingPriceTZS: String(p.buyingPriceTZS), sellingPriceTZS: String(p.sellingPriceTZS), qty: String(p.qty), lowStockThreshold: String(p.lowStockThreshold) }); setErrors({}); setModal('edit') }
+  function openEdit(p) {
+    const usd = p.buyingPriceUSD != null
+      ? p.buyingPriceUSD
+      : (p.buyingPriceTZS ? p.buyingPriceTZS / ((1 + NY_TAX_RATE) * USD_TO_TZS) : '')
+    setForm({ ...p, buyingPriceUSD: usd === '' ? '' : String(usd), sellingPriceTZS: String(p.sellingPriceTZS), qty: String(p.qty), lowStockThreshold: String(p.lowStockThreshold) })
+    setErrors({})
+    setModal('edit')
+  }
 
   function validate() {
     const e = {}
     if (!form.name.trim()) e.name = 'Required'
-    if (form.buyingPriceTZS && (isNaN(form.buyingPriceTZS) || +form.buyingPriceTZS < 0)) e.buyingPriceTZS = 'Enter valid price'
+    if (form.buyingPriceUSD && (isNaN(form.buyingPriceUSD) || +form.buyingPriceUSD < 0)) e.buyingPriceUSD = 'Enter valid price'
     if (!form.sellingPriceTZS || isNaN(form.sellingPriceTZS) || +form.sellingPriceTZS <= 0) e.sellingPriceTZS = 'Enter valid price'
     if (!form.qty || isNaN(form.qty) || +form.qty < 0) e.qty = 'Enter valid qty'
     setErrors(e)
@@ -95,12 +115,14 @@ export default function Inventory() {
 
   function save() {
     if (!validate()) return
+    const buyingPriceUSD = +form.buyingPriceUSD || 0
+    const buyingPriceTZS = buyingUsdToTzs(buyingPriceUSD)
     if (modal === 'add') {
       const id = nextProductId(data.products)
-      const newProduct = { ...form, id, sku: id, buyingPriceTZS: +form.buyingPriceTZS || 0, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 }
+      const newProduct = { ...form, id, sku: id, buyingPriceUSD, buyingPriceTZS, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 }
       updateData('products', [newProduct, ...data.products])
     } else {
-      updateData('products', data.products.map(p => p.id === form.id ? { ...form, buyingPriceTZS: +form.buyingPriceTZS || 0, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 } : p))
+      updateData('products', data.products.map(p => p.id === form.id ? { ...form, buyingPriceUSD, buyingPriceTZS, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 } : p))
     }
     setModal(null)
   }
@@ -266,8 +288,14 @@ export default function Inventory() {
             <div style={{ display: 'grid', gap: 14 }}>
               <FormField label={t('productName')} value={form.name ?? ''} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. CeraVe Moisturizing Cream" />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label={t('buyingPrice')} value={form.buyingPriceTZS ?? ''} onChange={buyingPriceTZS => setForm(f => ({ ...f, buyingPriceTZS }))} error={errors.buyingPriceTZS} numeric placeholder="e.g. 37000" />
+                <FormField label={t('buyingPriceUSD')} value={form.buyingPriceUSD ?? ''} onChange={buyingPriceUSD => setForm(f => ({ ...f, buyingPriceUSD }))} error={errors.buyingPriceUSD} numeric placeholder="e.g. 14.00" />
                 <FormField label={t('sellingPrice')} value={form.sellingPriceTZS ?? ''} onChange={sellingPriceTZS => setForm(f => ({ ...f, sellingPriceTZS }))} error={errors.sellingPriceTZS} numeric placeholder="e.g. 55000" />
+                {buyingTzsPreview != null && (
+                  <div style={{ gridColumn: '1 / -1', fontSize: 12, color: 'var(--text-500)' }}>
+                    {t('buyingTzsResult')}: <strong style={{ color: 'var(--text-900)' }}>{fmt(buyingTzsPreview)}</strong>
+                    <span style={{ marginLeft: 6, opacity: 0.85 }}>{t('buyingTzsNote')}</span>
+                  </div>
+                )}
               </div>
               {formProfitPreview != null && (
                 <div style={{
