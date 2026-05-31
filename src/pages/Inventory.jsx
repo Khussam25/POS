@@ -8,7 +8,7 @@ import { Search, Plus, Pencil, Trash2, X, AlertTriangle, ArrowUpDown, Filter } f
 
 const fmt = fmtMoney
 
-const CATEGORIES = ['Moisturizers', 'Serums', 'Eye Care', 'Sunscreen', 'Foundation', 'Lip Care', 'Body Care', 'Anti-Aging', 'Toners', 'Cleansers', 'Other']
+const CATEGORIES = ['Moisturizers', 'Serums', 'Eye Care', 'Sunscreen', 'Foundation', 'Lip Care', 'Body Care', 'Body Wash', 'Toners', 'Cleansers', 'Other']
 
 const EMPTY = { name: '', category: 'Moisturizers', buyingPriceTZS: '', sellingPriceTZS: '', qty: '', lowStockThreshold: 10 }
 
