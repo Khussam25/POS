@@ -158,12 +158,10 @@ export default function Login() {
     setGoogleLoading(true)
     try {
       await loginWithGoogle()
-      // onAuthStateChanged handles the redirect — googleLoading will reset on remount
+      // Page redirects to Google; loading state clears on return.
     } catch (err) {
-      if (err.code === 'auth/popup-blocked') {
-        setError('Popup blocked. Please allow popups for this site in your browser settings, then try again.')
-      } else if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-        setError(FIREBASE_ERRORS[err.code] || 'Google sign-in failed. Try again.')
+      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+        setError(FIREBASE_ERRORS[err.code] || 'Google sign-in failed. Try email and password instead.')
       }
       setGoogleLoading(false)
     }
@@ -222,6 +220,9 @@ export default function Login() {
                 {googleLoading ? <div style={{ width: 18, height: 18, border: '2px solid var(--outline)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} /> : <GoogleIcon />}
                 {googleLoading ? t('signingIn') : t('continueGoogle')}
               </button>
+              <p style={{ fontSize: 11, color: 'var(--text-500)', textAlign: 'center', margin: '-12px 0 16px', lineHeight: 1.4 }}>
+                {t('googleRedirectHint')}
+              </p>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--outline)' }} />

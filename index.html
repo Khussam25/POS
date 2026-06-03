@@ -10,7 +10,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <p style="font-family:system-ui,sans-serif;padding:24px;color:#1A2332;max-width:400px;margin:2rem auto;">
+        Loading JEIBE POS…
+      </p>
+    </div>
+    <script nomodule>
+      document.getElementById('root').innerHTML =
+        '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;background:#EEF2F7;color:#1A2332">' +
+        '<div style="max-width:400px;background:#fff;padding:24px;border-radius:12px;border:1px solid #D8DEE8">' +
+        '<h1 style="font-size:20px;margin:0 0 12px">Browser not supported</h1>' +
+        '<p style="font-size:14px;line-height:1.5;color:#5A6B7D">Please use Google Chrome, Microsoft Edge, or Firefox (latest version).</p></div></div>';
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

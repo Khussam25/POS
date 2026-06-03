@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut
 } from 'firebase/auth'
 import { auth, googleProvider } from './firebase'
@@ -139,6 +140,16 @@ export default function App() {
   }, [applyStoreFromRemote, reloadLocalStore])
 
   useEffect(() => {
+    getRedirectResult(auth).catch((err) => {
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return
+      const msg = err.code === 'auth/unauthorized-domain'
+        ? 'This domain is not authorised. Contact your administrator.'
+        : err.message || 'Google sign-in failed. Try email and password instead.'
+      setGoogleError(msg)
+    })
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (cancelled) return
@@ -256,7 +267,7 @@ export default function App() {
 
   async function loginWithGoogle() {
     setGoogleError(null)
-    await signInWithPopup(auth, googleProvider)
+    await signInWithRedirect(auth, googleProvider)
   }
 
   async function logout() {
