@@ -10,7 +10,7 @@ import { auth, googleProvider } from './firebase'
 import { getStore, saveStore, saveStoreBatch } from './store'
 import {
   startCloudSync, scheduleCloudPush, pushCloudBatch, isApplyingCloudRemote,
-  pullCloudStore, persistLocal,
+  pullCloudStore, persistLocal, flushPendingCloudPush,
 } from './sync/cloudSync'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -111,6 +111,9 @@ export default function App() {
   const refreshData = useCallback(async () => {
     setSyncing(true)
     try {
+      // Push any queued local edit first so the pull can't overwrite it with
+      // stale remote data (e.g. opening Customers right after linking a sale).
+      await flushPendingCloudPush()
       const { store, error } = await pullCloudStore()
       if (error) {
         setSyncError(error)

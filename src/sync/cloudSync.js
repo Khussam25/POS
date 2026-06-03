@@ -183,6 +183,31 @@ function flushPush() {
     .catch(err => onSyncErrorHandler?.(friendlySyncError(err)))
 }
 
+export function hasPendingCloudPush() {
+  return !!pendingPush
+}
+
+/**
+ * Write any queued local change to the cloud immediately and wait for it.
+ * Call this before pulling so an in-flight edit isn't overwritten by stale
+ * remote data (e.g. navigating right after linking a sale to a customer).
+ */
+export async function flushPendingCloudPush() {
+  if (pushTimer) { clearTimeout(pushTimer); pushTimer = null }
+  if (!pendingPush || applyingRemote) return
+  const db = getFirestore(app)
+  const ref = doc(db, ...STORE_REF)
+  const payload = pendingPush
+  pendingPush = null
+  try {
+    await setDoc(ref, payload, { merge: true })
+    lastAppliedSig = storeSignature(getStore())
+    onSyncOkHandler?.()
+  } catch (err) {
+    onSyncErrorHandler?.(friendlySyncError(err))
+  }
+}
+
 export function scheduleCloudPush(partialStore) {
   if (applyingRemote) return
   const local = getStore()
