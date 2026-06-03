@@ -158,8 +158,10 @@ export default function Login() {
     setGoogleLoading(true)
     try {
       await loginWithGoogle()
-      // Page redirects to Google; loading state clears on return.
     } catch (err) {
+      if (err.code === 'auth/popup-blocked') {
+        return
+      }
       if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
         setError(FIREBASE_ERRORS[err.code] || 'Google sign-in failed. Try email and password instead.')
       }

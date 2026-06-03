@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider, setPersistence, browserSessionPersistence } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -16,4 +16,5 @@ export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const googleProvider = new GoogleAuthProvider()
 
-setPersistence(auth, browserSessionPersistence).catch(() => {})
+// Local persistence so sign-in survives Google redirect round-trips.
+setPersistence(auth, browserLocalPersistence).catch(() => {})
