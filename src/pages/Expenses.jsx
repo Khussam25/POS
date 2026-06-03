@@ -3,6 +3,7 @@ import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import { Plus, X, Filter, Pencil, Trash2 } from 'lucide-react'
+import { todayTZ } from '../utils/time'
 
 function fmt(n) { return 'TZS ' + Number(n).toLocaleString() }
 
@@ -18,7 +19,7 @@ const CATEGORIES = [
   { label: 'Other', icon: '💼', color: '#7A8694' },
 ]
 
-const EMPTY_FORM = { date: new Date().toISOString().split('T')[0], category: 'Wages & Salary', description: '', amount: '' }
+const EMPTY_FORM = { date: todayTZ(), category: 'Wages & Salary', description: '', amount: '' }
 
 export default function Expenses() {
   const { currentUser, data, updateData } = useApp()
@@ -37,7 +38,7 @@ export default function Expenses() {
     return () => clearTimeout(timer)
   }, [modal])
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayTZ()
   const currentMonth = today.slice(0, 7)
 
   const byTab = data.expenses.filter(e => {

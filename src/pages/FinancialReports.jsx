@@ -8,6 +8,7 @@ import { jsPDF } from 'jspdf'
 import { fmtMoney, saleNetRevenue, collectPaymentEvents } from '../utils/money'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged } from '../utils/salesOps'
 import { resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
+import { todayTZ } from '../utils/time'
 
 const fmt = fmtMoney
 function fmtSign(n) { return (n < 0 ? '(' : '') + fmt(Math.abs(n)) + (n < 0 ? ')' : '') }
@@ -52,9 +53,9 @@ export default function FinancialReports() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [saleError, setSaleError] = useState('')
   const reportRef = useRef(null)
-  const today = new Date()
-  const currentMonth = today.toISOString().slice(0, 7)
-  const currentYear = today.getFullYear()
+  const todayStr = todayTZ()
+  const currentMonth = todayStr.slice(0, 7)
+  const currentYear = Number(todayStr.slice(0, 4))
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const [selectedYear, setSelectedYear] = useState(currentYear)
   const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0

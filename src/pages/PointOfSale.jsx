@@ -9,6 +9,7 @@ import { loadPosDraft, savePosDraft, clearPosDraft, reconcileCartWithProducts } 
 import { calcOrderTotals, fmtMoney } from '../utils/money'
 import { findCustomerByName, makeCustomer } from '../utils/customers'
 import { nextReceiptNo } from '../utils/salesOps'
+import { nowTZParts } from '../utils/time'
 import { Search, Plus, Minus, ShoppingCart, CheckCircle2, X, Package } from 'lucide-react'
 
 const fmt = fmtMoney
@@ -152,13 +153,12 @@ export default function PointOfSale() {
       }
     }
 
-    const now = new Date()
-    const date = now.toISOString().split('T')[0]
+    const { date, time } = nowTZParts()
     const sale = {
       id: 's' + Date.now(),
       receiptNo: nextReceiptNo(data.sales),
       date,
-      time: now.toTimeString().slice(0, 5),
+      time,
       customer: name || 'Walk-in Customer',
       customerId,
       items: cart.map(i => {

@@ -3,6 +3,7 @@ import { useApp, canAccess } from '../App'
 import { useT } from '../i18n/LangContext'
 import { ShoppingBag, Plus, ShoppingCart, BarChart2, AlertTriangle, AlertCircle, ArrowRight, Circle } from 'lucide-react'
 import { fmtMoney, collectPaymentEvents } from '../utils/money'
+import { todayTZ } from '../utils/time'
 
 const fmt = fmtMoney
 
@@ -27,7 +28,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const t = useT()
   const isAdmin = currentUser.role === 'Admin'
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayTZ()
   const now = new Date()
   const hour = now.getHours()
   const greeting = hour < 12 ? t('goodMorning') : hour < 17 ? t('goodAfternoon') : t('goodEvening')

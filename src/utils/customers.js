@@ -4,6 +4,7 @@
 // Legacy sales with no amountPaid are treated as fully paid.
 
 import { roundTz } from './money'
+import { todayTZ, nowISO } from './time'
 
 /** Amount already settled on a sale. Legacy sales (no field) count as paid. */
 export function salePaid(sale) {
@@ -45,7 +46,7 @@ export function makeCustomer({ name, phone = '', note = '' }, customers) {
     name: name.trim(),
     phone: phone.trim(),
     note: note.trim(),
-    createdAt: new Date().toISOString(),
+    createdAt: nowISO(),
   }
 }
 
@@ -161,7 +162,7 @@ export function totalReceivables(sales) {
 export function applyPayment(sales, customerId, amount, by) {
   let remaining = roundTz(amount)
   if (remaining <= 0) return sales
-  const date = new Date().toISOString().split('T')[0]
+  const date = todayTZ()
 
   // Decide how much each sale receives, oldest unpaid first.
   const oldestFirst = sales

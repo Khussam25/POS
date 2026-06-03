@@ -4,6 +4,7 @@ import { useT } from '../i18n/LangContext'
 import { fmtMoney } from '../utils/money'
 import { saleBalance, salePaymentStatus, resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, saleRef, itemsSummary } from '../utils/salesOps'
+import { todayTZ } from '../utils/time'
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 
 const fmt = fmtMoney
@@ -17,7 +18,7 @@ export default function Sales() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [saleError, setSaleError] = useState('')
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayTZ()
   const currentMonth = today.slice(0, 7)
   const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0
 
@@ -30,7 +31,9 @@ export default function Sales() {
     return salePaymentStatus(s).toLowerCase() === statusFilter
   })
   const sorted = [...filtered].sort((a, b) =>
-    b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')
+    b.date.localeCompare(a.date)
+    || (b.time || '').localeCompare(a.time || '')
+    || String(b.id || '').localeCompare(String(a.id || ''))
   )
   const total = sorted.reduce((a, s) => a + s.total, 0)
 
