@@ -7,7 +7,7 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { fmtMoney, saleNetRevenue, collectPaymentEvents } from '../utils/money'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged } from '../utils/salesOps'
-import { ensureCustomerForName } from '../utils/customers'
+import { resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
 
 const fmt = fmtMoney
 function fmtSign(n) { return (n < 0 ? '(' : '') + fmt(Math.abs(n)) + (n < 0 ? ')' : '') }
@@ -151,11 +151,21 @@ export default function FinancialReports() {
     }
 
     const name = (editSale.customer || '').trim()
-    const { customerId, customers: nextCustomers } = ensureCustomerForName(data.customers, name)
-    updates.sales = baseSales.map(s => s.id === editSale.id
-      ? { ...s, customerId, customer: name || 'Walk-in Customer' }
+    const resolved = resolveCustomerForSale(data.customers, name)
+    const customerId = editSale.customerId && resolved.customers.some(c => c.id === editSale.customerId)
+      ? editSale.customerId
+      : resolved.customerId
+    const customerName = customerId
+      ? resolved.customers.find(c => c.id === customerId)?.name ?? resolved.customerName
+      : resolved.customerName
+
+    let nextSales = baseSales.map(s => s.id === editSale.id
+      ? { ...s, customerId, customer: customerName }
       : s)
-    if (nextCustomers !== data.customers) updates.customers = nextCustomers
+    nextSales = backfillCustomerIds(resolved.customers, nextSales).sales
+
+    updates.sales = nextSales
+    if (resolved.customers !== data.customers) updates.customers = resolved.customers
     if (!batchUpdateData(updates)) {
       setSaleError(t('saveFailed'))
       return

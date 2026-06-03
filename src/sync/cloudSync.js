@@ -70,9 +70,13 @@ export function persistLocal(store) {
 }
 
 function storeSignature(store) {
+  const linked = (store.sales || []).filter(s => s.customerId).length
   return JSON.stringify({
     employees: store.employees,
     settings: store.settings,
+    salesN: (store.sales || []).length,
+    salesLinked: linked,
+    customersN: (store.customers || []).length,
   })
 }
 

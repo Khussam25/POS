@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import { fmtMoney } from '../utils/money'
-import { saleBalance, salePaymentStatus, ensureCustomerForName } from '../utils/customers'
+import { saleBalance, salePaymentStatus, resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, saleRef, itemsSummary } from '../utils/salesOps'
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 
@@ -61,13 +61,23 @@ export default function Sales() {
       baseSales = data.sales.map(s => s.id === editSale.id ? recalculated : s)
     }
 
-    // Link the sale to a customer based on the edited name (create if new).
     const name = (editSale.customer || '').trim()
-    const { customerId, customers: nextCustomers } = ensureCustomerForName(data.customers, name)
-    updates.sales = baseSales.map(s => s.id === editSale.id
-      ? { ...s, customerId, customer: name || 'Walk-in Customer' }
+    const resolved = resolveCustomerForSale(data.customers, name)
+    const customerId = editSale.customerId && resolved.customers.some(c => c.id === editSale.customerId)
+      ? editSale.customerId
+      : resolved.customerId
+    const customerName = customerId
+      ? resolved.customers.find(c => c.id === customerId)?.name ?? resolved.customerName
+      : resolved.customerName
+
+    let nextSales = baseSales.map(s => s.id === editSale.id
+      ? { ...s, customerId, customer: customerName }
       : s)
-    if (nextCustomers !== data.customers) updates.customers = nextCustomers
+    const backfill = backfillCustomerIds(resolved.customers, nextSales)
+    nextSales = backfill.sales
+
+    updates.sales = nextSales
+    if (resolved.customers !== data.customers) updates.customers = resolved.customers
     if (!batchUpdateData(updates)) {
       setSaleError(t('saveFailed'))
       return

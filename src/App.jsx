@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth'
 import { auth, googleProvider } from './firebase'
 import { getStore, saveStore, saveStoreBatch } from './store'
+import { backfillCustomerIds } from './utils/customers'
 import {
   startCloudSync, scheduleCloudPush, pushCloudBatch, isApplyingCloudRemote,
   pullCloudStore, persistLocal, flushPendingCloudPush,
@@ -92,9 +93,12 @@ export default function App() {
   }
 
   const applyStoreFromRemote = useCallback((store) => {
+    const customers = store.customers ?? []
+    const { sales: linkedSales, changed } = backfillCustomerIds(customers, store.sales ?? [])
+    if (changed) saveStore('sales', linkedSales)
     setData({
       products: store.products,
-      sales: store.sales,
+      sales: linkedSales,
       customers: store.customers,
       expenses: store.expenses,
       employees: store.employees,
@@ -231,6 +235,11 @@ export default function App() {
   }
 
   function batchUpdateData(updates) {
+    if (updates.sales != null || updates.customers != null) {
+      const merged = { ...getStore(), ...updates }
+      const { sales: linkedSales, changed } = backfillCustomerIds(merged.customers ?? [], merged.sales ?? [])
+      if (changed) updates = { ...updates, sales: linkedSales }
+    }
     if (!saveStoreBatch(updates)) {
       setSaveError('Could not save your changes. Storage may be full — try a smaller store logo.')
       return false

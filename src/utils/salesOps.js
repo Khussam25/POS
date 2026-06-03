@@ -117,6 +117,7 @@ export function cloneSaleForEdit(sale) {
   return {
     ...sale,
     customer: sale.customer ?? '',
+    customerId: sale.customerId ?? null,
     discountAmount: sale.discountAmount ?? 0,
     items: sale.items.map(i => ({ ...i })),
   }

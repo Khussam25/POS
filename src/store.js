@@ -1,4 +1,5 @@
 // Central data store with localStorage persistence
+import { backfillCustomerIds } from './utils/customers'
 
 const SEED = {
   products: [],
@@ -65,10 +66,17 @@ function getStore() {
     }
     localStorage.setItem('jeibe_version', DATA_VERSION)
   }
+  const customers = load('customers') ?? SEED.customers
+  let sales = load('sales') ?? SEED.sales
+  const { sales: linkedSales, changed } = backfillCustomerIds(customers, sales)
+  if (changed) {
+    sales = linkedSales
+    save('sales', linkedSales)
+  }
   return {
     products: load('products') ?? [],
-    sales: load('sales') ?? SEED.sales,
-    customers: load('customers') ?? SEED.customers,
+    sales,
+    customers,
     expenses: load('expenses') ?? SEED.expenses,
     employees: load('employees') ?? SEED.employees,
     settings: { storeLogo: '/Jeibe_Logo.jpg', ...(load('settings') ?? SEED.settings) },

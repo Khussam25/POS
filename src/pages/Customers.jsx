@@ -9,7 +9,7 @@ import { formatPhoneDisplay } from '../utils/phone'
 import {
   makeCustomer, customerStats, customerSales, totalReceivables,
   saleBalance, salePaid, salePaymentStatus, applyPayment,
-  linkSalesToCustomer,
+  linkSalesToCustomer, backfillCustomerIds,
 } from '../utils/customers'
 import { saleRef, itemsSummary } from '../utils/salesOps'
 import { Plus, Pencil, Trash2, X, Search, Wallet, Users, HandCoins, Link2 } from 'lucide-react'
@@ -251,7 +251,7 @@ export default function Customers() {
   }
 
   const detailCustomer = detail ? customers.find(c => c.id === detail) : null
-  const detailSales = detailCustomer ? customerSales(sales, detailCustomer.id) : []
+  const detailSales = detailCustomer ? customerSales(sales, detailCustomer) : []
   const detailStats = detailCustomer ? customerStats(detailCustomer, sales) : null
 
   function openDetail(id) {
@@ -266,7 +266,8 @@ export default function Customers() {
     const amt = Math.round(Number(payAmount) || 0)
     if (amt <= 0) { setPayError(t('enterAmount')); return }
     if (amt > detailStats.outstanding) { setPayError(t('paymentExceeds')); return }
-    const nextSales = applyPayment(sales, detailCustomer.id, amt, currentUser.name)
+    const { sales: linked } = backfillCustomerIds(customers, sales)
+    const nextSales = applyPayment(linked, detailCustomer.id, amt, currentUser.name)
     batchUpdateData({ sales: nextSales })
     setPayAmount('')
   }
@@ -376,11 +377,11 @@ export default function Customers() {
               {modal === 'edit' && (
                 <div style={{ borderTop: '1px solid var(--outline)', paddingTop: 14 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-500)', marginBottom: 8 }}>{t('linkedSales')}</div>
-                  {customerSales(sales, form.id).length === 0 ? (
+                  {customerSales(sales, { id: form.id, name: form.name }).length === 0 ? (
                     <div style={{ fontSize: 12, color: 'var(--text-500)', marginBottom: 4 }}>{t('noLinkedSales')}</div>
                   ) : (
                     <div style={{ border: '1px solid var(--outline)', borderRadius: 10, maxHeight: 200, overflowY: 'auto' }}>
-                      {customerSales(sales, form.id).map(s => {
+                      {customerSales(sales, { id: form.id, name: form.name }).map(s => {
                         const willUnlink = unlinkSel.includes(s.id)
                         return (
                           <div key={s.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '9px 12px', borderBottom: '1px solid var(--outline)', opacity: willUnlink ? 0.5 : 1 }}>

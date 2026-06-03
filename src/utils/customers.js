@@ -62,20 +62,59 @@ export function linkSalesToCustomer(sales, saleIds, customer) {
   return sales.map(s => ids.has(s.id) ? { ...s, customerId: customer.id, customer: customer.name } : s)
 }
 
-/**
- * Resolve a typed customer name to a customer id for a sale: matches an
- * existing customer, creates one for a new name, or returns null for an
- * empty / walk-in name. Returns the (possibly extended) customers list.
- */
-export function ensureCustomerForName(customers, name, phone = '') {
+/** Walk-in / anonymous sale — not tied to a customer account. */
+export function isWalkInName(name) {
+  const n = (name || '').trim().toLowerCase()
+  return !n || n === 'walk-in customer'
+}
+
+/** True if a sale belongs to this customer (by id, or legacy name match). */
+export function saleBelongsToCustomer(sale, customer) {
+  if (sale.customerId === customer.id) return true
+  if (sale.customerId) return false
+  const n = (sale.customer || '').trim().toLowerCase()
+  if (isWalkInName(n)) return false
+  return n === customer.name.trim().toLowerCase()
+}
+
+/** Set customerId on sales that match a customer name but were never linked. */
+export function backfillCustomerIds(customers, sales) {
+  let changed = false
+  const next = sales.map(s => {
+    if (s.customerId) return s
+    const name = (s.customer || '').trim()
+    if (isWalkInName(name)) return s
+    const c = findCustomerByName(customers, name)
+    if (!c) return s
+    changed = true
+    return { ...s, customerId: c.id, customer: c.name }
+  })
+  return { sales: next, changed }
+}
+
+/** Resolve customer id for a sale customer name (match or create). */
+export function resolveCustomerForSale(customers, name, phone = '') {
   const trimmed = (name || '').trim()
-  if (!trimmed || trimmed.toLowerCase() === 'walk-in customer') {
-    return { customerId: null, customers, created: null }
+  if (isWalkInName(trimmed)) {
+    return { customerId: null, customerName: 'Walk-in Customer', customers, created: null }
   }
   const existing = findCustomerByName(customers, trimmed)
-  if (existing) return { customerId: existing.id, customers, created: null }
+  if (existing) {
+    return { customerId: existing.id, customerName: existing.name, customers, created: null }
+  }
   const created = makeCustomer({ name: trimmed, phone }, customers)
-  return { customerId: created.id, customers: [created, ...customers], created }
+  return {
+    customerId: created.id,
+    customerName: created.name,
+    customers: [created, ...customers],
+    created,
+  }
+}
+
+/** @deprecated use resolveCustomerForSale */
+export function ensureCustomerForName(customers, name, phone = '') {
+  const r = resolveCustomerForSale(customers, name, phone)
+  return { customerId: r.customerId, customers: r.customers, created: r.created }
 }
 
 /** Find a customer by exact (case-insensitive) name, else undefined. */
@@ -86,15 +125,16 @@ export function findCustomerByName(customers, name) {
 }
 
 /** All sales belonging to a customer (newest first). */
-export function customerSales(sales, customerId) {
+export function customerSales(sales, customer) {
+  const c = typeof customer === 'string' ? { id: customer } : customer
   return sales
-    .filter(s => s.customerId === customerId)
+    .filter(s => saleBelongsToCustomer(s, c))
     .sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')))
 }
 
 /** Aggregate stats for one customer across their sales. */
 export function customerStats(customer, sales) {
-  const own = sales.filter(s => s.customerId === customer.id)
+  const own = sales.filter(s => saleBelongsToCustomer(s, customer))
   const purchased = own.reduce((a, s) => a + (s.total || 0), 0)
   const paid = own.reduce((a, s) => a + salePaid(s), 0)
   const outstanding = own.reduce((a, s) => a + saleBalance(s), 0)

@@ -45,7 +45,11 @@ export function SaleEditModal({ t, editSale, setEditSale, saleError, onSave, onC
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('customer')}</label>
-            <FormInput value={editSale.customer} onChange={e => setEditSale(s => ({ ...s, customer: e.target.value }))} list="edit-sale-customer-list" />
+            <FormInput value={editSale.customer} onChange={e => {
+              const name = e.target.value
+              const matched = findCustomerByName(customers, name)
+              setEditSale(s => ({ ...s, customer: name, customerId: matched?.id ?? null }))
+            }} list="edit-sale-customer-list" />
             <datalist id="edit-sale-customer-list">
               {customers.map(c => <option key={c.id} value={c.name}>{c.code}{c.phone ? ` · ${c.phone}` : ''}</option>)}
             </datalist>
