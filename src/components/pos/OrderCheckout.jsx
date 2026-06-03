@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import FormInput from '../FormInput'
-import { Banknote, Smartphone, CreditCard, FileText, ChevronUp, ChevronDown } from 'lucide-react'
+import { findCustomerByName } from '../../utils/customers'
+import { Banknote, Smartphone, CreditCard, FileText, ChevronUp, ChevronDown, BadgeCheck } from 'lucide-react'
 
 const PAYMENT_METHODS = [
   { key: 'Cash', labelKey: 'cash', icon: Banknote },
@@ -30,10 +31,20 @@ export default function OrderCheckout({
   setPhone,
   payment,
   setPayment,
+  customers = [],
+  amountPaid,
+  setAmountPaid,
   onCompleteSale,
   compact = false,
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false)
+
+  const matchedCustomer = findCustomerByName(customers, customer)
+  // Empty amountPaid means "paid in full".
+  const paidNum = amountPaid === '' || amountPaid == null ? total : Number(amountPaid)
+  const settledPaid = Math.min(Math.max(0, paidNum), total)
+  const balanceDue = Math.max(0, total - settledPaid)
+  const isCredit = balanceDue > 0
 
   const totalsBlock = (
     <>
@@ -79,11 +90,49 @@ export default function OrderCheckout({
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', marginBottom: 6 }}>{t('customerDetails')}</div>
       )}
       <div style={{ display: 'flex', gap: 8, flexDirection: compact ? 'column' : 'row', flexWrap: compact ? 'nowrap' : 'wrap' }}>
-        <FormInput variant="compact" value={customer} onChange={e => setCustomer(e.target.value)} placeholder={t('nameLabel')}
-          style={{ flex: compact ? 'none' : '1 1 120px', width: compact ? '100%' : undefined, background: 'var(--surface)', minWidth: 0 }} />
+        <div style={{ flex: compact ? 'none' : '1 1 120px', width: compact ? '100%' : undefined, minWidth: 0 }}>
+          <FormInput variant="compact" value={customer} onChange={e => setCustomer(e.target.value)} placeholder={t('nameLabel')}
+            list="pos-customer-list" style={{ width: '100%', background: 'var(--surface)', minWidth: 0 }} />
+          <datalist id="pos-customer-list">
+            {customers.map(c => <option key={c.id} value={c.name}>{c.code}{c.phone ? ` · ${c.phone}` : ''}</option>)}
+          </datalist>
+        </div>
         <FormInput variant="compact" phone value={phone} onChange={e => setPhone(e.target.value)} placeholder="+255 712 345 678"
           style={{ flex: compact ? 'none' : '1 1 120px', width: compact ? '100%' : undefined, background: 'var(--surface)', minWidth: 0 }} />
       </div>
+      {matchedCustomer && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5, fontSize: 11, fontWeight: 600, color: 'var(--primary)' }}>
+          <BadgeCheck size={13} /> {t('existingCustomer')} · {matchedCustomer.code}
+        </div>
+      )}
+    </div>
+  )
+
+  const settleBlock = (
+    <div style={{ marginTop: compact ? 10 : 0 }}>
+      <div style={{ fontSize: compact ? 11 : 10, fontWeight: 700, color: 'var(--text-500)', letterSpacing: compact ? 0 : '0.08em', textTransform: compact ? 'none' : 'uppercase', marginBottom: compact ? 6 : 5 }}>
+        {t('amountPaid')}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <FormInput
+          numeric
+          variant="compact"
+          value={amountPaid === '' ? '' : Number(amountPaid).toLocaleString('en-US')}
+          onChange={e => setAmountPaid(e.target.value.replace(/[^\d]/g, ''))}
+          placeholder={Number(total).toLocaleString('en-US')}
+          style={{ flex: 1, background: 'var(--surface)', textAlign: 'right' }}
+        />
+        <button type="button" onClick={() => setAmountPaid('')} style={{
+          padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, flexShrink: 0,
+          border: '2px solid var(--outline)', background: 'var(--surface)', color: 'var(--text-500)',
+        }}>{t('payFull')}</button>
+      </div>
+      {isCredit && (
+        <div style={{ marginTop: 6, padding: '6px 10px', borderRadius: 8, background: 'var(--danger-light)', color: 'var(--danger)', fontSize: 12, fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+          <span>{t('balanceDue')}</span>
+          <span>{fmt(balanceDue)}</span>
+        </div>
+      )}
     </div>
   )
 
@@ -130,10 +179,10 @@ export default function OrderCheckout({
       </button>
       <button type="button" onClick={onCompleteSale} disabled={cart.length === 0} style={{
         flex: 1, padding: compact ? '10px' : '10px', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: compact ? 13 : 13,
-        background: cart.length === 0 ? 'var(--outline)' : 'var(--primary)',
+        background: cart.length === 0 ? 'var(--outline)' : (isCredit ? 'var(--accent)' : 'var(--primary)'),
         color: cart.length === 0 ? 'var(--text-500)' : 'white',
       }}>
-        {t('completeSale')}
+        {isCredit ? t('completeCredit') : t('completeSale')}
       </button>
     </div>
   )
@@ -149,6 +198,7 @@ export default function OrderCheckout({
             {totalsBlock}
             {customerBlock}
             {paymentBlock}
+            {settleBlock}
           </div>
         )}
 
@@ -192,6 +242,10 @@ export default function OrderCheckout({
 
       <div style={{ padding: '8px 12px', background: 'var(--bg)', borderBottom: '1px solid var(--outline)' }}>
         {paymentBlock}
+      </div>
+
+      <div style={{ padding: '8px 12px', background: 'var(--bg)', borderBottom: '1px solid var(--outline)' }}>
+        {settleBlock}
       </div>
 
       <div style={{ padding: '8px 12px', background: 'var(--bg)' }}>

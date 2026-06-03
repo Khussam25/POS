@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import { fmtMoney } from '../utils/money'
+import { saleBalance, salePaymentStatus } from '../utils/customers'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord } from '../utils/salesOps'
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 
@@ -87,7 +88,7 @@ export default function Sales() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-              {[t('dateLabel'), t('customer'), t('itemsCol'), t('payment'), t('amount'), t('soldBy'), ''].map(h => (
+              {[t('dateLabel'), t('customer'), t('itemsCol'), t('payment'), t('amount'), t('status'), t('soldBy'), ''].map(h => (
                 <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: h ? 'nowrap' : undefined, position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 1 }}>{h}</th>
               ))}
             </tr>
@@ -109,7 +110,23 @@ export default function Sales() {
                     color: s.paymentMethod === 'Cash' ? 'var(--success)' : s.paymentMethod === 'Card' ? 'var(--primary)' : 'var(--warning)',
                   }}>{s.paymentMethod}</span>
                 </td>
-                <td style={{ padding: '11px 12px', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(s.total)}</td>
+                <td style={{ padding: '11px 12px', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>
+                  {fmt(s.total)}
+                  {saleBalance(s) > 0 && (
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)' }}>{fmt(saleBalance(s))} {t('dueLower')}</div>
+                  )}
+                </td>
+                <td style={{ padding: '11px 12px' }}>
+                  {(() => {
+                    const st = salePaymentStatus(s)
+                    const style = st === 'Paid'
+                      ? { bg: 'var(--success-light)', fg: 'var(--success)', label: t('statusPaid') }
+                      : st === 'Partial'
+                        ? { bg: 'var(--warning-light)', fg: 'var(--warning)', label: t('statusPartial') }
+                        : { bg: 'var(--danger-light)', fg: 'var(--danger)', label: t('statusUnpaid') }
+                    return <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: style.bg, color: style.fg, whiteSpace: 'nowrap' }}>{style.label}</span>
+                  })()}
+                </td>
                 <td style={{ padding: '11px 12px', fontSize: 12, color: 'var(--text-500)' }}>{s.soldBy}</td>
                 <td style={{ padding: '11px 8px 11px 12px', width: 72 }}>
                   <SaleRowActions sale={s} t={t} onEdit={openEdit} onDelete={setDeleteTarget} />
@@ -117,7 +134,7 @@ export default function Sales() {
               </tr>
             ))}
             {sorted.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noSalesFound')}</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noSalesFound')}</td></tr>
             )}
           </tbody>
         </table>

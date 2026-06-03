@@ -4,6 +4,7 @@ const DEFAULT_DRAFT = {
   phone: '',
   payment: 'Cash',
   discountValue: '',
+  amountPaid: '',
 }
 
 function draftKey(userId) {
@@ -29,6 +30,7 @@ export function savePosDraft(userId, draft) {
     phone: draft.phone ?? '',
     payment: draft.payment ?? 'Cash',
     discountValue: draft.discountValue ?? '',
+    amountPaid: draft.amountPaid ?? '',
   }))
 }
 

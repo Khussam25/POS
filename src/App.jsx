@@ -16,6 +16,7 @@ import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import PointOfSale from './pages/PointOfSale'
+import Customers from './pages/Customers'
 import Inventory from './pages/Inventory'
 import Expenses from './pages/Expenses'
 import FinancialReports from './pages/FinancialReports'
@@ -31,6 +32,7 @@ export function useApp() { return useContext(AppContext) }
 // Define which roles can access each route
 export const PERMISSIONS = {
   '/pos':        ['Admin', 'Cashier'],
+  '/customers':  ['Admin', 'Cashier'],
   '/inventory':  ['Admin', 'Cashier'],
   '/expenses':   ['Admin'],
   '/sales':      ['Admin'],
@@ -93,6 +95,7 @@ export default function App() {
     setData({
       products: store.products,
       sales: store.sales,
+      customers: store.customers,
       expenses: store.expenses,
       employees: store.employees,
       settings: store.settings,
@@ -282,6 +285,9 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="pos" element={
               <ProtectedRoute path="/pos"><PointOfSale /></ProtectedRoute>
+            } />
+            <Route path="customers" element={
+              <ProtectedRoute path="/customers"><Customers /></ProtectedRoute>
             } />
             <Route path="inventory" element={
               <ProtectedRoute path="/inventory"><Inventory /></ProtectedRoute>

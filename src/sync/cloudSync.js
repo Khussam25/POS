@@ -3,7 +3,7 @@ import { app } from '../firebase'
 import { getStore, saveStore } from '../store'
 
 const STORE_REF = ['stores', 'main']
-const SYNC_KEYS = ['products', 'sales', 'expenses', 'employees']
+const SYNC_KEYS = ['products', 'sales', 'customers', 'expenses', 'employees']
 
 const SETTINGS_CLOUD_FIELDS = [
   'storeName', 'address', 'phone', 'email', 'currency', 'exchangeRate',
@@ -43,6 +43,7 @@ function packPayload(store) {
   return {
     products: store.products ?? [],
     sales: store.sales ?? [],
+    customers: store.customers ?? [],
     expenses: store.expenses ?? [],
     employees: store.employees ?? [],
     settings: settingsForCloud(store.settings ?? {}),
@@ -56,6 +57,7 @@ export function unpackPayload(data) {
   return {
     products: Array.isArray(data.products) ? data.products : local.products,
     sales: Array.isArray(data.sales) ? data.sales : local.sales,
+    customers: Array.isArray(data.customers) ? data.customers : local.customers,
     expenses: Array.isArray(data.expenses) ? data.expenses : local.expenses,
     employees: Array.isArray(data.employees) ? data.employees : local.employees,
     settings: mergeSettings(local.settings, data.settings ?? {}),

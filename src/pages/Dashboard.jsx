@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
 import { useT } from '../i18n/LangContext'
 import { ShoppingBag, Plus, ShoppingCart, BarChart2, AlertTriangle, AlertCircle, ArrowRight, Circle } from 'lucide-react'
-import { fmtMoney, saleNetRevenue, saleCogs } from '../utils/money'
+import { fmtMoney, collectPaymentEvents } from '../utils/money'
 
 const fmt = fmtMoney
 
@@ -33,21 +33,24 @@ export default function Dashboard() {
   const greeting = hour < 12 ? t('goodMorning') : hour < 17 ? t('goodAfternoon') : t('goodEvening')
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
-  const todaySales = data.sales.filter(s => s.date === today)
-  const todayRevenue = todaySales.reduce((a, s) => a + s.total, 0)
-
+  // Cash basis: revenue/profit are recognized when payment is received (by
+  // payment date), so unpaid credit is excluded until the customer pays.
   const currentMonth = today.slice(0, 7)
-  const monthSales = data.sales.filter(s => s.date.startsWith(currentMonth))
-  const monthRevenue = monthSales.reduce((a, s) => a + s.total, 0)
+  const events = collectPaymentEvents(data.sales, data.products)
+  const todayEvents = events.filter(e => e.date === today)
+  const monthEvents = events.filter(e => e.date.startsWith(currentMonth))
+
+  const todaySales = data.sales.filter(s => s.date === today)
+  const todayRevenue = todayEvents.reduce((a, e) => a + e.collected, 0)
+
+  const monthRevenue = monthEvents.reduce((a, e) => a + e.collected, 0)
   const monthExpenses = data.expenses.filter(e => e.date.startsWith(currentMonth)).reduce((a, e) => a + e.amount, 0)
-  const monthGross = monthSales.reduce((a, s) => a + saleNetRevenue(s) - saleCogs(s, data.products), 0)
+  const monthGross = monthEvents.reduce((a, e) => a + e.revenue - e.cogs, 0)
   const monthProfit = monthGross - monthExpenses
 
   const todayExpenses = data.expenses.filter(e => e.date === today).reduce((a, e) => a + e.amount, 0)
 
-  const todayProfit = todaySales.reduce((a, s) => {
-    return a + saleNetRevenue(s) - saleCogs(s, data.products)
-  }, 0) - todayExpenses
+  const todayProfit = todayEvents.reduce((a, e) => a + e.revenue - e.cogs, 0) - todayExpenses
 
   const stockValue = data.products.reduce((a, p) => a + p.sellingPriceTZS * p.qty, 0)
 

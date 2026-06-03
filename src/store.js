@@ -5,6 +5,8 @@ const SEED = {
 
   sales: [],
 
+  customers: [],
+
   expenses: [],
 
   employees: [
@@ -66,6 +68,7 @@ function getStore() {
   return {
     products: load('products') ?? [],
     sales: load('sales') ?? SEED.sales,
+    customers: load('customers') ?? SEED.customers,
     expenses: load('expenses') ?? SEED.expenses,
     employees: load('employees') ?? SEED.employees,
     settings: { storeLogo: '/Jeibe_Logo.jpg', ...(load('settings') ?? SEED.settings) },

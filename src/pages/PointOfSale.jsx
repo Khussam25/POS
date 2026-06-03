@@ -7,6 +7,7 @@ import FormInput from '../components/FormInput'
 import OrderCheckout from '../components/pos/OrderCheckout'
 import { loadPosDraft, savePosDraft, clearPosDraft, reconcileCartWithProducts } from '../utils/posCart'
 import { calcOrderTotals, fmtMoney } from '../utils/money'
+import { findCustomerByName, makeCustomer } from '../utils/customers'
 import { Search, Plus, Minus, ShoppingCart, CheckCircle2, X, Package } from 'lucide-react'
 
 const fmt = fmtMoney
@@ -19,6 +20,7 @@ function readDraftState(userId, products) {
     phone: draft.phone ?? '',
     payment: draft.payment ?? 'Cash',
     discountValue: draft.discountValue ?? '',
+    amountPaid: draft.amountPaid ?? '',
   }
 }
 
@@ -37,6 +39,7 @@ export default function PointOfSale() {
   const [phone, setPhone] = useState(posDraft.phone)
   const [payment, setPayment] = useState(posDraft.payment)
   const [discountValue, setDiscountValue] = useState(posDraft.discountValue)
+  const [amountPaid, setAmountPaid] = useState(posDraft.amountPaid)
   const [success, setSuccess] = useState(null)
 
   useEffect(() => {
@@ -47,6 +50,7 @@ export default function PointOfSale() {
     setPhone(draft.phone)
     setPayment(draft.payment)
     setDiscountValue(draft.discountValue)
+    setAmountPaid(draft.amountPaid)
   }, [userId])
 
   useEffect(() => {
@@ -59,8 +63,8 @@ export default function PointOfSale() {
 
   useEffect(() => {
     if (!userId) return
-    savePosDraft(userId, { cart, customer, phone, payment, discountValue })
-  }, [userId, cart, customer, phone, payment, discountValue])
+    savePosDraft(userId, { cart, customer, phone, payment, discountValue, amountPaid })
+  }, [userId, cart, customer, phone, payment, discountValue, amountPaid])
 
   const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0
 
@@ -82,11 +86,19 @@ export default function PointOfSale() {
   function updateQty(productId, delta) {
     setCart(prev => prev.map(i => {
       if (i.productId !== productId) return i
+      // Authoritative cap = live stock, falling back to the cached maxQty.
+      const stock = data.products.find(p => p.id === productId)?.qty
+      const cap = stock ?? i.maxQty ?? Infinity
       const newQty = i.qty + delta
       if (newQty <= 0) return null
-      if (newQty > i.maxQty) return i
+      if (newQty > cap) return i
       return { ...i, qty: newQty }
     }).filter(Boolean))
+  }
+
+  function stockOf(productId) {
+    const p = data.products.find(pr => pr.id === productId)
+    return p?.qty ?? Infinity
   }
 
   const { subtotal, vat, discountAmount, total } = calcOrderTotals({
@@ -108,12 +120,42 @@ export default function PointOfSale() {
       }
     }
 
+    const name = customer.trim()
+    const paidInput = amountPaid === '' ? total : Number(amountPaid)
+    const settledPaid = Math.min(Math.max(0, Math.round(paidInput) || 0), total)
+    const balance = total - settledPaid
+    const isCredit = balance > 0
+
+    // Resolve / create the linked customer.
+    const existing = findCustomerByName(data.customers, name)
+    let customerId = existing?.id ?? null
+    let nextCustomers = data.customers
+
+    if (isCredit) {
+      if (!name) {
+        setCheckoutError(t('creditNeedsCustomer'))
+        return
+      }
+      if (existing) {
+        // Backfill a phone number if we now have one.
+        if (!existing.phone && phone.trim()) {
+          nextCustomers = data.customers.map(c => c.id === existing.id ? { ...c, phone: phone.trim() } : c)
+        }
+      } else {
+        const created = makeCustomer({ name, phone }, data.customers)
+        customerId = created.id
+        nextCustomers = [created, ...data.customers]
+      }
+    }
+
     const now = new Date()
+    const date = now.toISOString().split('T')[0]
     const sale = {
       id: 's' + Date.now(),
-      date: now.toISOString().split('T')[0],
+      date,
       time: now.toTimeString().slice(0, 5),
-      customer: customer.trim() || 'Walk-in Customer',
+      customer: name || 'Walk-in Customer',
+      customerId,
       items: cart.map(i => {
         const product = data.products.find(p => p.id === i.productId)
         return {
@@ -125,13 +167,17 @@ export default function PointOfSale() {
         }
       }),
       subtotal, vat, discountAmount, total, paymentMethod: payment,
+      amountPaid: settledPaid,
+      payments: settledPaid > 0 ? [{ amount: settledPaid, date, by: currentUser.name }] : [],
       soldBy: currentUser.name
     }
     const newProducts = data.products.map(p => {
       const item = cart.find(i => i.productId === p.id)
       return item ? { ...p, qty: p.qty - item.qty } : p
     })
-    if (!batchUpdateData({ sales: [sale, ...data.sales], products: newProducts })) {
+    const updates = { sales: [sale, ...data.sales], products: newProducts }
+    if (nextCustomers !== data.customers) updates.customers = nextCustomers
+    if (!batchUpdateData(updates)) {
       setCheckoutError(t('saveFailed'))
       return
     }
@@ -142,6 +188,7 @@ export default function PointOfSale() {
     setPhone('')
     setPayment('Cash')
     setDiscountValue('')
+    setAmountPaid('')
     setSearch('')
     setMobileTab('products')
   }
@@ -156,7 +203,12 @@ export default function PointOfSale() {
           <h2 style={{ fontSize: 21, fontWeight: 800, marginBottom: 8 }}>{t('saleCompleted')}</h2>
           <p style={{ color: 'var(--text-500)', marginBottom: 6, fontSize: 14 }}>{success.customer}</p>
           <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 6 }}>{fmt(success.total)}</p>
-          <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 28 }}>{success.paymentMethod}</p>
+          <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: success.total - (success.amountPaid ?? success.total) > 0 ? 12 : 28 }}>{success.paymentMethod}</p>
+          {success.total - (success.amountPaid ?? success.total) > 0 && (
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--danger)', marginBottom: 28 }}>
+              {t('balanceDue')}: {fmt(success.total - (success.amountPaid ?? success.total))}
+            </p>
+          )}
           <button onClick={() => setSuccess(null)} style={{
             background: 'var(--primary)', color: 'white', fontWeight: 700,
             padding: '12px 32px', borderRadius: 'var(--radius-sm)', fontSize: 14
@@ -246,7 +298,15 @@ export default function PointOfSale() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg)', borderRadius: 8, padding: '4px 10px', border: '1px solid var(--outline)' }}>
                       <button onClick={() => updateQty(item.productId, -1)} style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--outline)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Minus size={12} strokeWidth={2.5} /></button>
                       <span style={{ fontWeight: 700, fontSize: 14, minWidth: 18, textAlign: 'center' }}>{item.qty}</span>
-                      <button onClick={() => updateQty(item.productId, 1)} style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--outline)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Plus size={12} strokeWidth={2.5} /></button>
+                      {(() => {
+                        const atMax = item.qty >= stockOf(item.productId)
+                        return (
+                          <button onClick={() => updateQty(item.productId, 1)} disabled={atMax} title={atMax ? t('maxStockReached') : undefined}
+                            style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--outline)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: atMax ? 0.4 : 1, cursor: atMax ? 'not-allowed' : 'pointer' }}>
+                            <Plus size={12} strokeWidth={2.5} />
+                          </button>
+                        )
+                      })()}
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>{fmt(item.price * item.qty)}</div>
@@ -278,6 +338,9 @@ export default function PointOfSale() {
               setPhone={setPhone}
               payment={payment}
               setPayment={setPayment}
+              customers={data.customers}
+              amountPaid={amountPaid}
+              setAmountPaid={setAmountPaid}
               onCompleteSale={completeSale}
             />
           </div>
@@ -406,14 +469,20 @@ export default function PointOfSale() {
                     <Minus size={11} strokeWidth={2.5} />
                   </button>
                   <span style={{ fontWeight: 700, fontSize: 14, minWidth: 18, textAlign: 'center', color: 'var(--text-900)' }}>{item.qty}</span>
-                  <button onClick={() => updateQty(item.productId, 1)} style={{
-                    width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: 'var(--outline)', color: 'var(--text-900)', transition: 'background 0.15s'
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-light)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'var(--outline)'}>
-                    <Plus size={11} strokeWidth={2.5} />
-                  </button>
+                  {(() => {
+                    const atMax = item.qty >= stockOf(item.productId)
+                    return (
+                      <button onClick={() => updateQty(item.productId, 1)} disabled={atMax} title={atMax ? t('maxStockReached') : undefined} style={{
+                        width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'var(--outline)', color: 'var(--text-900)', transition: 'background 0.15s',
+                        opacity: atMax ? 0.4 : 1, cursor: atMax ? 'not-allowed' : 'pointer'
+                      }}
+                        onMouseEnter={e => { if (!atMax) e.currentTarget.style.background = 'var(--primary-light)' }}
+                        onMouseLeave={e => e.currentTarget.style.background = 'var(--outline)'}>
+                        <Plus size={11} strokeWidth={2.5} />
+                      </button>
+                    )
+                  })()}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{fmt(item.price * item.qty)}</div>
@@ -445,6 +514,9 @@ export default function PointOfSale() {
             setPhone={setPhone}
             payment={payment}
             setPayment={setPayment}
+            customers={data.customers}
+            amountPaid={amountPaid}
+            setAmountPaid={setAmountPaid}
             onCompleteSale={completeSale}
           />
         </div>

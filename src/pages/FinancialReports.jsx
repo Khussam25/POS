@@ -5,7 +5,7 @@ import { Printer, Download, DollarSign, TrendingDown, TrendingUp } from 'lucide-
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
-import { fmtMoney, saleNetRevenue, saleCogs } from '../utils/money'
+import { fmtMoney, saleNetRevenue, collectPaymentEvents } from '../utils/money'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord } from '../utils/salesOps'
 
 const fmt = fmtMoney
@@ -78,11 +78,30 @@ export default function FinancialReports() {
     [data.expenses, periodType, selectedMonth, selectedYear]
   )
 
-  const revenue = periodSales.reduce((a, s) => a + saleNetRevenue(s), 0)
+  // Cash basis: revenue/COGS are recognized in the period the payment is
+  // received (by payment date), not when the sale was billed.
+  const allEvents = useMemo(
+    () => collectPaymentEvents(data.sales, data.products),
+    [data.sales, data.products]
+  )
+  const periodEvents = useMemo(
+    () => allEvents.filter(e => inPeriod(e.date, periodType, selectedMonth, selectedYear)),
+    [allEvents, periodType, selectedMonth, selectedYear]
+  )
+  const revenue = periodEvents.reduce((a, e) => a + e.revenue, 0)
+  const cogs = periodEvents.reduce((a, e) => a + e.cogs, 0)
   const totalExpenses = periodExpenses.reduce((a, e) => a + e.amount, 0)
-  const cogs = periodSales.reduce((a, s) => a + saleCogs(s, data.products), 0)
   const grossProfit = revenue - cogs
   const netProfit = grossProfit - totalExpenses
+  // Sales billed this period vs. still owed on them (a transaction view, by sale date).
+  const grossSales = periodSales.reduce((a, s) => a + s.total, 0)
+  const uncollectedRevenue = periodSales.reduce((a, s) => {
+    const net = saleNetRevenue(s)
+    const total = s.total || 0
+    const paid = s.amountPaid == null ? total : Math.max(0, Math.min(s.amountPaid, total))
+    const owedFrac = total > 0 ? (total - paid) / total : 0
+    return a + net * owedFrac
+  }, 0)
 
   const expenseByCat = useMemo(() => {
     const byCat = {}
@@ -380,8 +399,14 @@ export default function FinancialReports() {
                 )}
                 {periodSales.length > 0 && (
                 <tr style={{ borderTop: '2px solid var(--outline)', background: 'var(--bg)' }}>
-                  <td colSpan={5} style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>{t('totalRevenue')}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--primary)' }}>{fmt(revenue)}</td>
+                  <td colSpan={5} style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>{t('grossSales')}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--primary)' }}>{fmt(grossSales)}</td>
+                </tr>
+                )}
+                {periodSales.length > 0 && uncollectedRevenue > 0 && (
+                <tr style={{ background: 'var(--bg)' }}>
+                  <td colSpan={5} style={{ padding: '4px 16px 12px', fontSize: 12, color: 'var(--text-500)' }}>{t('uncollectedCredit')}</td>
+                  <td style={{ padding: '4px 16px 12px', fontSize: 12, color: 'var(--text-500)' }}>{fmt(uncollectedRevenue)}</td>
                 </tr>
                 )}
               </tbody>
