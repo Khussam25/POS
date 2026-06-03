@@ -38,7 +38,7 @@ export const PERMISSIONS = {
   '/customers':  ['Admin', 'Cashier'],
   '/inventory':  ['Admin', 'Cashier'],
   '/expenses':   ['Admin'],
-  '/sales':      ['Admin'],
+  '/sales':      ['Admin', 'Cashier'],
   '/reports':    ['Admin'],
   '/employees':  ['Admin'],
   '/settings':   ['Admin', 'Cashier'],
