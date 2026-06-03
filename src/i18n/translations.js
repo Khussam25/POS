@@ -169,6 +169,10 @@ const en = {
   saleLabel: 'Sale',
   itemSingular: 'item',
   itemPlural: 'items',
+  linkedSales: 'Linked sales',
+  noLinkedSales: 'No sales linked yet',
+  removeLink: 'Unlink',
+  undo: 'Undo',
 
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Inventory',
@@ -504,6 +508,10 @@ const sw = {
   saleLabel: 'Mauzo',
   itemSingular: 'bidhaa',
   itemPlural: 'bidhaa',
+  linkedSales: 'Mauzo yaliyounganishwa',
+  noLinkedSales: 'Hakuna mauzo yaliyounganishwa bado',
+  removeLink: 'Ondoa',
+  undo: 'Rudisha',
 
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Ghala',

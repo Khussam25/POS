@@ -101,10 +101,11 @@ export default function Customers() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [payAmount, setPayAmount] = useState('')
   const [payError, setPayError] = useState('')
-  // Add-flow: optionally link existing past sales to the new customer.
+  // Add/edit-flow: optionally link existing past sales to the customer.
   const [linkAdd, setLinkAdd] = useState(false)
   const [addDate, setAddDate] = useState(todayStr())
   const [addSel, setAddSel] = useState([])
+  const [unlinkSel, setUnlinkSel] = useState([])   // edit-flow: sales to detach
   // Standalone link modal for an existing customer.
   const [linkModal, setLinkModal] = useState(null)
   const [linkDate, setLinkDate] = useState(todayStr())
@@ -138,15 +139,22 @@ export default function Customers() {
     return () => clearTimeout(id)
   }, [modal])
 
+  function resetLinkState() {
+    setLinkAdd(false); setAddDate(todayStr()); setAddSel([]); setUnlinkSel([])
+  }
   function openAdd() {
     setForm(EMPTY); setErrors({})
-    setLinkAdd(false); setAddDate(todayStr()); setAddSel([])
+    resetLinkState()
     setModal('add')
   }
   function openEdit(c) {
     setForm({ id: c.id, name: c.name, phone: formatPhoneDisplay(c.phone || ''), note: c.note || '' })
     setErrors({})
+    resetLinkState()
     setModal('edit')
+  }
+  function toggleUnlink(id) {
+    setUnlinkSel(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
   function validate() {
@@ -171,9 +179,27 @@ export default function Customers() {
         updateData('customers', [c, ...customers])
       }
     } else {
-      updateData('customers', customers.map(c => c.id === form.id
-        ? { ...c, name: form.name.trim(), phone: form.phone.trim(), note: form.note.trim() }
-        : c))
+      const newName = form.name.trim()
+      const orig = customers.find(c => c.id === form.id)
+      const nextCustomers = customers.map(c => c.id === form.id
+        ? { ...c, name: newName, phone: form.phone.trim(), note: form.note.trim() }
+        : c)
+      let nextSales = sales
+      // Keep linked sales' displayed name in sync if the name changed.
+      if (orig && orig.name !== newName) {
+        nextSales = nextSales.map(s => s.customerId === form.id ? { ...s, customer: newName } : s)
+      }
+      // Detach sales marked for unlinking.
+      if (unlinkSel.length) {
+        const set = new Set(unlinkSel)
+        nextSales = nextSales.map(s => set.has(s.id) ? { ...s, customerId: null, customer: 'Walk-in Customer' } : s)
+      }
+      // Attach any newly selected past sales.
+      if (linkAdd && addSel.length) {
+        nextSales = linkSalesToCustomer(nextSales, addSel, { id: form.id, name: newName })
+      }
+      if (nextSales !== sales) batchUpdateData({ customers: nextCustomers, sales: nextSales })
+      else updateData('customers', nextCustomers)
     }
     setModal(null)
   }
@@ -307,6 +333,42 @@ export default function Customers() {
               <FormField label={t('fullName')} value={form.name} onChange={name => setForm(f => ({ ...f, name }))} error={errors.name} placeholder="e.g. Amina Hassan" />
               <FormField label={t('phone')} phone value={form.phone} onChange={phone => setForm(f => ({ ...f, phone }))} placeholder="+255 712 345 678" />
               <FormField label={t('noteOptional')} value={form.note} onChange={note => setForm(f => ({ ...f, note }))} placeholder={t('notePlaceholder')} />
+              {modal === 'edit' && (
+                <div style={{ borderTop: '1px solid var(--outline)', paddingTop: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-500)', marginBottom: 8 }}>{t('linkedSales')}</div>
+                  {customerSales(sales, form.id).length === 0 ? (
+                    <div style={{ fontSize: 12, color: 'var(--text-500)', marginBottom: 4 }}>{t('noLinkedSales')}</div>
+                  ) : (
+                    <div style={{ border: '1px solid var(--outline)', borderRadius: 10, maxHeight: 200, overflowY: 'auto' }}>
+                      {customerSales(sales, form.id).map(s => {
+                        const willUnlink = unlinkSel.includes(s.id)
+                        return (
+                          <div key={s.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '9px 12px', borderBottom: '1px solid var(--outline)', opacity: willUnlink ? 0.5 : 1 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, textDecoration: willUnlink ? 'line-through' : 'none' }}>
+                                <code style={{ color: 'var(--primary)', fontWeight: 700 }}>{saleRef(s)}</code> · {s.date} · {itemsSummary(s) || t('saleLabel')}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'var(--text-500)' }}>{fmt(s.total)} · {fmt(salePaid(s))} {t('paidLower')}{saleBalance(s) > 0 ? ` · ${fmt(saleBalance(s))} ${t('dueLower')}` : ''}</div>
+                            </div>
+                            <button type="button" onClick={() => toggleUnlink(s.id)} title={willUnlink ? t('undo') : t('removeLink')} style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: willUnlink ? 'var(--primary)' : 'var(--danger)', padding: '2px 6px' }}>
+                              {willUnlink ? t('undo') : t('removeLink')}
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 14 }}>
+                    <input type="checkbox" checked={linkAdd} onChange={e => setLinkAdd(e.target.checked)} style={{ width: 16, height: 16 }} />
+                    {t('linkSalesOptional')}
+                  </label>
+                  {linkAdd && (
+                    <div style={{ marginTop: 14 }}>
+                      <SaleLinkPicker date={addDate} setDate={setAddDate} selectedIds={addSel} setSelectedIds={setAddSel} sales={sales} t={t} />
+                    </div>
+                  )}
+                </div>
+              )}
               {modal === 'add' && (
                 <div style={{ borderTop: '1px solid var(--outline)', paddingTop: 14 }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
