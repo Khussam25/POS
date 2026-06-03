@@ -49,35 +49,17 @@ export function makeCustomer({ name, phone = '', note = '' }, customers) {
   }
 }
 
-/**
- * Build a sale record for a purchase entered by hand (e.g. an existing
- * customer's past purchase). Flagged `manual: true` so it doesn't touch
- * inventory and is kept out of the cash-basis P&L, while still counting
- * toward the customer's ledger and receivables.
- */
-export function buildManualSale({ customer, customerId, date, itemName, qty, unitPrice, amountPaid, by }) {
-  const q = Math.max(1, Math.round(Number(qty) || 1))
-  const price = Math.max(0, roundTz(Number(unitPrice) || 0))
-  const total = roundTz(q * price)
-  const paid = Math.max(0, Math.min(roundTz(Number(amountPaid) || 0), total))
-  const d = date || new Date().toISOString().split('T')[0]
-  return {
-    id: 's' + Date.now() + Math.random().toString(36).slice(2, 5),
-    date: d,
-    time: '',
-    customer: customer || 'Walk-in Customer',
-    customerId: customerId ?? null,
-    items: [{ productId: null, name: (itemName || '').trim() || 'Item', qty: q, price, buyingPriceTZS: 0 }],
-    subtotal: total,
-    vat: 0,
-    discountAmount: 0,
-    total,
-    paymentMethod: 'Cash',
-    amountPaid: paid,
-    payments: paid > 0 ? [{ amount: paid, date: d, by }] : [],
-    soldBy: by,
-    manual: true,
-  }
+/** Sales on a given date not yet attached to any customer (newest first). */
+export function unlinkedSalesOnDate(sales, date) {
+  return sales
+    .filter(s => s.date === date && !s.customerId)
+    .sort((a, b) => (b.time || '').localeCompare(a.time || ''))
+}
+
+/** Attach a set of existing sales to a customer (sets customerId + name). */
+export function linkSalesToCustomer(sales, saleIds, customer) {
+  const ids = new Set(saleIds)
+  return sales.map(s => ids.has(s.id) ? { ...s, customerId: customer.id, customer: customer.name } : s)
 }
 
 /** Find a customer by exact (case-insensitive) name, else undefined. */

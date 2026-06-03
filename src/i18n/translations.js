@@ -161,6 +161,12 @@ const en = {
   qtyLabel: 'Qty',
   unitPriceLabel: 'Unit Price (TZS)',
   manualTag: 'Manual',
+  linkSalesOptional: 'Link past sales (optional)',
+  linkPastSale: 'Link Past Sale',
+  linkSelected: 'Link Selected',
+  noUnlinkedSales: 'No unlinked sales on this date',
+  selectedSales: 'selected',
+  saleLabel: 'Sale',
 
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Inventory',
@@ -488,6 +494,12 @@ const sw = {
   qtyLabel: 'Idadi',
   unitPriceLabel: 'Bei ya Kimoja (TZS)',
   manualTag: 'Mkono',
+  linkSalesOptional: 'Unganisha mauzo ya zamani (si lazima)',
+  linkPastSale: 'Unganisha Mauzo ya Zamani',
+  linkSelected: 'Unganisha Yaliyochaguliwa',
+  noUnlinkedSales: 'Hakuna mauzo yasiyounganishwa tarehe hii',
+  selectedSales: 'yamechaguliwa',
+  saleLabel: 'Mauzo',
 
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Ghala',
