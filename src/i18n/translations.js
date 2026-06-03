@@ -167,6 +167,8 @@ const en = {
   noUnlinkedSales: 'No unlinked sales on this date',
   selectedSales: 'selected',
   saleLabel: 'Sale',
+  itemSingular: 'item',
+  itemPlural: 'items',
 
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Inventory',
@@ -500,6 +502,8 @@ const sw = {
   noUnlinkedSales: 'Hakuna mauzo yasiyounganishwa tarehe hii',
   selectedSales: 'yamechaguliwa',
   saleLabel: 'Mauzo',
+  itemSingular: 'bidhaa',
+  itemPlural: 'bidhaa',
 
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Ghala',

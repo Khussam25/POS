@@ -1,5 +1,25 @@
 import { roundTz, calcOrderTotals } from './money'
 
+/** Next sequential human-readable receipt number, e.g. S-0001. */
+export function nextReceiptNo(sales) {
+  let max = 0
+  for (const s of sales) {
+    const m = /^S-(\d+)$/.exec(s.receiptNo || '')
+    if (m) max = Math.max(max, parseInt(m[1], 10))
+  }
+  return 'S-' + String(max + 1).padStart(4, '0')
+}
+
+/** Display reference for a sale: its receipt number, or a stable id fallback. */
+export function saleRef(sale) {
+  return sale.receiptNo || ('#' + String(sale.id || '').slice(-5).toUpperCase())
+}
+
+/** One-line summary of items in a sale, e.g. "2× Lipstick · 1× Face Cream". */
+export function itemsSummary(sale) {
+  return (sale.items || []).map(i => `${i.qty}× ${i.name}`).join(' · ')
+}
+
 /** Put sold quantities back into inventory. */
 export function restoreInventoryFromSale(products, sale) {
   if (!sale?.items?.length) return products

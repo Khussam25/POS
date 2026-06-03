@@ -8,6 +8,7 @@ import OrderCheckout from '../components/pos/OrderCheckout'
 import { loadPosDraft, savePosDraft, clearPosDraft, reconcileCartWithProducts } from '../utils/posCart'
 import { calcOrderTotals, fmtMoney } from '../utils/money'
 import { findCustomerByName, makeCustomer } from '../utils/customers'
+import { nextReceiptNo } from '../utils/salesOps'
 import { Search, Plus, Minus, ShoppingCart, CheckCircle2, X, Package } from 'lucide-react'
 
 const fmt = fmtMoney
@@ -155,6 +156,7 @@ export default function PointOfSale() {
     const date = now.toISOString().split('T')[0]
     const sale = {
       id: 's' + Date.now(),
+      receiptNo: nextReceiptNo(data.sales),
       date,
       time: now.toTimeString().slice(0, 5),
       customer: name || 'Walk-in Customer',

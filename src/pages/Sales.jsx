@@ -3,7 +3,7 @@ import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import { fmtMoney } from '../utils/money'
 import { saleBalance, salePaymentStatus } from '../utils/customers'
-import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord } from '../utils/salesOps'
+import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, saleRef, itemsSummary } from '../utils/salesOps'
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 
 const fmt = fmtMoney
@@ -114,10 +114,14 @@ export default function Sales() {
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <td style={{ padding: '11px 12px', fontSize: 13, color: 'var(--text-500)', whiteSpace: 'nowrap' }}>
-                  {s.date}{s.time ? ` · ${s.time}` : ''}
+                  <div>{s.date}{s.time ? ` · ${s.time}` : ''}</div>
+                  <code style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>{saleRef(s)}</code>
                 </td>
                 <td style={{ padding: '11px 12px', fontWeight: 600, fontSize: 13 }}>{s.customer}</td>
-                <td style={{ padding: '11px 12px', fontSize: 13, color: 'var(--text-500)' }}>{s.items.length}</td>
+                <td style={{ padding: '11px 12px', fontSize: 13, maxWidth: 240 }}>
+                  <div style={{ fontWeight: 600 }}>{s.items.length} {s.items.length === 1 ? t('itemSingular') : t('itemPlural')}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-500)', lineHeight: 1.4 }}>{itemsSummary(s)}</div>
+                </td>
                 <td style={{ padding: '11px 12px' }}>
                   <span style={{
                     fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999,

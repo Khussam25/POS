@@ -11,6 +11,7 @@ import {
   saleBalance, salePaid, salePaymentStatus, applyPayment,
   unlinkedSalesOnDate, linkSalesToCustomer,
 } from '../utils/customers'
+import { saleRef, itemsSummary } from '../utils/salesOps'
 import { Plus, Pencil, Trash2, X, Search, Wallet, Users, HandCoins, Link2 } from 'lucide-react'
 
 const fmt = fmtMoney
@@ -47,11 +48,6 @@ function StatCard({ icon: Icon, label, value, accent }) {
   )
 }
 
-/** Short summary of what was bought, e.g. "2× Lipstick · 1× Face Cream". */
-function itemsSummary(sale) {
-  return (sale.items || []).map(i => `${i.qty}× ${i.name}`).join(' · ')
-}
-
 /** Pick a date, then check off existing unlinked sales from that day to attach. */
 function SaleLinkPicker({ date, setDate, selectedIds, setSelectedIds, sales, t }) {
   const list = unlinkedSalesOnDate(sales, date)
@@ -71,7 +67,10 @@ function SaleLinkPicker({ date, setDate, selectedIds, setSelectedIds, sales, t }
             <label key={s.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', borderBottom: '1px solid var(--outline)', cursor: 'pointer', background: checked ? 'var(--primary-light)' : 'transparent' }}>
               <input type="checkbox" checked={checked} onChange={() => toggle(s.id)} style={{ width: 15, height: 15, marginTop: 2, flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600 }}>{s.time ? `${s.time} · ` : ''}{itemsSummary(s) || t('saleLabel')}</div>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>
+                  <code style={{ color: 'var(--primary)', fontWeight: 700 }}>{saleRef(s)}</code>
+                  {s.time ? ` · ${s.time}` : ''} · {itemsSummary(s) || t('saleLabel')}
+                </div>
                 <div style={{ fontSize: 11, color: 'var(--text-500)' }}>
                   {fmt(s.total)} · {fmt(salePaid(s))} {t('paidLower')}{bal > 0 ? ` · ${fmt(bal)} ${t('dueLower')}` : ''}
                 </div>
@@ -402,7 +401,10 @@ export default function Customers() {
                 return (
                   <div key={s.id} style={{ padding: '12px 24px', borderBottom: '1px solid var(--outline)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{s.date}{s.time ? ` · ${s.time}` : ''}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        {s.date}{s.time ? ` · ${s.time}` : ''}
+                        <code style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>{saleRef(s)}</code>
+                      </div>
                       <div style={{ fontSize: 12, color: 'var(--text-900)', marginTop: 2 }}>{itemsSummary(s)}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-500)', marginTop: 2 }}>
                         {fmt(salePaid(s))} {t('paidLower')}
