@@ -96,10 +96,12 @@ export function customerSales(sales, customerId) {
 export function customerStats(customer, sales) {
   const own = sales.filter(s => s.customerId === customer.id)
   const purchased = own.reduce((a, s) => a + (s.total || 0), 0)
+  const paid = own.reduce((a, s) => a + salePaid(s), 0)
   const outstanding = own.reduce((a, s) => a + saleBalance(s), 0)
   const lastDate = own.reduce((d, s) => (s.date > d ? s.date : d), '')
   return {
     purchased: roundTz(purchased),
+    paid: roundTz(paid),
     outstanding: roundTz(outstanding),
     txnCount: own.length,
     lastDate,

@@ -6,7 +6,7 @@ import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/Sa
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { fmtMoney, saleNetRevenue, collectPaymentEvents } from '../utils/money'
-import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord } from '../utils/salesOps'
+import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged } from '../utils/salesOps'
 import { ensureCustomerForName } from '../utils/customers'
 
 const fmt = fmtMoney
@@ -131,19 +131,30 @@ export default function FinancialReports() {
 
   function saveEditedSale() {
     if (!editSale) return
-    const result = updateSaleRecord(data.products, data.sales, editSale, vatRate)
-    if (!result.ok) {
-      if (result.error === 'insufficientStock') setSaleError(t('saleStockError'))
-      else if (result.error === 'emptySale') setSaleError(t('saleEmptyError'))
-      else setSaleError(t('saveFailed'))
-      return
+    const orig = data.sales.find(s => s.id === editSale.id)
+    const updates = {}
+    let baseSales = data.sales
+
+    if (saleItemsChanged(orig, editSale)) {
+      const result = updateSaleRecord(data.products, data.sales, editSale, vatRate)
+      if (!result.ok) {
+        if (result.error === 'insufficientStock') setSaleError(t('saleStockError'))
+        else if (result.error === 'emptySale') setSaleError(t('saleEmptyError'))
+        else setSaleError(t('saveFailed'))
+        return
+      }
+      updates.products = result.products
+      baseSales = result.sales
+    } else {
+      const recalculated = recalculateSale(editSale, vatRate)
+      baseSales = data.sales.map(s => s.id === editSale.id ? recalculated : s)
     }
+
     const name = (editSale.customer || '').trim()
     const { customerId, customers: nextCustomers } = ensureCustomerForName(data.customers, name)
-    const sales = result.sales.map(s => s.id === editSale.id
+    updates.sales = baseSales.map(s => s.id === editSale.id
       ? { ...s, customerId, customer: name || 'Walk-in Customer' }
       : s)
-    const updates = { products: result.products, sales }
     if (nextCustomers !== data.customers) updates.customers = nextCustomers
     if (!batchUpdateData(updates)) {
       setSaleError(t('saveFailed'))

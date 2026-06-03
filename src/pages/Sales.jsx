@@ -3,7 +3,7 @@ import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import { fmtMoney } from '../utils/money'
 import { saleBalance, salePaymentStatus, ensureCustomerForName } from '../utils/customers'
-import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, saleRef, itemsSummary } from '../utils/salesOps'
+import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, saleRef, itemsSummary } from '../utils/salesOps'
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 
 const fmt = fmtMoney
@@ -41,20 +41,32 @@ export default function Sales() {
 
   function saveEdit() {
     if (!editSale) return
-    const result = updateSaleRecord(data.products, data.sales, editSale, vatRate)
-    if (!result.ok) {
-      if (result.error === 'insufficientStock') setSaleError(t('saleStockError'))
-      else if (result.error === 'emptySale') setSaleError(t('saleEmptyError'))
-      else setSaleError(t('saveFailed'))
-      return
+    const orig = data.sales.find(s => s.id === editSale.id)
+    const updates = {}
+    let baseSales = data.sales
+
+    // Only touch inventory / re-validate stock when items actually changed.
+    if (saleItemsChanged(orig, editSale)) {
+      const result = updateSaleRecord(data.products, data.sales, editSale, vatRate)
+      if (!result.ok) {
+        if (result.error === 'insufficientStock') setSaleError(t('saleStockError'))
+        else if (result.error === 'emptySale') setSaleError(t('saleEmptyError'))
+        else setSaleError(t('saveFailed'))
+        return
+      }
+      updates.products = result.products
+      baseSales = result.sales
+    } else {
+      const recalculated = recalculateSale(editSale, vatRate)
+      baseSales = data.sales.map(s => s.id === editSale.id ? recalculated : s)
     }
+
     // Link the sale to a customer based on the edited name (create if new).
     const name = (editSale.customer || '').trim()
     const { customerId, customers: nextCustomers } = ensureCustomerForName(data.customers, name)
-    const sales = result.sales.map(s => s.id === editSale.id
+    updates.sales = baseSales.map(s => s.id === editSale.id
       ? { ...s, customerId, customer: name || 'Walk-in Customer' }
       : s)
-    const updates = { products: result.products, sales }
     if (nextCustomers !== data.customers) updates.customers = nextCustomers
     if (!batchUpdateData(updates)) {
       setSaleError(t('saveFailed'))

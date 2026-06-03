@@ -9,13 +9,12 @@ import { formatPhoneDisplay } from '../utils/phone'
 import {
   makeCustomer, customerStats, customerSales, totalReceivables,
   saleBalance, salePaid, salePaymentStatus, applyPayment,
-  unlinkedSalesOnDate, linkSalesToCustomer,
+  linkSalesToCustomer,
 } from '../utils/customers'
 import { saleRef, itemsSummary } from '../utils/salesOps'
 import { Plus, Pencil, Trash2, X, Search, Wallet, Users, HandCoins, Link2 } from 'lucide-react'
 
 const fmt = fmtMoney
-const todayStr = () => new Date().toISOString().split('T')[0]
 const EMPTY = { name: '', phone: '', note: '' }
 
 const STATUS_STYLE = {
@@ -48,16 +47,58 @@ function StatCard({ icon: Icon, label, value, accent }) {
   )
 }
 
-/** Pick a date, then check off existing unlinked sales from that day to attach. */
-function SaleLinkPicker({ date, setDate, selectedIds, setSelectedIds, sales, t }) {
-  const list = unlinkedSalesOnDate(sales, date)
+/** Browse every unlinked sale (search + optional date filter), check off any to attach. */
+function SaleLinkPicker({ selectedIds, setSelectedIds, sales, t }) {
+  const [q, setQ] = useState('')
+  const [dateFilter, setDateFilter] = useState('')
+
+  const unlinked = useMemo(
+    () => sales.filter(s => !s.customerId).sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || ''))),
+    [sales]
+  )
+  const list = unlinked.filter(s => {
+    if (dateFilter && s.date !== dateFilter) return false
+    const needle = q.trim().toLowerCase()
+    if (!needle) return true
+    return saleRef(s).toLowerCase().includes(needle)
+      || itemsSummary(s).toLowerCase().includes(needle)
+      || String(s.total).includes(needle.replace(/[^\d]/g, ''))
+  })
+  const allSelected = list.length > 0 && list.every(s => selectedIds.includes(s.id))
+
   function toggle(id) {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
+  function toggleAll() {
+    if (allSelected) {
+      const ids = new Set(list.map(s => s.id))
+      setSelectedIds(prev => prev.filter(id => !ids.has(id)))
+    } else {
+      setSelectedIds(prev => [...new Set([...prev, ...list.map(s => s.id)])])
+    }
+  }
+
   return (
     <div style={{ display: 'grid', gap: 10 }}>
-      <FormField label={t('purchaseDate')} type="date" value={date} onChange={d => { setDate(d); setSelectedIds([]) }} />
-      <div style={{ border: '1px solid var(--outline)', borderRadius: 10, maxHeight: 220, overflowY: 'auto' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('searchSales')}</label>
+          <FormInput variant="compact" value={q} onChange={e => setQ(e.target.value)} placeholder={t('searchSalesPlaceholder')} selectOnFocus={false} style={{ width: '100%' }} />
+        </div>
+        <div style={{ flex: '0 0 150px' }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('purchaseDate')}</label>
+          <FormInput type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} selectOnFocus={false} style={{ width: '100%' }} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+        <span style={{ color: 'var(--text-500)', fontWeight: 600 }}>{list.length} {t('unlinkedCount')}</span>
+        {list.length > 0 && (
+          <button type="button" onClick={toggleAll} style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>
+            {allSelected ? t('clearAll') : t('selectAll')}
+          </button>
+        )}
+      </div>
+      <div style={{ border: '1px solid var(--outline)', borderRadius: 10, maxHeight: 240, overflowY: 'auto' }}>
         {list.length === 0 ? (
           <div style={{ padding: '18px', textAlign: 'center', fontSize: 12, color: 'var(--text-500)' }}>{t('noUnlinkedSales')}</div>
         ) : list.map(s => {
@@ -69,7 +110,7 @@ function SaleLinkPicker({ date, setDate, selectedIds, setSelectedIds, sales, t }
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 600 }}>
                   <code style={{ color: 'var(--primary)', fontWeight: 700 }}>{saleRef(s)}</code>
-                  {s.time ? ` · ${s.time}` : ''} · {itemsSummary(s) || t('saleLabel')}
+                  {' · '}{s.date}{s.time ? ` ${s.time}` : ''} · {itemsSummary(s) || t('saleLabel')}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-500)' }}>
                   {fmt(s.total)} · {fmt(salePaid(s))} {t('paidLower')}{bal > 0 ? ` · ${fmt(bal)} ${t('dueLower')}` : ''}
@@ -103,12 +144,10 @@ export default function Customers() {
   const [payError, setPayError] = useState('')
   // Add/edit-flow: optionally link existing past sales to the customer.
   const [linkAdd, setLinkAdd] = useState(false)
-  const [addDate, setAddDate] = useState(todayStr())
   const [addSel, setAddSel] = useState([])
   const [unlinkSel, setUnlinkSel] = useState([])   // edit-flow: sales to detach
   // Standalone link modal for an existing customer.
   const [linkModal, setLinkModal] = useState(null)
-  const [linkDate, setLinkDate] = useState(todayStr())
   const [linkSel, setLinkSel] = useState([])
   const modalRef = useRef(null)
 
@@ -140,7 +179,7 @@ export default function Customers() {
   }, [modal])
 
   function resetLinkState() {
-    setLinkAdd(false); setAddDate(todayStr()); setAddSel([]); setUnlinkSel([])
+    setLinkAdd(false); setAddSel([]); setUnlinkSel([])
   }
   function openAdd() {
     setForm(EMPTY); setErrors({})
@@ -232,7 +271,7 @@ export default function Customers() {
     setPayAmount('')
   }
 
-  function openLink(c) { setLinkDate(todayStr()); setLinkSel([]); setLinkModal(c) }
+  function openLink(c) { setLinkSel([]); setLinkModal(c) }
   function saveLink() {
     if (!linkModal || linkSel.length === 0) { setLinkModal(null); return }
     const nextSales = linkSalesToCustomer(sales, linkSel, linkModal)
@@ -280,7 +319,7 @@ export default function Customers() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-              {[t('code'), t('customer'), t('phone'), t('purchased'), t('outstanding'), ''].map(h => (
+              {[t('code'), t('customer'), t('phone'), t('purchased'), t('paidLabel'), t('outstanding'), ''].map(h => (
                 <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 1 }}>{h}</th>
               ))}
             </tr>
@@ -297,6 +336,7 @@ export default function Customers() {
                 <td style={{ padding: '11px 12px', fontWeight: 600, fontSize: 13 }}>{c.name}</td>
                 <td style={{ padding: '11px 12px', fontSize: 13, color: 'var(--text-500)', whiteSpace: 'nowrap' }}>{formatPhoneDisplay(c.phone) || '—'}</td>
                 <td style={{ padding: '11px 12px', fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(stats.purchased)}</td>
+                <td style={{ padding: '11px 12px', fontSize: 13, whiteSpace: 'nowrap', color: 'var(--success)' }}>{fmt(stats.paid)}</td>
                 <td style={{ padding: '11px 12px', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', color: stats.outstanding > 0 ? 'var(--danger)' : 'var(--text-500)' }}>
                   {stats.outstanding > 0 ? fmt(stats.outstanding) : '—'}
                 </td>
@@ -315,7 +355,7 @@ export default function Customers() {
               </tr>
             ))}
             {visibleRows.length === 0 && (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-500)', fontSize: 13 }}>{t('noCustomers')}</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-500)', fontSize: 13 }}>{t('noCustomers')}</td></tr>
             )}
           </tbody>
         </table>
@@ -364,7 +404,7 @@ export default function Customers() {
                   </label>
                   {linkAdd && (
                     <div style={{ marginTop: 14 }}>
-                      <SaleLinkPicker date={addDate} setDate={setAddDate} selectedIds={addSel} setSelectedIds={setAddSel} sales={sales} t={t} />
+                      <SaleLinkPicker selectedIds={addSel} setSelectedIds={setAddSel} sales={sales} t={t} />
                     </div>
                   )}
                 </div>
@@ -377,7 +417,7 @@ export default function Customers() {
                   </label>
                   {linkAdd && (
                     <div style={{ marginTop: 14 }}>
-                      <SaleLinkPicker date={addDate} setDate={setAddDate} selectedIds={addSel} setSelectedIds={setAddSel} sales={sales} t={t} />
+                      <SaleLinkPicker selectedIds={addSel} setSelectedIds={setAddSel} sales={sales} t={t} />
                     </div>
                   )}
                 </div>
@@ -417,15 +457,19 @@ export default function Customers() {
             </div>
 
             <div style={{ display: 'flex', gap: 12, padding: '16px 24px', borderBottom: '1px solid var(--outline)', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 120px' }}>
+              <div style={{ flex: '1 1 90px' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-500)', fontWeight: 600 }}>{t('purchased')}</div>
                 <div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(detailStats.purchased)}</div>
               </div>
-              <div style={{ flex: '1 1 120px' }}>
+              <div style={{ flex: '1 1 90px' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-500)', fontWeight: 600 }}>{t('paidLabel')}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--success)' }}>{fmt(detailStats.paid)}</div>
+              </div>
+              <div style={{ flex: '1 1 90px' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-500)', fontWeight: 600 }}>{t('outstanding')}</div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: detailStats.outstanding > 0 ? 'var(--danger)' : 'var(--success)' }}>{fmt(detailStats.outstanding)}</div>
               </div>
-              <div style={{ flex: '1 1 120px' }}>
+              <div style={{ flex: '1 1 90px' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-500)', fontWeight: 600 }}>{t('itemsCol')}</div>
                 <div style={{ fontSize: 16, fontWeight: 800 }}>{detailStats.txnCount}</div>
               </div>
@@ -495,7 +539,7 @@ export default function Customers() {
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-500)', marginBottom: 18 }}>{linkModal.name} · {linkModal.code}</p>
             <div style={{ overflowY: 'auto' }}>
-              <SaleLinkPicker date={linkDate} setDate={setLinkDate} selectedIds={linkSel} setSelectedIds={setLinkSel} sales={sales} t={t} />
+              <SaleLinkPicker selectedIds={linkSel} setSelectedIds={setLinkSel} sales={sales} t={t} />
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 22, flexShrink: 0 }}>
               <button onClick={() => setLinkModal(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>

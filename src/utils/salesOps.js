@@ -20,6 +20,14 @@ export function itemsSummary(sale) {
   return (sale.items || []).map(i => `${i.qty}× ${i.name}`).join(' · ')
 }
 
+/** True if the edited sale changes items/quantities/prices/discount vs the original. */
+export function saleItemsChanged(orig, edited) {
+  const norm = its => (its || []).map(i => `${i.productId}|${Math.round(Number(i.qty) || 0)}|${Math.round(Number(i.price) || 0)}`).join(';')
+  const discA = Math.round(Number(orig?.discountAmount || 0))
+  const discB = Math.round(Number(edited?.discountAmount || 0))
+  return norm(orig?.items) !== norm(edited?.items) || discA !== discB
+}
+
 /** Put sold quantities back into inventory. */
 export function restoreInventoryFromSale(products, sale) {
   if (!sale?.items?.length) return products
