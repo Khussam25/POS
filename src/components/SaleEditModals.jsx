@@ -1,17 +1,20 @@
 import { useMemo } from 'react'
 import FormInput from './FormInput'
-import { Pencil, Trash2, X } from 'lucide-react'
+import { Pencil, Trash2, X, BadgeCheck } from 'lucide-react'
 import { fmtMoney } from '../utils/money'
 import { recalculateSale } from '../utils/salesOps'
+import { findCustomerByName } from '../utils/customers'
 
 const fmt = fmtMoney
 const PAYMENT_METHODS = ['Cash', 'Mobile Money', 'Card']
 
-export function SaleEditModal({ t, editSale, setEditSale, saleError, onSave, onClose, vatEnabled, vatRate }) {
+export function SaleEditModal({ t, editSale, setEditSale, saleError, onSave, onClose, vatEnabled, vatRate, customers = [] }) {
   const editPreview = useMemo(() => {
     if (!editSale) return null
     return recalculateSale(editSale, vatRate)
   }, [editSale, vatRate])
+
+  const matchedCustomer = editSale ? findCustomerByName(customers, editSale.customer) : null
 
   if (!editSale) return null
 
@@ -42,7 +45,17 @@ export function SaleEditModal({ t, editSale, setEditSale, saleError, onSave, onC
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('customer')}</label>
-            <FormInput value={editSale.customer} onChange={e => setEditSale(s => ({ ...s, customer: e.target.value }))} />
+            <FormInput value={editSale.customer} onChange={e => setEditSale(s => ({ ...s, customer: e.target.value }))} list="edit-sale-customer-list" />
+            <datalist id="edit-sale-customer-list">
+              {customers.map(c => <option key={c.id} value={c.name}>{c.code}{c.phone ? ` · ${c.phone}` : ''}</option>)}
+            </datalist>
+            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 5, color: matchedCustomer ? 'var(--primary)' : 'var(--text-500)', display: 'flex', alignItems: 'center', gap: 5 }}>
+              {matchedCustomer
+                ? <><BadgeCheck size={13} /> {t('existingCustomer')} · {matchedCustomer.code}</>
+                : (editSale.customer || '').trim() && (editSale.customer || '').trim().toLowerCase() !== 'walk-in customer'
+                  ? t('willCreateCustomer')
+                  : t('walkInNoLink')}
+            </div>
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('discountTZS')}</label>

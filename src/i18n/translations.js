@@ -173,6 +173,8 @@ const en = {
   noLinkedSales: 'No sales linked yet',
   removeLink: 'Unlink',
   undo: 'Undo',
+  willCreateCustomer: 'New customer — will be added to your list',
+  walkInNoLink: 'Walk-in — not linked to a customer',
 
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Inventory',
@@ -512,6 +514,8 @@ const sw = {
   noLinkedSales: 'Hakuna mauzo yaliyounganishwa bado',
   removeLink: 'Ondoa',
   undo: 'Rudisha',
+  willCreateCustomer: 'Mteja mpya — ataongezwa kwenye orodha',
+  walkInNoLink: 'Mteja wa kupita — hajaunganishwa',
 
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Ghala',

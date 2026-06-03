@@ -62,6 +62,22 @@ export function linkSalesToCustomer(sales, saleIds, customer) {
   return sales.map(s => ids.has(s.id) ? { ...s, customerId: customer.id, customer: customer.name } : s)
 }
 
+/**
+ * Resolve a typed customer name to a customer id for a sale: matches an
+ * existing customer, creates one for a new name, or returns null for an
+ * empty / walk-in name. Returns the (possibly extended) customers list.
+ */
+export function ensureCustomerForName(customers, name, phone = '') {
+  const trimmed = (name || '').trim()
+  if (!trimmed || trimmed.toLowerCase() === 'walk-in customer') {
+    return { customerId: null, customers, created: null }
+  }
+  const existing = findCustomerByName(customers, trimmed)
+  if (existing) return { customerId: existing.id, customers, created: null }
+  const created = makeCustomer({ name: trimmed, phone }, customers)
+  return { customerId: created.id, customers: [created, ...customers], created }
+}
+
 /** Find a customer by exact (case-insensitive) name, else undefined. */
 export function findCustomerByName(customers, name) {
   const n = name.trim().toLowerCase()

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import { fmtMoney } from '../utils/money'
-import { saleBalance, salePaymentStatus } from '../utils/customers'
+import { saleBalance, salePaymentStatus, ensureCustomerForName } from '../utils/customers'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, saleRef, itemsSummary } from '../utils/salesOps'
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 
@@ -48,7 +48,15 @@ export default function Sales() {
       else setSaleError(t('saveFailed'))
       return
     }
-    if (!batchUpdateData({ products: result.products, sales: result.sales })) {
+    // Link the sale to a customer based on the edited name (create if new).
+    const name = (editSale.customer || '').trim()
+    const { customerId, customers: nextCustomers } = ensureCustomerForName(data.customers, name)
+    const sales = result.sales.map(s => s.id === editSale.id
+      ? { ...s, customerId, customer: name || 'Walk-in Customer' }
+      : s)
+    const updates = { products: result.products, sales }
+    if (nextCustomers !== data.customers) updates.customers = nextCustomers
+    if (!batchUpdateData(updates)) {
       setSaleError(t('saveFailed'))
       return
     }
@@ -168,6 +176,7 @@ export default function Sales() {
         onClose={() => { setEditSale(null); setSaleError('') }}
         vatEnabled={data.settings.vatEnabled}
         vatRate={vatRate}
+        customers={data.customers}
       />
       <SaleDeleteModal
         t={t}

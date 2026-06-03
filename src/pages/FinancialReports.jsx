@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { fmtMoney, saleNetRevenue, collectPaymentEvents } from '../utils/money'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord } from '../utils/salesOps'
+import { ensureCustomerForName } from '../utils/customers'
 
 const fmt = fmtMoney
 function fmtSign(n) { return (n < 0 ? '(' : '') + fmt(Math.abs(n)) + (n < 0 ? ')' : '') }
@@ -137,7 +138,14 @@ export default function FinancialReports() {
       else setSaleError(t('saveFailed'))
       return
     }
-    if (!batchUpdateData({ products: result.products, sales: result.sales })) {
+    const name = (editSale.customer || '').trim()
+    const { customerId, customers: nextCustomers } = ensureCustomerForName(data.customers, name)
+    const sales = result.sales.map(s => s.id === editSale.id
+      ? { ...s, customerId, customer: name || 'Walk-in Customer' }
+      : s)
+    const updates = { products: result.products, sales }
+    if (nextCustomers !== data.customers) updates.customers = nextCustomers
+    if (!batchUpdateData(updates)) {
       setSaleError(t('saveFailed'))
       return
     }
@@ -425,6 +433,7 @@ export default function FinancialReports() {
           onClose={() => { setEditSale(null); setSaleError('') }}
           vatEnabled={data.settings.vatEnabled}
           vatRate={vatRate}
+          customers={data.customers}
         />
         <SaleDeleteModal
           t={t}
