@@ -9,8 +9,7 @@ import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/Sa
 const fmt = fmtMoney
 
 export default function Sales() {
-  const { data, batchUpdateData, currentUser } = useApp()
-  const isAdmin = currentUser.role === 'Admin'
+  const { data, batchUpdateData } = useApp()
   const t = useT()
   const [tab, setTab] = useState('thisMonth')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -134,7 +133,7 @@ export default function Sales() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-              {[t('dateLabel'), t('customer'), t('itemsCol'), t('payment'), t('amount'), t('status'), t('soldBy'), ...(isAdmin ? [''] : [])].map(h => (
+              {[t('dateLabel'), t('customer'), t('itemsCol'), t('payment'), t('amount'), t('status'), t('soldBy'), ''].map(h => (
                 <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: h ? 'nowrap' : undefined, position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 1 }}>{h}</th>
               ))}
             </tr>
@@ -178,41 +177,35 @@ export default function Sales() {
                   })()}
                 </td>
                 <td style={{ padding: '11px 12px', fontSize: 12, color: 'var(--text-500)' }}>{s.soldBy}</td>
-                {isAdmin && (
-                  <td style={{ padding: '11px 8px 11px 12px', width: 72 }}>
-                    <SaleRowActions sale={s} t={t} onEdit={openEdit} onDelete={setDeleteTarget} />
-                  </td>
-                )}
+                <td style={{ padding: '11px 8px 11px 12px', width: 72 }}>
+                  <SaleRowActions sale={s} t={t} onEdit={openEdit} onDelete={setDeleteTarget} />
+                </td>
               </tr>
             ))}
             {sorted.length === 0 && (
-              <tr><td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noSalesFound')}</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noSalesFound')}</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {isAdmin && (
-        <>
-          <SaleEditModal
-            t={t}
-            editSale={editSale}
-            setEditSale={setEditSale}
-            saleError={saleError}
-            onSave={saveEdit}
-            onClose={() => { setEditSale(null); setSaleError('') }}
-            vatEnabled={data.settings.vatEnabled}
-            vatRate={vatRate}
-            customers={data.customers}
-          />
-          <SaleDeleteModal
-            t={t}
-            sale={deleteTarget}
-            onConfirm={confirmDelete}
-            onClose={() => setDeleteTarget(null)}
-          />
-        </>
-      )}
+      <SaleEditModal
+        t={t}
+        editSale={editSale}
+        setEditSale={setEditSale}
+        saleError={saleError}
+        onSave={saveEdit}
+        onClose={() => { setEditSale(null); setSaleError('') }}
+        vatEnabled={data.settings.vatEnabled}
+        vatRate={vatRate}
+        customers={data.customers}
+      />
+      <SaleDeleteModal
+        t={t}
+        sale={deleteTarget}
+        onConfirm={confirmDelete}
+        onClose={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }
