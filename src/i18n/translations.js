@@ -153,6 +153,14 @@ const en = {
   statusUnpaid: 'Unpaid',
   uncollectedCredit: 'Uncollected credit (not in revenue)',
   grossSales: 'Gross Sales (billed)',
+  addPastPurchase: 'Add a past purchase (optional)',
+  recordPurchase: 'Record Purchase',
+  purchaseDate: 'Date',
+  whatBought: 'What they bought',
+  whatBoughtPlaceholder: 'e.g. Face Cream',
+  qtyLabel: 'Qty',
+  unitPriceLabel: 'Unit Price (TZS)',
+  manualTag: 'Manual',
 
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Inventory',
@@ -472,6 +480,14 @@ const sw = {
   statusUnpaid: 'Haijalipwa',
   uncollectedCredit: 'Mkopo usiolipwa (sio mapato)',
   grossSales: 'Mauzo Jumla (yaliyopigwa hesabu)',
+  addPastPurchase: 'Ongeza manunuzi ya zamani (si lazima)',
+  recordPurchase: 'Rekodi Manunuzi',
+  purchaseDate: 'Tarehe',
+  whatBought: 'Walinunua nini',
+  whatBoughtPlaceholder: 'mf. Krimu ya Uso',
+  qtyLabel: 'Idadi',
+  unitPriceLabel: 'Bei ya Kimoja (TZS)',
+  manualTag: 'Mkono',
 
   // ── Inventory ────────────────────────────────────────────────────────────
   inventoryTitle: 'Ghala',

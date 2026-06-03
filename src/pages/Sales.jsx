@@ -12,6 +12,7 @@ export default function Sales() {
   const { data, batchUpdateData } = useApp()
   const t = useT()
   const [tab, setTab] = useState('thisMonth')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [editSale, setEditSale] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [saleError, setSaleError] = useState('')
@@ -21,10 +22,12 @@ export default function Sales() {
   const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0
 
   const filtered = data.sales.filter(s => {
-    if (tab === 'today') return s.date === today
-    if (tab === 'thisMonth') return s.date.startsWith(currentMonth)
-    if (tab === 'all') return true
-    return s.date.startsWith(currentMonth)
+    const inPeriod = tab === 'today' ? s.date === today
+      : tab === 'all' ? true
+      : s.date.startsWith(currentMonth)
+    if (!inPeriod) return false
+    if (statusFilter === 'all') return true
+    return salePaymentStatus(s).toLowerCase() === statusFilter
   })
   const sorted = [...filtered].sort((a, b) =>
     b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')
@@ -82,6 +85,18 @@ export default function Sales() {
         <div style={{ fontSize: 13, fontWeight: 700 }}>
           {t('totalLabel')}: <span style={{ color: 'var(--primary)' }}>{fmt(total)}</span>
         </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-500)', marginRight: 2 }}>{t('status')}:</span>
+        {[['all', t('all')], ['paid', t('statusPaid')], ['partial', t('statusPartial')], ['unpaid', t('statusUnpaid')]].map(([key, label]) => (
+          <button key={key} type="button" onClick={() => setStatusFilter(key)} style={{
+            padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
+            background: statusFilter === key ? 'var(--primary)' : 'transparent',
+            color: statusFilter === key ? 'white' : 'var(--text-500)',
+            border: statusFilter === key ? 'none' : '1.5px solid var(--outline)',
+          }}>{label}</button>
+        ))}
       </div>
 
       <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>

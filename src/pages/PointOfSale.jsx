@@ -126,16 +126,19 @@ export default function PointOfSale() {
     const balance = total - settledPaid
     const isCredit = balance > 0
 
-    // Resolve / create the linked customer.
+    // A credit sale must be tied to a named customer.
+    if (isCredit && !name) {
+      setCheckoutError(t('creditNeedsCustomer'))
+      return
+    }
+
+    // Any named sale (paid or credit) is linked to a customer so it shows on
+    // their account — creating the customer the first time we see the name.
     const existing = findCustomerByName(data.customers, name)
     let customerId = existing?.id ?? null
     let nextCustomers = data.customers
 
-    if (isCredit) {
-      if (!name) {
-        setCheckoutError(t('creditNeedsCustomer'))
-        return
-      }
+    if (name) {
       if (existing) {
         // Backfill a phone number if we now have one.
         if (!existing.phone && phone.trim()) {

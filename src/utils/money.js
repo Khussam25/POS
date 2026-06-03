@@ -54,6 +54,10 @@ export function saleCogs(sale, products) {
  * `amountPaid`, or — for pre-feature sales with no field — the full total.
  */
 export function salePaymentEvents(sale, products) {
+  // Manually entered historical/opening sales stay out of the P&L (they were
+  // booked before the shop started using this app), but still count toward
+  // the customer's ledger and receivables.
+  if (sale.manual) return []
   const total = sale.total || 0
   if (total <= 0) return []
   const net = saleNetRevenue(sale)
