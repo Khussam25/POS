@@ -140,9 +140,13 @@ export default function Dashboard() {
 
         {/* Low Stock */}
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '20px 22px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12 }}>
             <div style={{ fontWeight: 700, fontSize: 15 }}>{t('lowStockAlerts')}</div>
-            {lowStockAlerts.length > 0 && <span style={{ background: 'var(--accent)', color: 'white', borderRadius: 999, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{lowStockAlerts.length}</span>}
+            {lowStockAlerts.length > 0 && (
+              <span style={{ background: 'var(--accent)', color: 'white', borderRadius: 999, padding: '4px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {lowStockAlerts.length} {t('lowStockBadgeProducts')}
+              </span>
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 340, overflowY: 'auto', paddingRight: 4 }}>
             {lowStockAlerts.length === 0 && <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--success)', fontSize: 13, fontWeight: 500 }}>{t('wellStocked')}</div>}
