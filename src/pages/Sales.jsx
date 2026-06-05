@@ -12,7 +12,6 @@ const fmt = fmtMoney
 export default function Sales() {
   const { data, batchUpdateData, currentUser } = useApp()
   const canEdit = canEditSales(currentUser.role)
-  const isAdmin = currentUser.role === 'Admin'
   const t = useT()
   const [tab, setTab] = useState('thisMonth')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -199,7 +198,7 @@ export default function Sales() {
                       onEdit={openEdit}
                       onDelete={setDeleteTarget}
                       canEdit={canEdit}
-                      canDelete={isAdmin}
+                      canDelete={canEdit}
                     />
                   </td>
                 )}
@@ -225,7 +224,7 @@ export default function Sales() {
           customers={data.customers}
         />
       )}
-      {isAdmin && (
+      {canEdit && (
         <SaleDeleteModal
           t={t}
           sale={deleteTarget}
