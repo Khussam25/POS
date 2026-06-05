@@ -1,16 +1,18 @@
 import { useState } from 'react'
-import { useApp } from '../App'
+import { useApp, canEditSales } from '../App'
 import { useT } from '../i18n/LangContext'
 import { fmtMoney } from '../utils/money'
 import { saleBalance, salePaymentStatus, resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
-import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, saleRef, itemsSummary } from '../utils/salesOps'
+import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, saleRef, itemsSummary, validateAndApplyAmountPaid } from '../utils/salesOps'
 import { todayTZ } from '../utils/time'
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 
 const fmt = fmtMoney
 
 export default function Sales() {
-  const { data, batchUpdateData } = useApp()
+  const { data, batchUpdateData, currentUser } = useApp()
+  const canEdit = canEditSales(currentUser.role)
+  const isAdmin = currentUser.role === 'Admin'
   const t = useT()
   const [tab, setTab] = useState('thisMonth')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -79,6 +81,15 @@ export default function Sales() {
     const backfill = backfillCustomerIds(resolved.customers, nextSales)
     nextSales = backfill.sales
 
+    const edited = nextSales.find(s => s.id === editSale.id)
+    const paidResult = validateAndApplyAmountPaid(edited, editSale.amountPaid, customerName, currentUser.name)
+    if (!paidResult.ok) {
+      if (paidResult.error === 'creditNeedsCustomer') setSaleError(t('creditNeedsCustomer'))
+      else setSaleError(t('saveFailed'))
+      return
+    }
+    nextSales = nextSales.map(s => s.id === editSale.id ? paidResult.sale : s)
+
     updates.sales = nextSales
     if (resolved.customers !== data.customers) updates.customers = resolved.customers
     if (!batchUpdateData(updates)) {
@@ -136,7 +147,7 @@ export default function Sales() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-              {[t('dateLabel'), t('customer'), t('itemsCol'), t('payment'), t('amount'), t('status'), t('soldBy'), ''].map(h => (
+              {[t('dateLabel'), t('customer'), t('itemsCol'), t('payment'), t('amount'), t('status'), t('soldBy'), ...(canEdit ? [''] : [])].map(h => (
                 <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: h ? 'nowrap' : undefined, position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 1 }}>{h}</th>
               ))}
             </tr>
@@ -180,35 +191,48 @@ export default function Sales() {
                   })()}
                 </td>
                 <td style={{ padding: '11px 12px', fontSize: 12, color: 'var(--text-500)' }}>{s.soldBy}</td>
-                <td style={{ padding: '11px 8px 11px 12px', width: 72 }}>
-                  <SaleRowActions sale={s} t={t} onEdit={openEdit} onDelete={setDeleteTarget} />
-                </td>
+                {canEdit && (
+                  <td style={{ padding: '11px 8px 11px 12px', width: 72 }}>
+                    <SaleRowActions
+                      sale={s}
+                      t={t}
+                      onEdit={openEdit}
+                      onDelete={setDeleteTarget}
+                      canEdit={canEdit}
+                      canDelete={isAdmin}
+                    />
+                  </td>
+                )}
               </tr>
             ))}
             {sorted.length === 0 && (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noSalesFound')}</td></tr>
+              <tr><td colSpan={canEdit ? 8 : 7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noSalesFound')}</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      <SaleEditModal
-        t={t}
-        editSale={editSale}
-        setEditSale={setEditSale}
-        saleError={saleError}
-        onSave={saveEdit}
-        onClose={() => { setEditSale(null); setSaleError('') }}
-        vatEnabled={data.settings.vatEnabled}
-        vatRate={vatRate}
-        customers={data.customers}
-      />
-      <SaleDeleteModal
-        t={t}
-        sale={deleteTarget}
-        onConfirm={confirmDelete}
-        onClose={() => setDeleteTarget(null)}
-      />
+      {canEdit && (
+        <SaleEditModal
+          t={t}
+          editSale={editSale}
+          setEditSale={setEditSale}
+          saleError={saleError}
+          onSave={saveEdit}
+          onClose={() => { setEditSale(null); setSaleError('') }}
+          vatEnabled={data.settings.vatEnabled}
+          vatRate={vatRate}
+          customers={data.customers}
+        />
+      )}
+      {isAdmin && (
+        <SaleDeleteModal
+          t={t}
+          sale={deleteTarget}
+          onConfirm={confirmDelete}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   )
 }

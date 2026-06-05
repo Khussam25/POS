@@ -6,7 +6,7 @@ import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/Sa
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { fmtMoney, saleNetRevenue, collectPaymentEvents } from '../utils/money'
-import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged } from '../utils/salesOps'
+import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, validateAndApplyAmountPaid } from '../utils/salesOps'
 import { resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
 import { todayTZ } from '../utils/time'
 
@@ -42,7 +42,7 @@ function formatMonthLabel(ym, locale) {
 }
 
 export default function FinancialReports() {
-  const { data, batchUpdateData } = useApp()
+  const { data, batchUpdateData, currentUser } = useApp()
   const t = useT()
   const { lang } = useLang()
   const locale = lang === 'sw' ? 'sw-TZ' : 'en-US'
@@ -164,6 +164,15 @@ export default function FinancialReports() {
       ? { ...s, customerId, customer: customerName }
       : s)
     nextSales = backfillCustomerIds(resolved.customers, nextSales).sales
+
+    const edited = nextSales.find(s => s.id === editSale.id)
+    const paidResult = validateAndApplyAmountPaid(edited, editSale.amountPaid, customerName, currentUser.name)
+    if (!paidResult.ok) {
+      if (paidResult.error === 'creditNeedsCustomer') setSaleError(t('creditNeedsCustomer'))
+      else setSaleError(t('saveFailed'))
+      return
+    }
+    nextSales = nextSales.map(s => s.id === editSale.id ? paidResult.sale : s)
 
     updates.sales = nextSales
     if (resolved.customers !== data.customers) updates.customers = resolved.customers

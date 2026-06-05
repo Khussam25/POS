@@ -116,6 +116,27 @@ export function SaleEditModal({ t, editSale, setEditSale, saleError, onSave, onC
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, paddingTop: 8, borderTop: '1px solid var(--outline)' }}>
               <span>{t('total')}</span><span>{fmt(editPreview.total)}</span>
             </div>
+            <div style={{ marginTop: 12 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('amountPaid')}</label>
+              <FormInput
+                numeric
+                value={editSale.amountPaid === '' ? '' : String(editSale.amountPaid)}
+                onChange={e => setEditSale(s => ({ ...s, amountPaid: e.target.value }))}
+                placeholder={String(editPreview.total)}
+              />
+              {(() => {
+                const paidInput = editSale.amountPaid === '' ? editPreview.total : Number(editSale.amountPaid)
+                const settled = Math.min(Math.max(0, Math.round(paidInput) || 0), editPreview.total)
+                const balance = editPreview.total - settled
+                if (balance <= 0) return null
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, fontWeight: 600, color: 'var(--danger)' }}>
+                    <span>{t('balanceDue')}</span>
+                    <span>{fmt(balance)}</span>
+                  </div>
+                )
+              })()}
+            </div>
             <div style={{ fontSize: 11, color: 'var(--text-500)', marginTop: 8 }}>{t('soldBy')}: {editSale.soldBy}</div>
           </div>
         )}
@@ -151,17 +172,22 @@ export function SaleDeleteModal({ t, sale, onConfirm, onClose }) {
   )
 }
 
-export function SaleRowActions({ sale, t, onEdit, onDelete }) {
+export function SaleRowActions({ sale, t, onEdit, onDelete, canEdit = true, canDelete = true }) {
+  if (!canEdit && !canDelete) return null
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
-      <button type="button" onClick={() => onEdit(sale)} aria-label={t('edit')} title={t('edit')}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent' }}>
-        <Pencil size={14} />
-      </button>
-      <button type="button" onClick={() => onDelete(sale)} aria-label={t('delete')} title={t('delete')}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent' }}>
-        <Trash2 size={14} />
-      </button>
+      {canEdit && (
+        <button type="button" onClick={() => onEdit(sale)} aria-label={t('edit')} title={t('edit')}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent' }}>
+          <Pencil size={14} />
+        </button>
+      )}
+      {canDelete && (
+        <button type="button" onClick={() => onDelete(sale)} aria-label={t('delete')} title={t('delete')}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: '1.5px solid var(--outline)', borderRadius: 6, color: 'var(--text-500)', background: 'transparent' }}>
+          <Trash2 size={14} />
+        </button>
+      )}
     </div>
   )
 }

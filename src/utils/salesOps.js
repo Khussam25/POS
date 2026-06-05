@@ -1,4 +1,6 @@
 import { roundTz, calcOrderTotals } from './money'
+import { salePaid } from './customers'
+import { todayTZ } from './time'
 
 /** Next sequential human-readable receipt number, e.g. S-0001. */
 export function nextReceiptNo(sales) {
@@ -119,6 +121,39 @@ export function cloneSaleForEdit(sale) {
     customer: sale.customer ?? '',
     customerId: sale.customerId ?? null,
     discountAmount: sale.discountAmount ?? 0,
+    amountPaid: String(salePaid(sale)),
     items: sale.items.map(i => ({ ...i })),
   }
+}
+
+/** Set how much has been paid on a sale; appends to the payment trail when increased. */
+export function applyAmountPaidUpdate(sale, paidInput, by) {
+  const total = sale.total || 0
+  const parsed = paidInput === '' || paidInput == null ? total : Number(paidInput)
+  const nextPaid = Math.min(Math.max(0, roundTz(parsed) || 0), total)
+  const prevPaid = salePaid(sale)
+  const delta = roundTz(nextPaid - prevPaid)
+  if (delta === 0) return { ...sale, amountPaid: nextPaid }
+
+  let payments = Array.isArray(sale.payments) ? [...sale.payments] : []
+  if (delta > 0) {
+    payments.push({ amount: delta, date: todayTZ(), by })
+  } else {
+    payments = nextPaid > 0
+      ? [{ amount: nextPaid, date: sale.date, by: sale.soldBy || by }]
+      : []
+  }
+
+  return { ...sale, amountPaid: nextPaid, payments }
+}
+
+/** Validate credit rules and apply an amount-paid change to a sale. */
+export function validateAndApplyAmountPaid(sale, paidInput, customerName, by) {
+  const total = sale.total || 0
+  const parsed = paidInput === '' || paidInput == null ? total : Number(paidInput)
+  const nextPaid = Math.min(Math.max(0, roundTz(parsed) || 0), total)
+  if (nextPaid < total && !(customerName || '').trim()) {
+    return { ok: false, error: 'creditNeedsCustomer' }
+  }
+  return { ok: true, sale: applyAmountPaidUpdate(sale, paidInput, by) }
 }

@@ -50,6 +50,10 @@ export function canAccess(role, path) {
   return PERMISSIONS[path].includes(role)
 }
 
+export function canEditSales(role) {
+  return role === 'Admin' || role === 'Cashier'
+}
+
 function ProtectedRoute({ path, children }) {
   const { currentUser } = useApp()
   if (!canAccess(currentUser?.role, path)) {
