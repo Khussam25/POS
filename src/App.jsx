@@ -12,8 +12,8 @@ import { auth, googleProvider } from './firebase'
 import { getStore, saveStore, saveStoreBatch } from './store'
 import { backfillCustomerIds } from './utils/customers'
 import {
-  startCloudSync, scheduleCloudPush, pushCloudBatch, isApplyingCloudRemote,
-  pullCloudStore, persistLocal, flushPendingCloudPush, mergeRemoteStore, pushProductsNow,
+  startCloudSync, pushStoreNow,
+  pullCloudStore, persistLocal, flushPendingCloudPush, mergeRemoteStore,
 } from './sync/cloudSync'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -192,6 +192,14 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    function onHidden() {
+      if (document.visibilityState === 'hidden') flushPendingCloudPush()
+    }
+    document.addEventListener('visibilitychange', onHidden)
+    return () => document.removeEventListener('visibilitychange', onHidden)
+  }, [])
+
+  useEffect(() => {
     function onStorage(e) {
       if (!e.key?.startsWith('jeibe_') || e.key === 'jeibe_version' || e.key === 'jeibe_lang') return
       refreshData()
@@ -254,10 +262,7 @@ export default function App() {
     }
     setSaveError(null)
     setData(prev => ({ ...prev, [key]: value }))
-    if (!isApplyingCloudRemote()) {
-      if (key === 'products') pushProductsNow(value)
-      else scheduleCloudPush({ [key]: value })
-    }
+    pushStoreNow({ [key]: value })
     return true
   }
 
@@ -273,7 +278,7 @@ export default function App() {
     }
     setSaveError(null)
     setData(prev => ({ ...prev, ...updates }))
-    if (!isApplyingCloudRemote()) pushCloudBatch(updates)
+    pushStoreNow(updates)
     return true
   }
 

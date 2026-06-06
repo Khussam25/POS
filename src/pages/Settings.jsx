@@ -10,7 +10,7 @@ import { useIsCompact } from '../hooks/useIsCompact'
 import { useRefreshDataOnMount } from '../hooks/useRefreshData'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
-import { formatPhoneDisplay } from '../utils/phone'
+import { DEFAULT_EXCHANGE_RATE } from '../utils/money'
 import { Store, DollarSign, Receipt, FileText, User, Save, CheckCircle2 } from 'lucide-react'
 
 const DEFAULT_LOGO = '/Jeibe_Logo.jpg'
@@ -27,10 +27,11 @@ function settingsToForm(settings) {
 }
 
 function settingsToPayload(form) {
+  const rate = form.exchangeRate === '' ? 0 : +form.exchangeRate
   return {
     ...form,
     phone: formatPhoneDisplay(form.phone.trim()),
-    exchangeRate: form.exchangeRate === '' ? 0 : +form.exchangeRate,
+    exchangeRate: rate > 0 ? rate : DEFAULT_EXCHANGE_RATE,
     vatRate: form.vatRate === '' ? 0 : +form.vatRate,
   }
 }

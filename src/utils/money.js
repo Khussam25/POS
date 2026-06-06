@@ -5,20 +5,30 @@ export function roundTz(n) {
   return Math.round(x)
 }
 
-/** USD buying price → TZS (NY sales tax 8.625%, then × 2,650 TZS/USD). */
-export const USD_TO_TZS = 2650
+/** Fallback when settings have no rate yet. */
+export const DEFAULT_EXCHANGE_RATE = 2650
+/** @deprecated use settings.exchangeRate — kept for imports that expect USD_TO_TZS */
+export const USD_TO_TZS = DEFAULT_EXCHANGE_RATE
 export const NY_SALES_TAX_RATE = 0.08625
 
-export function buyingUsdToTzs(usd) {
-  const n = Number(usd)
-  if (!Number.isFinite(n) || n <= 0) return 0
-  return roundTz(n * (1 + NY_SALES_TAX_RATE) * USD_TO_TZS)
+export function resolveExchangeRate(exchangeRate) {
+  const n = Number(exchangeRate)
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_EXCHANGE_RATE
 }
 
-export function buyingTzsToUsd(tzs) {
+/** USD buying price → TZS (NY sales tax, then × settings exchange rate). */
+export function buyingUsdToTzs(usd, exchangeRate = DEFAULT_EXCHANGE_RATE) {
+  const n = Number(usd)
+  if (!Number.isFinite(n) || n <= 0) return 0
+  const rate = resolveExchangeRate(exchangeRate)
+  return roundTz(n * (1 + NY_SALES_TAX_RATE) * rate)
+}
+
+export function buyingTzsToUsd(tzs, exchangeRate = DEFAULT_EXCHANGE_RATE) {
   const n = Number(tzs)
   if (!Number.isFinite(n) || n <= 0) return 0
-  return n / ((1 + NY_SALES_TAX_RATE) * USD_TO_TZS)
+  const rate = resolveExchangeRate(exchangeRate)
+  return n / ((1 + NY_SALES_TAX_RATE) * rate)
 }
 
 export function fmtMoney(n) {

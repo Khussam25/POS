@@ -22,7 +22,7 @@ const SEED = {
     phone: '+255 712 345 678',
     email: 'info@jeibe.co.tz',
     currency: 'TZS',
-    exchangeRate: 2450,
+    exchangeRate: 2650,
     vatRate: 0,
     vatEnabled: false,
     receiptHeader: 'Thank you for shopping at JEIBE!',

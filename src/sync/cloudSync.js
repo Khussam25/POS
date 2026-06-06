@@ -179,8 +179,28 @@ export function isApplyingCloudRemote() {
   return applyingRemote
 }
 
-function applyRemoteStore(remoteStore, onRemoteUpdate) {
+function pendingPushToStore(payload) {
+  if (!payload) return null
   const local = getStore()
+  return {
+    products: Array.isArray(payload.products) ? payload.products : local.products,
+    sales: Array.isArray(payload.sales) ? payload.sales : local.sales,
+    customers: Array.isArray(payload.customers) ? payload.customers : local.customers,
+    expenses: Array.isArray(payload.expenses) ? payload.expenses : local.expenses,
+    employees: Array.isArray(payload.employees) ? payload.employees : local.employees,
+    settings: payload.settings
+      ? mergeSettings(local.settings, payload.settings)
+      : local.settings,
+  }
+}
+
+function applyRemoteStore(remoteStore, onRemoteUpdate) {
+  let local = getStore()
+  if (pendingPush) {
+    const pending = pendingPushToStore(pendingPush)
+    if (pending) local = mergeRemoteStore(local, pending)
+  }
+  cancelPendingCloudPush()
   const store = mergeRemoteStore(local, remoteStore)
   const sig = storeSignature(store)
   if (sig === lastAppliedSig) return false
@@ -301,35 +321,15 @@ export async function flushPendingCloudPush() {
   }
 }
 
-export function scheduleCloudPush(partialStore) {
-  if (applyingRemote) {
-    pendingAfterRemote = { ...(pendingAfterRemote || {}), ...partialStore }
-    return
-  }
-  const local = getStore()
-  const next = { ...local, ...partialStore }
-  pendingPush = packPayload(next)
-  if (pushTimer) clearTimeout(pushTimer)
-  pushTimer = setTimeout(flushPush, 400)
-}
-
-/** Push inventory changes immediately — bulk edits must not wait for debounce. */
-export function pushProductsNow(products) {
-  if (applyingRemote) {
-    pendingAfterRemote = { ...(pendingAfterRemote || {}), products }
-    return
-  }
-  const local = getStore()
-  pendingPush = packPayload({ ...local, products })
-  if (pushTimer) { clearTimeout(pushTimer); pushTimer = null }
-  flushPush()
-}
-
-export function pushCloudBatch(updates) {
+/** Push local changes to the cloud immediately (no debounce). */
+export function pushStoreNow(updates) {
   if (applyingRemote) {
     pendingAfterRemote = { ...(pendingAfterRemote || {}), ...updates }
     if (updates.settings) {
-      pendingAfterRemote.settings = { ...(pendingAfterRemote.settings || getStore().settings), ...updates.settings }
+      pendingAfterRemote.settings = {
+        ...(pendingAfterRemote.settings || getStore().settings),
+        ...updates.settings,
+      }
     }
     return
   }
@@ -339,6 +339,19 @@ export function pushCloudBatch(updates) {
     merged.settings = { ...local.settings, ...updates.settings }
   }
   pendingPush = packPayload(merged)
-  if (pushTimer) clearTimeout(pushTimer)
-  pushTimer = setTimeout(flushPush, 400)
+  if (pushTimer) { clearTimeout(pushTimer); pushTimer = null }
+  flushPush()
+}
+
+export function scheduleCloudPush(partialStore) {
+  pushStoreNow(partialStore)
+}
+
+/** @deprecated use pushStoreNow */
+export function pushProductsNow(products) {
+  pushStoreNow({ products })
+}
+
+export function pushCloudBatch(updates) {
+  pushStoreNow(updates)
 }

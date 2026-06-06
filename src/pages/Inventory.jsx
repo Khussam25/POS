@@ -3,7 +3,7 @@ import { useApp } from '../App'
 import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
-import { fmtMoney, roundTz, buyingUsdToTzs, buyingTzsToUsd } from '../utils/money'
+import { fmtMoney, roundTz, buyingUsdToTzs, buyingTzsToUsd, resolveExchangeRate } from '../utils/money'
 import { nowISO } from '../utils/time'
 import { Search, Plus, Pencil, Trash2, X, AlertTriangle, ArrowUpDown } from 'lucide-react'
 
@@ -50,6 +50,7 @@ export default function Inventory() {
   const { currentUser, data, updateData } = useApp()
   const t = useT()
   const isAdmin = currentUser.role === 'Admin'
+  const exchangeRate = resolveExchangeRate(data.settings.exchangeRate)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [sortKey, setSortKey] = useState('nameAsc')
@@ -77,8 +78,8 @@ export default function Inventory() {
   const buyingTzsPreview = useMemo(() => {
     const usd = parseFloat(form.buyingPriceUSD)
     if (!Number.isFinite(usd) || usd <= 0) return null
-    return buyingUsdToTzs(usd)
-  }, [form.buyingPriceUSD])
+    return buyingUsdToTzs(usd, exchangeRate)
+  }, [form.buyingPriceUSD, exchangeRate])
 
   const formProfitPreview = useMemo(() => {
     const sell = parseFloat(form.sellingPriceTZS)
@@ -90,7 +91,7 @@ export default function Inventory() {
   function openEdit(p) {
     const usd = p.buyingPriceUSD != null
       ? p.buyingPriceUSD
-      : (p.buyingPriceTZS ? String(Math.round(buyingTzsToUsd(p.buyingPriceTZS) * 100) / 100) : '')
+      : (p.buyingPriceTZS ? String(Math.round(buyingTzsToUsd(p.buyingPriceTZS, exchangeRate) * 100) / 100) : '')
     setForm({ ...p, buyingPriceUSD: usd === '' ? '' : String(usd), sellingPriceTZS: String(p.sellingPriceTZS), qty: String(p.qty), lowStockThreshold: String(p.lowStockThreshold) })
     setErrors({})
     setModal('edit')
@@ -110,10 +111,10 @@ export default function Inventory() {
     if (!validate()) return
     const orig = modal === 'edit' ? data.products.find(p => p.id === form.id) : null
     let buyingPriceUSD = +form.buyingPriceUSD || 0
-    let buyingPriceTZS = buyingUsdToTzs(buyingPriceUSD)
+    let buyingPriceTZS = buyingUsdToTzs(buyingPriceUSD, exchangeRate)
     if (buyingPriceUSD <= 0 && orig?.buyingPriceTZS > 0) {
       buyingPriceTZS = orig.buyingPriceTZS
-      buyingPriceUSD = orig.buyingPriceUSD ?? buyingTzsToUsd(orig.buyingPriceTZS)
+      buyingPriceUSD = orig.buyingPriceUSD ?? buyingTzsToUsd(orig.buyingPriceTZS, exchangeRate)
     }
     const updatedAt = nowISO()
     const productFields = {
@@ -301,7 +302,7 @@ export default function Inventory() {
                 {buyingTzsPreview != null && (
                   <p style={{ gridColumn: '1 / -1', margin: 0, fontSize: 12, color: 'var(--text-500)' }}>
                     → <strong style={{ color: 'var(--text-900)' }}>{fmt(buyingTzsPreview)}</strong>
-                    <span style={{ marginLeft: 6 }}>{t('buyingTzsNote')}</span>
+                    <span style={{ marginLeft: 6 }}>{t('buyingTzsNote')} {exchangeRate.toLocaleString()} TZS/USD)</span>
                   </p>
                 )}
               </div>
