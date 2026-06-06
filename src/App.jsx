@@ -13,7 +13,7 @@ import { getStore, saveStore, saveStoreBatch } from './store'
 import { backfillCustomerIds } from './utils/customers'
 import {
   startCloudSync, scheduleCloudPush, pushCloudBatch, isApplyingCloudRemote,
-  pullCloudStore, persistLocal, flushPendingCloudPush,
+  pullCloudStore, persistLocal, flushPendingCloudPush, mergeRemoteStore, pushProductsNow,
 } from './sync/cloudSync'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -131,8 +131,9 @@ export default function App() {
       }
       setSyncError(null)
       if (store) {
-        persistLocal(store)
-        applyStoreFromRemote(store)
+        const merged = mergeRemoteStore(getStore(), store)
+        persistLocal(merged)
+        applyStoreFromRemote(merged)
         setLastSyncedAt(Date.now())
         return true
       }
@@ -253,7 +254,10 @@ export default function App() {
     }
     setSaveError(null)
     setData(prev => ({ ...prev, [key]: value }))
-    if (!isApplyingCloudRemote()) scheduleCloudPush({ [key]: value })
+    if (!isApplyingCloudRemote()) {
+      if (key === 'products') pushProductsNow(value)
+      else scheduleCloudPush({ [key]: value })
+    }
     return true
   }
 

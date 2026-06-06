@@ -32,11 +32,89 @@ function settingsForCloud(settings) {
   return out
 }
 
+function productRevision(p) {
+  return p?.updatedAt ? (Date.parse(p.updatedAt) || 0) : 0
+}
+
+/** Combine two product records — keeps the newest edit and non-empty buying prices. */
+function mergeProduct(local, remote) {
+  if (!remote) return local
+  if (!local) return remote
+
+  const lr = productRevision(local)
+  const rr = productRevision(remote)
+  if (lr > rr) return local
+  if (rr > lr) return remote
+
+  return {
+    ...remote,
+    ...local,
+    buyingPriceUSD: (local.buyingPriceUSD || remote.buyingPriceUSD) ?? 0,
+    buyingPriceTZS: (local.buyingPriceTZS || remote.buyingPriceTZS) ?? 0,
+    sellingPriceTZS: local.sellingPriceTZS || remote.sellingPriceTZS,
+    qty: local.qty ?? remote.qty ?? 0,
+    name: local.name || remote.name,
+    lowStockThreshold: local.lowStockThreshold ?? remote.lowStockThreshold ?? 10,
+    updatedAt: local.updatedAt || remote.updatedAt,
+  }
+}
+
+function mergeProducts(local = [], remote = []) {
+  const byId = new Map()
+  for (const p of remote) byId.set(p.id, p)
+  for (const p of local) {
+    const existing = byId.get(p.id)
+    byId.set(p.id, existing ? mergeProduct(p, existing) : p)
+  }
+  return Array.from(byId.values())
+}
+
+function mergeRecordsById(local = [], remote = [], mergeFn) {
+  const byId = new Map()
+  for (const r of remote) byId.set(r.id, r)
+  for (const l of local) {
+    const existing = byId.get(l.id)
+    byId.set(l.id, existing ? mergeFn(l, existing) : l)
+  }
+  return Array.from(byId.values())
+}
+
 function mergeSettings(local, remote) {
   const remoteLogo = remote?.storeLogo
   const useRemoteLogo = remoteLogo && !String(remoteLogo).startsWith('data:')
   const logo = useRemoteLogo ? remoteLogo : (local?.storeLogo || '/Jeibe_Logo.jpg')
   return { ...local, ...remote, storeLogo: logo }
+}
+
+function productsFingerprint(products) {
+  let fp = 0
+  for (const p of products || []) {
+    fp += (Number(p.qty) || 0) + (Number(p.buyingPriceTZS) || 0)
+  }
+  return { n: (products || []).length, fp }
+}
+
+/**
+ * Merge cloud data into local — products are merged per item so inventory edits
+ * are not wiped when sales or other data sync from another session.
+ */
+export function mergeRemoteStore(local, remote) {
+  if (!remote) return local
+  return {
+    products: mergeProducts(local.products ?? [], remote.products ?? []),
+    sales: mergeRecordsById(local.sales ?? [], remote.sales ?? [], (a, b) => {
+      const ap = a.payments?.length ?? 0
+      const bp = b.payments?.length ?? 0
+      if (ap !== bp) return ap > bp ? a : b
+      return (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')) >= 0 ? b : a
+    }),
+    customers: mergeRecordsById(local.customers ?? [], remote.customers ?? [], (a, b) => (
+      (b.updatedAt && a.updatedAt && b.updatedAt > a.updatedAt) ? b : a
+    )),
+    expenses: mergeRecordsById(local.expenses ?? [], remote.expenses ?? [], (_, b) => b),
+    employees: remote.employees?.length ? remote.employees : (local.employees ?? []),
+    settings: mergeSettings(local.settings, remote.settings ?? {}),
+  }
 }
 
 function packPayload(store) {
@@ -71,18 +149,22 @@ export function persistLocal(store) {
 
 function storeSignature(store) {
   const linked = (store.sales || []).filter(s => s.customerId).length
+  const pf = productsFingerprint(store.products)
   return JSON.stringify({
     employees: store.employees,
     settings: store.settings,
     salesN: (store.sales || []).length,
     salesLinked: linked,
     customersN: (store.customers || []).length,
+    productsN: pf.n,
+    productsFp: pf.fp,
   })
 }
 
 let applyingRemote = false
 let pushTimer = null
 let pendingPush = null
+let pendingAfterRemote = null
 let lastAppliedSig = ''
 let onSyncErrorHandler = null
 let onSyncOkHandler = null
@@ -97,7 +179,9 @@ export function isApplyingCloudRemote() {
   return applyingRemote
 }
 
-function applyRemoteStore(store, onRemoteUpdate) {
+function applyRemoteStore(remoteStore, onRemoteUpdate) {
+  const local = getStore()
+  const store = mergeRemoteStore(local, remoteStore)
   const sig = storeSignature(store)
   if (sig === lastAppliedSig) return false
   applyingRemote = true
@@ -107,6 +191,11 @@ function applyRemoteStore(store, onRemoteUpdate) {
   lastAppliedSig = sig
   applyingRemote = false
   onSyncOkHandler?.()
+  if (pendingAfterRemote) {
+    const deferred = pendingAfterRemote
+    pendingAfterRemote = null
+    pushCloudBatch(deferred)
+  }
   return true
 }
 
@@ -213,7 +302,10 @@ export async function flushPendingCloudPush() {
 }
 
 export function scheduleCloudPush(partialStore) {
-  if (applyingRemote) return
+  if (applyingRemote) {
+    pendingAfterRemote = { ...(pendingAfterRemote || {}), ...partialStore }
+    return
+  }
   const local = getStore()
   const next = { ...local, ...partialStore }
   pendingPush = packPayload(next)
@@ -221,8 +313,26 @@ export function scheduleCloudPush(partialStore) {
   pushTimer = setTimeout(flushPush, 400)
 }
 
+/** Push inventory changes immediately — bulk edits must not wait for debounce. */
+export function pushProductsNow(products) {
+  if (applyingRemote) {
+    pendingAfterRemote = { ...(pendingAfterRemote || {}), products }
+    return
+  }
+  const local = getStore()
+  pendingPush = packPayload({ ...local, products })
+  if (pushTimer) { clearTimeout(pushTimer); pushTimer = null }
+  flushPush()
+}
+
 export function pushCloudBatch(updates) {
-  if (applyingRemote) return
+  if (applyingRemote) {
+    pendingAfterRemote = { ...(pendingAfterRemote || {}), ...updates }
+    if (updates.settings) {
+      pendingAfterRemote.settings = { ...(pendingAfterRemote.settings || getStore().settings), ...updates.settings }
+    }
+    return
+  }
   const local = getStore()
   const merged = { ...local, ...updates }
   if (updates.settings) {

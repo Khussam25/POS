@@ -1,6 +1,6 @@
 import { roundTz, calcOrderTotals } from './money'
 import { salePaid } from './customers'
-import { todayTZ } from './time'
+import { todayTZ, nowISO } from './time'
 
 /** Next sequential human-readable receipt number, e.g. S-0001. */
 export function nextReceiptNo(sales) {
@@ -33,9 +33,10 @@ export function saleItemsChanged(orig, edited) {
 /** Put sold quantities back into inventory. */
 export function restoreInventoryFromSale(products, sale) {
   if (!sale?.items?.length) return products
+  const ts = nowISO()
   return products.map(p => {
     const item = sale.items.find(i => i.productId === p.id)
-    return item ? { ...p, qty: p.qty + item.qty } : p
+    return item ? { ...p, qty: p.qty + item.qty, updatedAt: ts } : p
   })
 }
 
@@ -50,9 +51,10 @@ export function canFulfillSale(products, sale) {
 
 /** Deduct sold quantities from inventory. */
 export function deductInventoryForSale(products, sale) {
+  const ts = nowISO()
   return products.map(p => {
     const item = sale.items.find(i => i.productId === p.id)
-    return item ? { ...p, qty: p.qty - item.qty } : p
+    return item ? { ...p, qty: p.qty - item.qty, updatedAt: ts } : p
   })
 }
 

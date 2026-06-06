@@ -4,6 +4,7 @@ import { useT } from '../i18n/LangContext'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
 import { fmtMoney, roundTz, buyingUsdToTzs, buyingTzsToUsd } from '../utils/money'
+import { nowISO } from '../utils/time'
 import { Search, Plus, Pencil, Trash2, X, AlertTriangle, ArrowUpDown } from 'lucide-react'
 
 const fmt = fmtMoney
@@ -107,14 +108,29 @@ export default function Inventory() {
 
   function save() {
     if (!validate()) return
-    const buyingPriceUSD = +form.buyingPriceUSD || 0
-    const buyingPriceTZS = buyingUsdToTzs(buyingPriceUSD)
+    const orig = modal === 'edit' ? data.products.find(p => p.id === form.id) : null
+    let buyingPriceUSD = +form.buyingPriceUSD || 0
+    let buyingPriceTZS = buyingUsdToTzs(buyingPriceUSD)
+    if (buyingPriceUSD <= 0 && orig?.buyingPriceTZS > 0) {
+      buyingPriceTZS = orig.buyingPriceTZS
+      buyingPriceUSD = orig.buyingPriceUSD ?? buyingTzsToUsd(orig.buyingPriceTZS)
+    }
+    const updatedAt = nowISO()
+    const productFields = {
+      name: form.name.trim(),
+      buyingPriceUSD,
+      buyingPriceTZS,
+      sellingPriceTZS: +form.sellingPriceTZS,
+      qty: +form.qty,
+      lowStockThreshold: +form.lowStockThreshold || 10,
+      updatedAt,
+    }
     if (modal === 'add') {
       const id = nextProductId(data.products)
-      const newProduct = { ...form, id, sku: id, buyingPriceUSD, buyingPriceTZS, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 }
+      const newProduct = { ...productFields, id, sku: id }
       updateData('products', [newProduct, ...data.products])
     } else {
-      updateData('products', data.products.map(p => p.id === form.id ? { ...form, buyingPriceUSD, buyingPriceTZS, sellingPriceTZS: +form.sellingPriceTZS, qty: +form.qty, lowStockThreshold: +form.lowStockThreshold || 10 } : p))
+      updateData('products', data.products.map(p => p.id === form.id ? { ...p, ...productFields } : p))
     }
     setModal(null)
   }
