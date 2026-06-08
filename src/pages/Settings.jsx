@@ -10,6 +10,7 @@ import { useIsCompact } from '../hooks/useIsCompact'
 import { useRefreshDataOnMount } from '../hooks/useRefreshData'
 import FormInput from '../components/FormInput'
 import FormField from '../components/FormField'
+import { formatPhoneDisplay } from '../utils/phone'
 import { DEFAULT_EXCHANGE_RATE } from '../utils/money'
 import { Store, DollarSign, Receipt, FileText, User, Save, CheckCircle2 } from 'lucide-react'
 
