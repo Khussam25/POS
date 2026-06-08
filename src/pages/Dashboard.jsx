@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
-import { useT } from '../i18n/LangContext'
+import { useT, useLang } from '../i18n/LangContext'
 import { ShoppingBag, Plus, ShoppingCart, BarChart2, AlertTriangle, AlertCircle, ArrowRight, Circle } from 'lucide-react'
 import { fmtMoney, collectPaymentEvents } from '../utils/money'
-import { todayTZ } from '../utils/time'
+import { todayTZ, dateLabelTZ, greetingPeriodTZ } from '../utils/time'
 
 const fmt = fmtMoney
 
@@ -27,12 +27,13 @@ export default function Dashboard() {
   const { currentUser, data } = useApp()
   const navigate = useNavigate()
   const t = useT()
+  const { lang } = useLang()
   const isAdmin = currentUser.role === 'Admin'
   const today = todayTZ()
-  const now = new Date()
-  const hour = now.getHours()
-  const greeting = hour < 12 ? t('goodMorning') : hour < 17 ? t('goodAfternoon') : t('goodEvening')
-  const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const locale = lang === 'sw' ? 'sw-TZ' : 'en-US'
+  const period = greetingPeriodTZ()
+  const greeting = period === 'morning' ? t('goodMorning') : period === 'afternoon' ? t('goodAfternoon') : t('goodEvening')
+  const dateStr = dateLabelTZ(new Date(), locale)
 
   // Cash basis: revenue/profit are recognized when payment is received (by
   // payment date), so unpaid credit is excluded until the customer pays.

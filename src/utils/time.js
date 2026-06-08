@@ -21,6 +21,33 @@ export function nowTZParts(d = new Date()) {
   return { date: todayTZ(d), time: nowTimeTZ(d) }
 }
 
+/** Current hour in Tanzania (0–23). */
+export function hourTZ(d = new Date()) {
+  const hour = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hourCycle: 'h23' })
+    .formatToParts(d)
+    .find(p => p.type === 'hour')?.value
+  return parseInt(hour ?? '0', 10)
+}
+
+/** Long date label in Tanzania time, e.g. "Monday, June 8, 2026". */
+export function dateLabelTZ(d = new Date(), locale = 'en-US') {
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: TZ,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(d)
+}
+
+/** Greeting key period from Tanzania hour: morning | afternoon | evening */
+export function greetingPeriodTZ(d = new Date()) {
+  const hour = hourTZ(d)
+  if (hour < 12) return 'morning'
+  if (hour < 17) return 'afternoon'
+  return 'evening'
+}
+
 /** Current ISO timestamp (UTC instant) — for createdAt-style fields. */
 export function nowISO() {
   return new Date().toISOString()
