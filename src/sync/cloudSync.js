@@ -94,6 +94,19 @@ function productsFingerprint(products) {
   return { n: (products || []).length, fp }
 }
 
+function mergeEmployees(local = [], remote = []) {
+  const byEmail = new Map()
+  for (const e of remote) {
+    const key = (e.email || '').toLowerCase()
+    if (key) byEmail.set(key, e)
+  }
+  for (const e of local) {
+    const key = (e.email || '').toLowerCase()
+    if (key && !byEmail.has(key)) byEmail.set(key, e)
+  }
+  return Array.from(byEmail.values())
+}
+
 /**
  * Merge cloud data into local — products are merged per item so inventory edits
  * are not wiped when sales or other data sync from another session.
@@ -112,7 +125,7 @@ export function mergeRemoteStore(local, remote) {
       (b.updatedAt && a.updatedAt && b.updatedAt > a.updatedAt) ? b : a
     )),
     expenses: mergeRecordsById(local.expenses ?? [], remote.expenses ?? [], (_, b) => b),
-    employees: remote.employees?.length ? remote.employees : (local.employees ?? []),
+    employees: mergeEmployees(local.employees ?? [], remote.employees ?? []),
     settings: mergeSettings(local.settings, remote.settings ?? {}),
   }
 }

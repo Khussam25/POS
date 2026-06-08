@@ -14,6 +14,8 @@ const SEED = {
     { id: 'emp1', name: 'Khussam Mohamed', role: 'Admin', email: 'khussamjuma20@gmail.com', phone: '', username: 'khussam.mohamed', status: 'Active', initials: 'KM', color: '#1E4E8C' },
     { id: 'emp2', name: 'Rhoda Mutafungwa', role: 'Admin', email: 'rhodamutafungwa@gmail.com', phone: '+255 712 345 678', username: 'rhoda.mutafungwa', status: 'Active', initials: 'RM', color: '#C92B36' },
     { id: 'emp3', name: 'Rustick Mbilauli', role: 'Cashier', email: 'rmbilauli@gmail.com', phone: '+255 754 901 234', username: 'rustick.mbilauli', status: 'Active', initials: 'RM', color: '#1E4E8C' },
+    { id: 'emp4', name: 'Immanuel Mutafungwa', role: 'Admin', email: 'welldonemutta4@gmail.com', phone: '', username: 'immanuel.mutafungwa', status: 'Active', initials: 'IM', color: '#C92B36' },
+    { id: 'emp5', name: 'Bella Mutafungwa', role: 'Admin', email: 'bella.muta05@gmail.com', phone: '', username: 'bella.mutafungwa', status: 'Active', initials: 'BM', color: '#C92B36' },
   ],
 
   settings: {
@@ -54,6 +56,25 @@ function isDemoOnlyInventory(products) {
   return Array.isArray(products) && products.length > 0 && products.every(p => DEMO_PRODUCT_IDS.has(p.id))
 }
 
+/** Admins that must exist — added by email if missing from an existing install. */
+const REQUIRED_EMPLOYEES = [
+  { id: 'emp4', name: 'Immanuel Mutafungwa', role: 'Admin', email: 'welldonemutta4@gmail.com', phone: '', username: 'immanuel.mutafungwa', status: 'Active', initials: 'IM', color: '#C92B36' },
+  { id: 'emp5', name: 'Bella Mutafungwa', role: 'Admin', email: 'bella.muta05@gmail.com', phone: '', username: 'bella.mutafungwa', status: 'Active', initials: 'BM', color: '#C92B36' },
+]
+
+export function ensureRequiredEmployees(employees) {
+  const list = Array.isArray(employees) ? [...employees] : []
+  let changed = false
+  for (const req of REQUIRED_EMPLOYEES) {
+    const email = req.email.toLowerCase()
+    if (!list.some(e => (e.email || '').toLowerCase() === email)) {
+      list.push(req)
+      changed = true
+    }
+  }
+  return { employees: list, changed }
+}
+
 function getStore() {
   const prevVersion = localStorage.getItem('jeibe_version')
   if (prevVersion !== DATA_VERSION) {
@@ -73,12 +94,18 @@ function getStore() {
     sales = linkedSales
     save('sales', linkedSales)
   }
+  let employees = load('employees') ?? SEED.employees
+  const empBackfill = ensureRequiredEmployees(employees)
+  if (empBackfill.changed) {
+    employees = empBackfill.employees
+    save('employees', employees)
+  }
   return {
     products: load('products') ?? [],
     sales,
     customers,
     expenses: load('expenses') ?? SEED.expenses,
-    employees: load('employees') ?? SEED.employees,
+    employees,
     settings: { storeLogo: '/Jeibe_Logo.jpg', ...(load('settings') ?? SEED.settings) },
   };
 }

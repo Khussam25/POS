@@ -9,7 +9,7 @@ import {
   signOut
 } from 'firebase/auth'
 import { auth, googleProvider } from './firebase'
-import { getStore, saveStore, saveStoreBatch } from './store'
+import { getStore, saveStore, saveStoreBatch, ensureRequiredEmployees } from './store'
 import { backfillCustomerIds } from './utils/customers'
 import {
   startCloudSync, pushStoreNow,
@@ -230,6 +230,12 @@ export default function App() {
 
   useEffect(() => {
     if (!currentUser) return
+    const { employees, changed } = ensureRequiredEmployees(getStore().employees)
+    if (changed) {
+      saveStore('employees', employees)
+      setData(prev => ({ ...prev, employees }))
+      pushStoreNow({ employees })
+    }
     refreshData()
   }, [currentUser?.id, refreshData])
 
