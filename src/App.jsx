@@ -147,6 +147,9 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false
+    const authTimeout = setTimeout(() => {
+      if (!cancelled) setAuthLoading(false)
+    }, 12000)
 
     async function bootstrapAuth() {
       try {
@@ -187,6 +190,7 @@ export default function App() {
 
     return () => {
       cancelled = true
+      clearTimeout(authTimeout)
       unsub()
     }
   }, [])

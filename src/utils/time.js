@@ -31,13 +31,18 @@ export function hourTZ(d = new Date()) {
 
 /** Long date label in Tanzania time, e.g. "Monday, June 8, 2026". */
 export function dateLabelTZ(d = new Date(), locale = 'en-US') {
-  return new Intl.DateTimeFormat(locale, {
+  const opts = {
     timeZone: TZ,
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-  }).format(d)
+  }
+  try {
+    return new Intl.DateTimeFormat(locale, opts).format(d)
+  } catch {
+    return new Intl.DateTimeFormat('en-US', opts).format(d)
+  }
 }
 
 /** Greeting key period from Tanzania hour: morning | afternoon | evening */

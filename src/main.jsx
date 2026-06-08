@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import BrowserUnsupported from './components/BrowserUnsupported.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { getBrowserSupportIssue } from './utils/browserSupport'
 
 const browserIssue = getBrowserSupportIssue()
@@ -13,7 +14,9 @@ if (browserIssue) {
 } else {
   root.render(
     <StrictMode>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </StrictMode>,
   )
 }
