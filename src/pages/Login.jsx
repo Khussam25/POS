@@ -183,7 +183,7 @@ export default function Login() {
           boxShadow: '0 8px 24px rgba(30,78,140,0.25)'
         }} />
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-900)', marginBottom: 4 }}>
-          {data.settings.storeName.split(' ')[0]}
+          {(data.settings?.storeName || 'JEIBE').split(' ')[0]}
         </h1>
         <p style={{ color: 'var(--text-500)', fontSize: 13 }}>Original Products From USA</p>
         <div style={{ width: 40, height: 2, background: 'var(--accent)', margin: '12px auto 0', borderRadius: 2 }} />

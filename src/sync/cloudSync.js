@@ -1,6 +1,6 @@
 import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { app } from '../firebase'
-import { getStore, saveStore } from '../store'
+import { getStore, saveStore, normalizeSettings } from '../store'
 
 const STORE_REF = ['stores', 'main']
 const SYNC_KEYS = ['products', 'sales', 'customers', 'expenses', 'employees']
@@ -83,7 +83,7 @@ function mergeSettings(local, remote) {
   const remoteLogo = remote?.storeLogo
   const useRemoteLogo = remoteLogo && !String(remoteLogo).startsWith('data:')
   const logo = useRemoteLogo ? remoteLogo : (local?.storeLogo || '/Jeibe_Logo.jpg')
-  return { ...local, ...remote, storeLogo: logo }
+  return normalizeSettings({ ...local, ...remote, storeLogo: logo })
 }
 
 function productsFingerprint(products) {
@@ -160,15 +160,24 @@ export function persistLocal(store) {
   saveStore('settings', store.settings)
 }
 
+function settingsFingerprint(settings) {
+  const s = normalizeSettings(settings)
+  const { storeLogo, ...rest } = s
+  return {
+    ...rest,
+    storeLogo: storeLogo && String(storeLogo).startsWith('data:') ? '[embedded]' : (storeLogo || ''),
+  }
+}
+
 function storeSignature(store) {
   const linked = (store.sales || []).filter(s => s.customerId).length
   const pf = productsFingerprint(store.products)
   return JSON.stringify({
-    employees: store.employees,
-    settings: store.settings,
+    settings: settingsFingerprint(store.settings),
     salesN: (store.sales || []).length,
     salesLinked: linked,
     customersN: (store.customers || []).length,
+    employeesN: (store.employees || []).length,
     productsN: pf.n,
     productsFp: pf.fp,
   })

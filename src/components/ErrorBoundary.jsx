@@ -10,8 +10,13 @@ export default class ErrorBoundary extends Component {
     return { error }
   }
 
+  componentDidCatch(error, info) {
+    console.error('JEIBE POS error:', error, info)
+  }
+
   render() {
     if (this.state.error) {
+      const detail = this.state.error?.message || String(this.state.error)
       return (
         <div style={{
           minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -26,6 +31,9 @@ export default class ErrorBoundary extends Component {
             </h1>
             <p style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--text-500, #5A6B7D)', margin: '0 0 20px' }}>
               The app hit an error while loading. Try a hard refresh (Ctrl+Shift+R). If it keeps happening, use Chrome or Edge and check your internet connection.
+            </p>
+            <p style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--text-500)', margin: '0 0 20px', wordBreak: 'break-word' }}>
+              {detail}
             </p>
             <button
               type="button"

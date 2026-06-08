@@ -23,10 +23,14 @@ export function nowTZParts(d = new Date()) {
 
 /** Current hour in Tanzania (0–23). */
 export function hourTZ(d = new Date()) {
-  const hour = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hourCycle: 'h23' })
-    .formatToParts(d)
-    .find(p => p.type === 'hour')?.value
-  return parseInt(hour ?? '0', 10)
+  try {
+    const hour = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hourCycle: 'h23' })
+      .formatToParts(d)
+      .find(p => p.type === 'hour')?.value
+    return parseInt(hour ?? '0', 10)
+  } catch {
+    return d.getHours()
+  }
 }
 
 /** Long date label in Tanzania time, e.g. "Monday, June 8, 2026". */

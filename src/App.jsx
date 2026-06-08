@@ -9,7 +9,7 @@ import {
   signOut
 } from 'firebase/auth'
 import { auth, googleProvider } from './firebase'
-import { getStore, saveStore, saveStoreBatch, ensureRequiredEmployees } from './store'
+import { getStore, saveStore, saveStoreBatch, ensureRequiredEmployees, normalizeSettings } from './store'
 import { backfillCustomerIds } from './utils/customers'
 import {
   startCloudSync, pushStoreNow,
@@ -103,12 +103,12 @@ export default function App() {
     const { sales: linkedSales, changed } = backfillCustomerIds(customers, store.sales ?? [])
     if (changed) saveStore('sales', linkedSales)
     setData({
-      products: store.products,
+      products: store.products ?? [],
       sales: linkedSales,
-      customers: store.customers,
-      expenses: store.expenses,
-      employees: store.employees,
-      settings: store.settings,
+      customers: store.customers ?? [],
+      expenses: store.expenses ?? [],
+      employees: store.employees ?? [],
+      settings: normalizeSettings(store.settings),
     })
     setDataRevision(r => r + 1)
     refreshCurrentUserFromStore()

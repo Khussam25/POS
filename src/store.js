@@ -62,6 +62,18 @@ const REQUIRED_EMPLOYEES = [
   { id: 'emp5', name: 'Bella Mutafungwa', role: 'Admin', email: 'bella.muta05@gmail.com', phone: '', username: 'bella.mutafungwa', status: 'Active', initials: 'BM', color: '#C92B36' },
 ]
 
+export function normalizeSettings(settings) {
+  const base = SEED.settings
+  if (!settings || typeof settings !== 'object') return { ...base }
+  return {
+    ...base,
+    ...settings,
+    storeName: settings.storeName || base.storeName,
+    storeLogo: settings.storeLogo || base.storeLogo,
+    exchangeRate: settings.exchangeRate > 0 ? settings.exchangeRate : base.exchangeRate,
+  }
+}
+
 export function ensureRequiredEmployees(employees) {
   const list = Array.isArray(employees) ? [...employees] : []
   let changed = false
@@ -106,7 +118,7 @@ function getStore() {
     customers,
     expenses: load('expenses') ?? SEED.expenses,
     employees,
-    settings: { storeLogo: '/Jeibe_Logo.jpg', ...(load('settings') ?? SEED.settings) },
+    settings: normalizeSettings(load('settings')),
   };
 }
 

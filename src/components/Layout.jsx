@@ -106,7 +106,7 @@ export default function Layout() {
   ]
 
   const visibleNav = NAV.filter(({ to }) => canAccess(currentUser.role, to))
-  const storeShortName = data.settings.storeName.split(' ')[0]
+  const storeShortName = (data.settings?.storeName || 'JEIBE').split(' ')[0]
   const showInlineSidebar = (isDesktop || isTablet) && !navCollapsed
   const showCompactHeader = isPhone || isTablet
 
