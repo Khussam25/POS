@@ -3,7 +3,7 @@ import { useApp, canAccess } from '../App'
 import { useT, useLang } from '../i18n/LangContext'
 import { ShoppingBag, Plus, ShoppingCart, BarChart2, AlertTriangle, AlertCircle, ArrowRight, Circle } from 'lucide-react'
 import { fmtMoney, collectPaymentEvents } from '../utils/money'
-import { todayTZ, dateLabelTZ, greetingPeriodTZ } from '../utils/time'
+import { todayTZ, dateLabelTZ, greetingPeriodTZ, monthYearLabelTZ } from '../utils/time'
 
 const fmt = fmtMoney
 
@@ -40,13 +40,13 @@ export default function Dashboard() {
   const currentMonth = today.slice(0, 7)
   const events = collectPaymentEvents(data.sales, data.products)
   const todayEvents = events.filter(e => e.date === today)
-  const monthEvents = events.filter(e => e.date.startsWith(currentMonth))
+  const monthEvents = events.filter(e => e.date?.startsWith(currentMonth))
 
   const todaySales = data.sales.filter(s => s.date === today)
   const todayRevenue = todayEvents.reduce((a, e) => a + e.collected, 0)
 
   const monthRevenue = monthEvents.reduce((a, e) => a + e.collected, 0)
-  const monthExpenses = data.expenses.filter(e => e.date.startsWith(currentMonth)).reduce((a, e) => a + e.amount, 0)
+  const monthExpenses = data.expenses.filter(e => e.date?.startsWith(currentMonth)).reduce((a, e) => a + (e.amount || 0), 0)
   const monthGross = monthEvents.reduce((a, e) => a + e.revenue - e.cogs, 0)
   const monthProfit = monthGross - monthExpenses
 
@@ -65,7 +65,7 @@ export default function Dashboard() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>{greeting}, {currentUser.name.split(' ')[0]}</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>{greeting}, {(currentUser?.name || '').split(' ')[0] || 'there'}</h1>
           <p style={{ color: 'var(--text-500)', fontSize: 13 }}>{dateStr} · Dar es Salaam</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--success-light)', color: 'var(--success)', padding: '6px 14px', borderRadius: 999, fontSize: 13, fontWeight: 600 }}>
@@ -127,7 +127,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{sale.customer}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-500)' }}>{sale.items.length} {sale.items.length !== 1 ? t('items') : t('item')} · {sale.time}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-500)' }}>{(sale.items || []).length} {(sale.items || []).length !== 1 ? t('items') : t('item')} · {sale.time}</div>
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -175,7 +175,7 @@ export default function Dashboard() {
       {isAdmin && (
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '20px 22px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>
-            {t('monthlySummary')} — {now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+            {t('monthlySummary')} — {monthYearLabelTZ(new Date(), locale)}
           </div>
           <div className="r-three-col">
             <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '16px 18px' }}>

@@ -50,8 +50,9 @@ export function itemUnitCost(item, products) {
 }
 
 export function saleCogs(sale, products) {
+  const items = Array.isArray(sale.items) ? sale.items : []
   return roundTz(
-    sale.items.reduce((sum, item) => sum + itemUnitCost(item, products) * item.qty, 0)
+    items.reduce((sum, item) => sum + itemUnitCost(item, products) * (item.qty || 0), 0)
   )
 }
 

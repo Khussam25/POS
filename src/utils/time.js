@@ -49,6 +49,16 @@ export function dateLabelTZ(d = new Date(), locale = 'en-US') {
   }
 }
 
+/** Month and year label in Tanzania time, e.g. "May 2026". */
+export function monthYearLabelTZ(d = new Date(), locale = 'en-US') {
+  const opts = { timeZone: TZ, month: 'long', year: 'numeric' }
+  try {
+    return new Intl.DateTimeFormat(locale, opts).format(d)
+  } catch {
+    return new Intl.DateTimeFormat('en-US', opts).format(d)
+  }
+}
+
 /** Greeting key period from Tanzania hour: morning | afternoon | evening */
 export function greetingPeriodTZ(d = new Date()) {
   const hour = hourTZ(d)
