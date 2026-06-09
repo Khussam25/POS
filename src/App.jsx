@@ -222,24 +222,12 @@ export default function App() {
   }, [refreshData])
 
   useEffect(() => {
-    let focusTimer
-    function onVisible() {
-      if (document.visibilityState !== 'visible') return
-      clearTimeout(focusTimer)
-      focusTimer = setTimeout(() => refreshData(), 400)
-    }
-    function onFocus() {
-      clearTimeout(focusTimer)
-      focusTimer = setTimeout(() => refreshData(), 400)
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', onFocus)
-    return () => {
-      clearTimeout(focusTimer)
-      document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', onFocus)
-    }
-  }, [refreshData])
+    if (!currentUser) return
+    const interval = setInterval(() => {
+      if (!shouldSkipRemoteApply()) refreshData()
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [currentUser?.id, refreshData])
 
   useEffect(() => {
     if (!currentUser) return
@@ -249,8 +237,9 @@ export default function App() {
       setData(prev => ({ ...prev, employees }))
       pushStoreNow({ employees })
     }
-    refreshData()
-  }, [currentUser?.id, refreshData])
+    // Initial cloud pull runs in startCloudSync bootstrap — don't pull again here
+    // or stale remote data can undo a sale/delete right after login.
+  }, [currentUser?.id])
 
   useEffect(() => {
     if (!currentUser) {

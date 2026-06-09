@@ -122,12 +122,35 @@ function mergeSettings(local, remote) {
   return normalizeSettings({ ...local, ...remote, storeLogo: logo })
 }
 
-function productsFingerprint(products) {
-  let fp = 0
-  for (const p of products || []) {
-    fp += (Number(p.qty) || 0) + (Number(p.buyingPriceTZS) || 0)
+/** djb2 string hash → 32-bit int, for cheap content fingerprints. */
+function hashStr(str) {
+  let h = 5381
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0
+  return h
+}
+
+/** Order-independent fingerprint of a record list over selected fields. */
+function listFingerprint(list, fields) {
+  let h = 0
+  for (const item of list || []) {
+    let s = ''
+    for (const f of fields) s += '|' + String(item?.[f] ?? '')
+    h = (h + hashStr(s)) | 0
   }
-  return { n: (products || []).length, fp }
+  return h
+}
+
+/** Sales fingerprint including the fields that change on edits and repayments. */
+function salesFingerprint(sales) {
+  let h = 0
+  for (const s of sales || []) {
+    const paid = s?.amountPaid == null ? '' : s.amountPaid
+    const payN = Array.isArray(s?.payments) ? s.payments.length : 0
+    const itemsN = Array.isArray(s?.items) ? s.items.length : 0
+    const str = `${s?.id}|${s?.total}|${paid}|${payN}|${itemsN}|${s?.customerId ?? ''}|${s?.customer ?? ''}|${s?.date}|${s?.time ?? ''}|${s?.paymentMethod ?? ''}|${s?.discountAmount ?? ''}`
+    h = (h + hashStr(str)) | 0
+  }
+  return h
 }
 
 function mergeEmployees(local = [], remote = []) {
@@ -210,17 +233,19 @@ function settingsFingerprint(settings) {
 }
 
 function storeSignature(store) {
-  const linked = (store.sales || []).filter(s => s.customerId).length
-  const pf = productsFingerprint(store.products)
   return JSON.stringify({
     settings: settingsFingerprint(store.settings),
     salesN: (store.sales || []).length,
+    salesFp: salesFingerprint(store.sales),
     deletedSalesN: (store.deletedSaleIds || []).length,
-    salesLinked: linked,
     customersN: (store.customers || []).length,
+    customersFp: listFingerprint(store.customers, ['id', 'name', 'phone', 'note', 'code', 'updatedAt']),
+    expensesN: (store.expenses || []).length,
+    expensesFp: listFingerprint(store.expenses, ['id', 'amount', 'category', 'date', 'note', 'updatedAt']),
     employeesN: (store.employees || []).length,
-    productsN: pf.n,
-    productsFp: pf.fp,
+    employeesFp: listFingerprint(store.employees, ['id', 'email', 'role', 'status', 'name', 'phone']),
+    productsN: (store.products || []).length,
+    productsFp: listFingerprint(store.products, ['id', 'qty', 'sellingPriceTZS', 'buyingPriceTZS', 'name', 'lowStockThreshold', 'updatedAt']),
   })
 }
 
@@ -229,6 +254,8 @@ let pushInFlight = false
 let pendingPartial = null
 let pendingAfterRemote = null
 let pushTimer = null
+let pushFailures = 0
+const MAX_PUSH_RETRIES = 6
 let lastAppliedSig = ''
 let lastRemoteStore = null
 let lastLocalMutationAt = 0
@@ -380,22 +407,32 @@ async function flushPush() {
     await setDoc(ref, payload, { merge: true })
     lastRemoteStore = merged
     lastAppliedSig = storeSignature(merged)
+    pushFailures = 0
     onSyncOkHandler?.()
   } catch (err) {
+    pushFailures++
     pendingPartial = { ...partial, ...(pendingPartial || {}) }
     onSyncErrorHandler?.(friendlySyncError(err))
   } finally {
     pushInFlight = false
-    if (pendingPartial) scheduleFlush()
+    // Retry queued edits, but back off on repeated failures and stop after a
+    // cap so a denied / offline backend can't spin a 4-per-second error loop.
+    // Whatever stays queued flushes on the next edit or refresh.
+    if (pendingPartial) {
+      if (pushFailures === 0) scheduleFlush()
+      else if (pushFailures <= MAX_PUSH_RETRIES) {
+        scheduleFlush(Math.min(1000 * 2 ** (pushFailures - 1), 30000))
+      }
+    }
   }
 }
 
-function scheduleFlush() {
+function scheduleFlush(delay = 250) {
   if (pushTimer) clearTimeout(pushTimer)
   pushTimer = setTimeout(() => {
     pushTimer = null
     flushPush()
-  }, 250)
+  }, delay)
 }
 
 export function hasPendingCloudPush() {

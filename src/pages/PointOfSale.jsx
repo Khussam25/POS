@@ -124,12 +124,12 @@ export default function PointOfSale() {
     setCompleting(true)
     setCheckoutError(null)
 
+    try {
     for (const item of cart) {
       const product = data.products.find(p => p.id === item.productId)
       if (!product || product.qty < item.qty) {
         setCart(prev => reconcileCartWithProducts(prev, data.products))
         setCheckoutError(t('stockChanged'))
-        finishCheckoutAttempt()
         return
       }
     }
@@ -142,7 +142,6 @@ export default function PointOfSale() {
 
     if (isCredit && !name) {
       setCheckoutError(t('creditNeedsCustomer'))
-      finishCheckoutAttempt()
       return
     }
 
@@ -194,7 +193,6 @@ export default function PointOfSale() {
     if (nextCustomers !== data.customers) updates.customers = nextCustomers
     if (!batchUpdateData(updates)) {
       setCheckoutError(t('saveFailed'))
-      finishCheckoutAttempt()
       return
     }
 
@@ -209,7 +207,12 @@ export default function PointOfSale() {
     setMobileTab('products')
     setCheckoutError(null)
     setSuccess(sale)
-    finishCheckoutAttempt()
+    } catch (err) {
+      console.error('POS checkout failed:', err)
+      setCheckoutError(t('saveFailed'))
+    } finally {
+      finishCheckoutAttempt()
+    }
   }
 
   const successOverlay = success ? createPortal(
