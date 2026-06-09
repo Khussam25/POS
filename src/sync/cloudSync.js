@@ -1,12 +1,14 @@
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { app } from '../firebase'
 import { getStore, saveStore, normalizeSettings } from '../store'
 import { visibleSales } from '../utils/salesOps'
 
 const STORE_REF = ['stores', 'main']
 const SYNC_KEYS = ['products', 'sales', 'customers', 'expenses', 'employees', 'deletedSaleIds']
-/** Ignore cloud snapshots briefly after a local save so they cannot undo POS / delete. */
-const LOCAL_GRACE_MS = 4000
+/** Ignore cloud pulls briefly after a local save. */
+const LOCAL_GRACE_MS = 8000
+/** Firestore document limit is 1 MiB — warn before write fails. */
+const FIRESTORE_SOFT_LIMIT = 950_000
 
 const SETTINGS_CLOUD_FIELDS = [
   'storeName', 'address', 'phone', 'email', 'currency', 'exchangeRate',
@@ -17,10 +19,13 @@ function friendlySyncError(err) {
   const code = err?.code || ''
   const msg = err?.message || String(err)
   if (code === 'permission-denied' || msg.includes('permission')) {
-    return 'Cloud sync blocked: publish Firestore rules in Firebase Console (Build → Firestore → Rules → Publish).'
+    return 'Cloud sync blocked: in Firebase Console open Firestore → Rules, paste firestore.rules from the project, and click Publish.'
   }
   if (code === 'unavailable' || msg.includes('offline')) {
     return 'Cloud sync offline. Check internet connection and try again.'
+  }
+  if (code === 'invalid-argument' || msg.includes('maximum allowed size') || msg.includes('too large')) {
+    return 'Cloud sync failed: store data is too large for Firebase (1 MB limit). Contact support — sales still saved on this device.'
   }
   return `Cloud sync error: ${msg}`
 }
@@ -168,6 +173,14 @@ function packPayload(store) {
   }
 }
 
+function estimatePayloadBytes(payload) {
+  try {
+    return new Blob([JSON.stringify(payload)]).size
+  } catch {
+    return JSON.stringify(payload).length
+  }
+}
+
 export function unpackPayload(data) {
   if (!data) return null
   const local = getStore()
@@ -215,22 +228,18 @@ let applyingRemote = false
 let pushInFlight = false
 let pendingPartial = null
 let pendingAfterRemote = null
+let pushTimer = null
 let lastAppliedSig = ''
 let lastRemoteStore = null
 let lastLocalMutationAt = 0
 let onSyncErrorHandler = null
 let onSyncOkHandler = null
 
-/** Call after every local save so cloud snapshots cannot immediately undo it. */
 export function markLocalMutation() {
   lastLocalMutationAt = Date.now()
 }
 
 export function shouldSkipRemoteApply() {
-  return shouldIgnoreRemoteSnapshot()
-}
-
-function shouldIgnoreRemoteSnapshot() {
   if (pushInFlight || pendingPartial) return true
   return Date.now() - lastLocalMutationAt < LOCAL_GRACE_MS
 }
@@ -249,7 +258,6 @@ function cleanStore(store) {
   }
 }
 
-/** Build cloud payload from disk + pending edits, merged with last known remote. */
 async function buildCloudStore(partialUpdates = {}) {
   let store = cleanStore(applyPartial(getStore(), partialUpdates))
   let remote = lastRemoteStore
@@ -265,6 +273,8 @@ async function buildCloudStore(partialUpdates = {}) {
 }
 
 export function cancelPendingCloudPush() {
+  if (pushTimer) clearTimeout(pushTimer)
+  pushTimer = null
   pendingPartial = null
 }
 
@@ -273,7 +283,7 @@ export function isApplyingCloudRemote() {
 }
 
 function applyRemoteStore(remoteStore, onRemoteUpdate) {
-  if (shouldIgnoreRemoteSnapshot()) return false
+  if (shouldSkipRemoteApply()) return false
 
   const store = cleanStore(mergeRemoteStore(getStore(), remoteStore))
   const sig = storeSignature(store)
@@ -309,6 +319,10 @@ export async function pullCloudStore() {
   }
 }
 
+/**
+ * Cloud sync: pull once on login, push after local edits.
+ * No live listener — it was overwriting POS sales and deletes mid-save.
+ */
 export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
   onSyncErrorHandler = onSyncError ?? null
   onSyncOkHandler = onSyncOk ?? null
@@ -323,7 +337,13 @@ export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
         if (store) applyRemoteStore(store, onRemoteUpdate)
       } else {
         const local = getStore()
-        await setDoc(ref, packPayload(local))
+        const payload = packPayload(local)
+        const bytes = estimatePayloadBytes(payload)
+        if (bytes > FIRESTORE_SOFT_LIMIT) {
+          onSyncError?.('Cloud sync: initial upload too large for Firebase (1 MB). Data is saved on this device.')
+          return
+        }
+        await setDoc(ref, payload)
         lastRemoteStore = local
         lastAppliedSig = storeSignature(local)
         onSyncOkHandler?.()
@@ -335,20 +355,7 @@ export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
 
   bootstrap()
 
-  const unsub = onSnapshot(
-    ref,
-    snap => {
-      if (!snap.exists()) return
-      if (snap.metadata.hasPendingWrites) return
-      const store = unpackPayload(snap.data())
-      if (!store) return
-      applyRemoteStore(store, onRemoteUpdate)
-    },
-    err => onSyncError?.(friendlySyncError(err)),
-  )
-
   return () => {
-    unsub()
     cancelPendingCloudPush()
     onSyncErrorHandler = null
     onSyncOkHandler = null
@@ -365,7 +372,12 @@ async function flushPush() {
   const ref = doc(db, ...STORE_REF)
   try {
     const merged = await buildCloudStore(partial)
-    await setDoc(ref, packPayload(merged), { merge: true })
+    const payload = packPayload(merged)
+    const bytes = estimatePayloadBytes(payload)
+    if (bytes > FIRESTORE_SOFT_LIMIT) {
+      throw new Error('Document too large for Firestore (1 MB limit)')
+    }
+    await setDoc(ref, payload, { merge: true })
     lastRemoteStore = merged
     lastAppliedSig = storeSignature(merged)
     onSyncOkHandler?.()
@@ -374,8 +386,16 @@ async function flushPush() {
     onSyncErrorHandler?.(friendlySyncError(err))
   } finally {
     pushInFlight = false
-    if (pendingPartial) flushPush()
+    if (pendingPartial) scheduleFlush()
   }
+}
+
+function scheduleFlush() {
+  if (pushTimer) clearTimeout(pushTimer)
+  pushTimer = setTimeout(() => {
+    pushTimer = null
+    flushPush()
+  }, 250)
 }
 
 export function hasPendingCloudPush() {
@@ -383,6 +403,10 @@ export function hasPendingCloudPush() {
 }
 
 export async function flushPendingCloudPush() {
+  if (pushTimer) {
+    clearTimeout(pushTimer)
+    pushTimer = null
+  }
   if (!pendingPartial || pushInFlight) return
   await flushPush()
 }
@@ -406,7 +430,7 @@ export function pushStoreNow(updates) {
       ...updates.settings,
     }
   }
-  flushPush()
+  scheduleFlush()
 }
 
 export function scheduleCloudPush(partialStore) {
