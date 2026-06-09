@@ -141,7 +141,8 @@ export default function Inventory() {
     [filtered]
   )
 
-  // Stock value = qty × buying cost; expected profit = qty × (selling − buying).
+  // Stock value = qty × selling price (retail), to match the Dashboard's figure;
+  // expected profit = qty × (selling − buying).
   const { stockValue, expectedProfit } = useMemo(() => {
     let stockValue = 0
     let expectedProfit = 0
@@ -149,7 +150,7 @@ export default function Inventory() {
       const qty = Number(p.qty) || 0
       const buy = Number(p.buyingPriceTZS) || 0
       const sell = Number(p.sellingPriceTZS) || 0
-      stockValue += qty * buy
+      stockValue += qty * sell
       expectedProfit += qty * (sell - buy)
     }
     return { stockValue: roundTz(stockValue), expectedProfit: roundTz(expectedProfit) }
