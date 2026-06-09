@@ -13,7 +13,7 @@ import { todayTZ } from '../utils/time'
 const fmt = fmtMoney
 function fmtSign(n) { return (n < 0 ? '(' : '') + fmt(Math.abs(n)) + (n < 0 ? ')' : '') }
 
-const TAB_KEYS = ['profitLoss', 'incomeStatement', 'expenseSummary', 'salesSummary']
+const TAB_KEYS = ['profitLoss', 'expenseSummary', 'salesSummary']
 const EXPENSE_CATS = ['Wages & Salary', 'Shipment', 'Rent', 'Electricity', 'Internet', 'Deliveries', 'Packaging', 'Miscellaneous', 'Other']
 
 const MONTH_NUMS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
@@ -388,25 +388,6 @@ export default function FinancialReports() {
               <Row key={c} label={c} value={fmtSign(-expenseByCat[c])} indent color="var(--danger)" />
             ))}
             <Row label={t('totalOperatingExpenses')} value={fmtSign(-totalExpenses)} bold separator color="var(--danger)" />
-            <Row label={t('netProfitLoss')} value={(netProfit < 0 ? '(' : '') + fmt(Math.abs(netProfit)) + (netProfit < 0 ? ')' : '')} bold separator color={netProfit >= 0 ? 'var(--success)' : 'var(--danger)'} />
-          </div>
-        )}
-
-        {tab === 'incomeStatement' && (
-          <div style={{ maxWidth: 560 }}>
-            <div style={{ marginBottom: 16 }}>
-              <span style={{ fontWeight: 700, fontSize: 14 }}>{t('income')}</span>
-            </div>
-            <Row label={t('salesRevenue')} value={fmt(revenue)} />
-            <Row label={t('totalIncome')} value={fmt(revenue)} bold separator color="var(--primary)" />
-            <div style={{ marginTop: 20, marginBottom: 8 }}>
-              <span style={{ fontWeight: 700, fontSize: 14 }}>{t('expenses')}</span>
-            </div>
-            <Row label={t('cogs')} value={fmt(cogs)} indent />
-            {EXPENSE_CATS.filter(c => expenseByCat[c] > 0).map(c => (
-              <Row key={c} label={c} value={fmt(expenseByCat[c])} indent />
-            ))}
-            <Row label={t('totalExpenses')} value={fmt(cogs + totalExpenses)} bold separator color="var(--warning)" />
             <Row label={t('netProfitLoss')} value={(netProfit < 0 ? '(' : '') + fmt(Math.abs(netProfit)) + (netProfit < 0 ? ')' : '')} bold separator color={netProfit >= 0 ? 'var(--success)' : 'var(--danger)'} />
           </div>
         )}
