@@ -24,6 +24,8 @@ const SETTINGS_CLOUD_FIELDS = [
 ]
 
 function friendlySyncError(err) {
+  // Always surface the raw error to the console for diagnosis.
+  try { console.error('[cloudSync]', err?.code || '', err?.message || err, err) } catch { /* noop */ }
   const code = err?.code || ''
   const msg = err?.message || String(err)
   if (code === 'permission-denied' || msg.includes('permission')) {
@@ -32,10 +34,14 @@ function friendlySyncError(err) {
   if (code === 'unavailable' || msg.includes('offline')) {
     return 'Cloud sync offline. Check internet connection and try again.'
   }
-  if (code === 'invalid-argument' || msg.includes('maximum allowed size') || msg.includes('too large')) {
+  // Genuine document-size failure (don't lump in every invalid-argument here —
+  // that hid the real cause of unrelated write errors).
+  if (msg.includes('maximum allowed size') || msg.includes('exceeds') || msg.includes('1048576') || msg.includes('longer than')) {
     return 'Cloud sync failed: store data is too large for Firebase (1 MB limit). Contact support — sales still saved on this device.'
   }
-  return `Cloud sync error: ${msg}`
+  // Show the real Firebase message (e.g. invalid data / undefined field) so the
+  // actual problem is visible instead of a misleading "too large".
+  return `Cloud sync error${code ? ` (${code})` : ''}: ${msg}`
 }
 
 function settingsForCloud(settings) {
