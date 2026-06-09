@@ -162,7 +162,7 @@ export default function Sales() {
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <div className="reports-period">
+        <div className="reports-period" style={{ marginLeft: 0 }}>
           <span className="reports-period-label">{t('reportPeriod')}</span>
           <div className="reports-period-controls">
             <select className="form-select form-select--inline reports-period-type" value={periodType} onChange={e => handlePeriodTypeChange(e.target.value)} aria-label={t('reportPeriod')}>
