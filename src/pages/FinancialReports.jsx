@@ -2,12 +2,9 @@ import { useState, useRef, useMemo } from 'react'
 import { useApp } from '../App'
 import { useT, useLang } from '../i18n/LangContext'
 import { Printer, Download, DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
-import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
-import { fmtMoney, saleNetRevenue, collectPaymentEvents, lockSaleCosts, saleNeedsCostLock } from '../utils/money'
-import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, validateAndApplyAmountPaid, visibleSales } from '../utils/salesOps'
-import { resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
+import { fmtMoney, roundTz, saleNetRevenue, collectPaymentEvents, lockSaleCosts, saleNeedsCostLock } from '../utils/money'
 import { todayTZ } from '../utils/time'
 
 const fmt = fmtMoney
@@ -15,6 +12,47 @@ function fmtSign(n) { return (n < 0 ? '(' : '') + fmt(Math.abs(n)) + (n < 0 ? ')
 
 const TAB_KEYS = ['profitLoss', 'expenseSummary', 'salesSummary']
 const EXPENSE_CATS = ['Wages & Salary', 'Shipment', 'Rent', 'Electricity', 'Internet', 'Deliveries', 'Packaging', 'Miscellaneous', 'Other']
+
+// Ways to aggregate the sales summary; labelKey reuses existing translations.
+const SALES_GROUPS = [
+  { key: 'day', labelKey: 'dateLabel' },
+  { key: 'payment', labelKey: 'payment' },
+  { key: 'product', labelKey: 'productName' },
+  { key: 'customer', labelKey: 'customer' },
+  { key: 'cashier', labelKey: 'soldBy' },
+]
+
+/** Roll sales up by the chosen criterion → [{ label, txns, items, amount }]. */
+function aggregateSales(sales, groupBy) {
+  const map = new Map()
+  const bump = (key, label, saleId, items, amount) => {
+    let g = map.get(key)
+    if (!g) { g = { label, txns: new Set(), items: 0, amount: 0 }; map.set(key, g) }
+    g.txns.add(saleId)
+    g.items += items
+    g.amount += amount
+  }
+  for (const s of sales) {
+    const lines = Array.isArray(s.items) ? s.items : []
+    if (groupBy === 'product') {
+      for (const it of lines) {
+        const qty = Number(it.qty) || 0
+        bump(it.productId || it.name || '—', it.name || '—', s.id, qty, (Number(it.price) || 0) * qty)
+      }
+    } else {
+      const qty = lines.reduce((a, i) => a + (Number(i.qty) || 0), 0)
+      let key, label
+      if (groupBy === 'payment') { key = label = s.paymentMethod || '—' }
+      else if (groupBy === 'cashier') { key = label = s.soldBy || '—' }
+      else if (groupBy === 'customer') { key = s.customerId || s.customer || '—'; label = s.customer || '—' }
+      else { key = label = s.date }
+      bump(key, label, s.id, qty, Number(s.total) || 0)
+    }
+  }
+  const rows = [...map.values()].map(g => ({ label: g.label, txns: g.txns.size, items: g.items, amount: roundTz(g.amount) }))
+  rows.sort((a, b) => (groupBy === 'day' ? b.label.localeCompare(a.label) : b.amount - a.amount))
+  return rows
+}
 
 const MONTH_NUMS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
 
@@ -42,25 +80,22 @@ function formatMonthLabel(ym, locale) {
 }
 
 export default function FinancialReports() {
-  const { data, batchUpdateData, currentUser } = useApp()
+  const { data, batchUpdateData } = useApp()
   const t = useT()
   const { lang } = useLang()
   const locale = lang === 'sw' ? 'sw-TZ' : 'en-US'
   const [tab, setTab] = useState('profitLoss')
   const [periodType, setPeriodType] = useState('monthly')
   const [pdfLoading, setPdfLoading] = useState(false)
-  const [editSale, setEditSale] = useState(null)
-  const [deleteTarget, setDeleteTarget] = useState(null)
-  const [saleError, setSaleError] = useState('')
   const [lockConfirm, setLockConfirm] = useState(false)
   const [lockNotice, setLockNotice] = useState('')
+  const [salesGroupBy, setSalesGroupBy] = useState('day')
   const reportRef = useRef(null)
   const todayStr = todayTZ()
   const currentMonth = todayStr.slice(0, 7)
   const currentYear = Number(todayStr.slice(0, 4))
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const [selectedYear, setSelectedYear] = useState(currentYear)
-  const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0
 
   const yearOptions = useMemo(
     () => collectYears(data.sales, data.expenses, currentYear),
@@ -97,8 +132,7 @@ export default function FinancialReports() {
   const totalExpenses = periodExpenses.reduce((a, e) => a + e.amount, 0)
   const grossProfit = revenue - cogs
   const netProfit = grossProfit - totalExpenses
-  // Sales billed this period vs. still owed on them (a transaction view, by sale date).
-  const grossSales = periodSales.reduce((a, s) => a + s.total, 0)
+  // Sales billed this period, still owed on them, and rolled up by criterion.
   const uncollectedRevenue = periodSales.reduce((a, s) => {
     const net = saleNetRevenue(s)
     const total = s.total || 0
@@ -106,20 +140,23 @@ export default function FinancialReports() {
     const owedFrac = total > 0 ? (total - paid) / total : 0
     return a + net * owedFrac
   }, 0)
+  const salesRows = useMemo(() => aggregateSales(periodSales, salesGroupBy), [periodSales, salesGroupBy])
+  const salesTotals = useMemo(() => ({
+    txns: periodSales.length,
+    items: salesRows.reduce((a, r) => a + r.items, 0),
+    amount: salesRows.reduce((a, r) => a + r.amount, 0),
+  }), [periodSales, salesRows])
+  const salesGroupLabel = t(SALES_GROUPS.find(g => g.key === salesGroupBy)?.labelKey || 'dateLabel')
 
   // Sales whose COGS is still live (a missing cost filled from current prices).
   const lockableCount = useMemo(() => data.sales.filter(saleNeedsCostLock).length, [data.sales])
 
   function lockHistoricalCosts() {
     const { sales: next, lockedCount } = lockSaleCosts(data.sales, data.products)
-    if (lockedCount === 0) { setLockConfirm(false); return }
-    if (!batchUpdateData({ sales: next })) {
-      setSaleError(t('saveFailed'))
-      setLockConfirm(false)
-      return
-    }
     setLockConfirm(false)
-    setLockNotice(t('lockCostsDone'))
+    if (lockedCount === 0) return
+    // A save failure surfaces via the app-level save-error banner.
+    if (batchUpdateData({ sales: next })) setLockNotice(t('lockCostsDone'))
   }
 
   const expenseByCat = useMemo(() => {
@@ -140,82 +177,6 @@ export default function FinancialReports() {
     const year = String(y)
     setSelectedYear(Number(y))
     if (periodType === 'monthly') setSelectedMonth(`${year}-${selectedMonth.slice(5, 7)}`)
-  }
-
-  function openEditSale(sale) {
-    setSaleError('')
-    setEditSale(cloneSaleForEdit(sale))
-  }
-
-  function saveEditedSale() {
-    if (!editSale) return
-    const orig = data.sales.find(s => s.id === editSale.id)
-    const updates = {}
-    let baseSales = data.sales
-
-    if (saleItemsChanged(orig, editSale)) {
-      const result = updateSaleRecord(data.products, data.sales, editSale, vatRate)
-      if (!result.ok) {
-        if (result.error === 'insufficientStock') setSaleError(t('saleStockError'))
-        else if (result.error === 'emptySale') setSaleError(t('saleEmptyError'))
-        else setSaleError(t('saveFailed'))
-        return
-      }
-      updates.products = result.products
-      baseSales = result.sales
-    } else {
-      const recalculated = recalculateSale(editSale, vatRate)
-      baseSales = data.sales.map(s => s.id === editSale.id ? recalculated : s)
-    }
-
-    const name = (editSale.customer || '').trim()
-    const resolved = resolveCustomerForSale(data.customers, name)
-    const customerId = editSale.customerId && resolved.customers.some(c => c.id === editSale.customerId)
-      ? editSale.customerId
-      : resolved.customerId
-    const customerName = customerId
-      ? resolved.customers.find(c => c.id === customerId)?.name ?? resolved.customerName
-      : resolved.customerName
-
-    let nextSales = baseSales.map(s => s.id === editSale.id
-      ? { ...s, customerId, customer: customerName }
-      : s)
-    nextSales = backfillCustomerIds(resolved.customers, nextSales).sales
-
-    const edited = nextSales.find(s => s.id === editSale.id)
-    const paidResult = validateAndApplyAmountPaid(edited, editSale.amountPaid, customerName, currentUser.name)
-    if (!paidResult.ok) {
-      if (paidResult.error === 'creditNeedsCustomer') setSaleError(t('creditNeedsCustomer'))
-      else setSaleError(t('saveFailed'))
-      return
-    }
-    nextSales = nextSales.map(s => s.id === editSale.id ? paidResult.sale : s)
-
-    updates.sales = nextSales
-    if (resolved.customers !== data.customers) updates.customers = resolved.customers
-    if (!batchUpdateData(updates)) {
-      setSaleError(t('saveFailed'))
-      return
-    }
-    setEditSale(null)
-    setSaleError('')
-  }
-
-  function confirmDeleteSale() {
-    if (!deleteTarget) return
-    const activeSales = visibleSales(data.sales, data.deletedSaleIds)
-    const result = deleteSaleRecord(data.products, activeSales, deleteTarget.id)
-    if (!result.ok) {
-      setSaleError(t('saveFailed'))
-      return
-    }
-    const deletedSaleIds = [...new Set([...(data.deletedSaleIds || []), deleteTarget.id])]
-    if (!batchUpdateData({ products: result.products, sales: result.sales, deletedSaleIds })) {
-      setSaleError(t('saveFailed'))
-      return
-    }
-    setDeleteTarget(null)
-    setSaleError('')
   }
 
   function handlePrint() { window.print() }
@@ -422,54 +383,47 @@ export default function FinancialReports() {
 
         {tab === 'salesSummary' && (
           <div>
-            <p className="no-print" style={{ fontSize: 13, color: 'var(--text-500)', marginBottom: 12 }}>
-              {t('salesHistorySub')}
-            </p>
+            <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-500)' }}>{t('salesGroupBy')}:</span>
+              <select className="form-select form-select--inline" value={salesGroupBy} onChange={e => setSalesGroupBy(e.target.value)} aria-label={t('salesGroupBy')}>
+                {SALES_GROUPS.map(g => <option key={g.key} value={g.key}>{t(g.labelKey)}</option>)}
+              </select>
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg)', borderBottom: '1.5px solid var(--outline)' }}>
-                  {[t('dateLabel'), t('customer'), t('itemsCol'), t('payment'), t('amount'), ''].map(h => (
-                    <th key={h || 'actions'} style={{ padding: '11px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: h ? 'nowrap' : undefined }}>{h}</th>
+                  {[salesGroupLabel, t('transactions2'), t('itemsCol'), t('amount')].map((h, i) => (
+                    <th key={h} style={{ padding: '11px 16px', textAlign: i === 0 ? 'left' : 'right', fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {periodSales.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')).map(s => (
-                  <tr key={s.id} style={{ borderBottom: '1px solid var(--outline)' }}
+                {salesRows.map(r => (
+                  <tr key={r.label} style={{ borderBottom: '1px solid var(--outline)' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '11px 12px', fontSize: 13, color: 'var(--text-500)', whiteSpace: 'nowrap' }}>
-                      {s.date}{s.time ? ` · ${s.time}` : ''}
-                    </td>
-                    <td style={{ padding: '11px 12px', fontWeight: 600, fontSize: 13 }}>{s.customer}</td>
-                    <td style={{ padding: '11px 12px', fontSize: 13, color: 'var(--text-500)' }}>{s.items.length}</td>
-                    <td style={{ padding: '11px 12px' }}>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999,
-                        background: s.paymentMethod === 'Cash' ? 'var(--success-light)' : s.paymentMethod === 'Card' ? 'var(--primary-light)' : 'var(--warning-light)',
-                        color: s.paymentMethod === 'Cash' ? 'var(--success)' : s.paymentMethod === 'Card' ? 'var(--primary)' : 'var(--warning)'
-                      }}>{s.paymentMethod}</span>
-                    </td>
-                    <td style={{ padding: '11px 12px', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(s.total)}</td>
-                    <td className="no-print" style={{ padding: '11px 8px 11px 12px', width: 72 }}>
-                      <SaleRowActions sale={s} t={t} onEdit={openEditSale} onDelete={setDeleteTarget} />
-                    </td>
+                    <td style={{ padding: '11px 16px', fontWeight: 600, fontSize: 13 }}>{r.label}</td>
+                    <td style={{ padding: '11px 16px', fontSize: 13, color: 'var(--text-500)', textAlign: 'right' }}>{r.txns}</td>
+                    <td style={{ padding: '11px 16px', fontSize: 13, color: 'var(--text-500)', textAlign: 'right' }}>{r.items}</td>
+                    <td style={{ padding: '11px 16px', fontWeight: 700, fontSize: 13, textAlign: 'right', whiteSpace: 'nowrap' }}>{fmt(r.amount)}</td>
                   </tr>
                 ))}
-                {periodSales.length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noSalesThisPeriod')}</td></tr>
+                {salesRows.length === 0 && (
+                  <tr><td colSpan={4} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-500)', fontSize: 13 }}>{t('noSalesThisPeriod')}</td></tr>
                 )}
-                {periodSales.length > 0 && (
-                <tr style={{ borderTop: '2px solid var(--outline)', background: 'var(--bg)' }}>
-                  <td colSpan={5} style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>{t('grossSales')}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--primary)' }}>{fmt(grossSales)}</td>
-                </tr>
+                {salesRows.length > 0 && (
+                  <tr style={{ borderTop: '2px solid var(--outline)', background: 'var(--bg)' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>{t('grossSales')}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: 13, textAlign: 'right' }}>{salesTotals.txns}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: 13, textAlign: 'right' }}>{salesTotals.items}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--primary)', textAlign: 'right' }}>{fmt(salesTotals.amount)}</td>
+                  </tr>
                 )}
-                {periodSales.length > 0 && uncollectedRevenue > 0 && (
-                <tr style={{ background: 'var(--bg)' }}>
-                  <td colSpan={5} style={{ padding: '4px 16px 12px', fontSize: 12, color: 'var(--text-500)' }}>{t('uncollectedCredit')}</td>
-                  <td style={{ padding: '4px 16px 12px', fontSize: 12, color: 'var(--text-500)' }}>{fmt(uncollectedRevenue)}</td>
-                </tr>
+                {salesRows.length > 0 && uncollectedRevenue > 0 && (
+                  <tr style={{ background: 'var(--bg)' }}>
+                    <td colSpan={3} style={{ padding: '4px 16px 12px', fontSize: 12, color: 'var(--text-500)' }}>{t('uncollectedCredit')}</td>
+                    <td style={{ padding: '4px 16px 12px', fontSize: 12, color: 'var(--text-500)', textAlign: 'right' }}>{fmt(uncollectedRevenue)}</td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -478,23 +432,6 @@ export default function FinancialReports() {
       </div>
 
       <div className="no-print">
-        <SaleEditModal
-          t={t}
-          editSale={editSale}
-          setEditSale={setEditSale}
-          saleError={saleError}
-          onSave={saveEditedSale}
-          onClose={() => { setEditSale(null); setSaleError('') }}
-          vatEnabled={data.settings.vatEnabled}
-          vatRate={vatRate}
-          customers={data.customers}
-        />
-        <SaleDeleteModal
-          t={t}
-          sale={deleteTarget}
-          onConfirm={confirmDeleteSale}
-          onClose={() => setDeleteTarget(null)}
-        />
         {lockConfirm && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
             <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 420, boxShadow: 'var(--shadow)' }}>
