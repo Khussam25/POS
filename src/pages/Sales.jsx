@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useApp, canEditSales } from '../App'
-import { useT } from '../i18n/LangContext'
+import { useT, useLang } from '../i18n/LangContext'
 import { fmtMoney } from '../utils/money'
 import { saleBalance, salePaymentStatus, resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, saleRef, itemsSummary, validateAndApplyAmountPaid, visibleSales } from '../utils/salesOps'
@@ -9,24 +9,56 @@ import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/Sa
 
 const fmt = fmtMoney
 
+const MONTH_NUMS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
+
+function collectYears(sales, fallbackYear) {
+  const years = new Set()
+  for (let y = fallbackYear; y >= fallbackYear - 4; y--) years.add(String(y))
+  sales.forEach(s => { if (s.date?.length >= 4) years.add(s.date.slice(0, 4)) })
+  return [...years].sort((a, b) => b.localeCompare(a))
+}
+
+function formatMonthName(monthNum, locale) {
+  return new Date(2000, Number(monthNum) - 1, 1).toLocaleString(locale, { month: 'long' })
+}
+
+function inPeriod(date, periodType, selectedMonth, selectedYear) {
+  if (!date) return false
+  if (periodType === 'monthly') return date.startsWith(selectedMonth)
+  return date.startsWith(String(selectedYear))
+}
+
 export default function Sales() {
   const { data, batchUpdateData, currentUser } = useApp()
   const canEdit = canEditSales(currentUser.role)
   const t = useT()
-  const [tab, setTab] = useState('thisMonth')
+  const { lang } = useLang()
+  const locale = lang === 'sw' ? 'sw-TZ' : 'en-US'
+  const today = todayTZ()
+  const currentMonth = today.slice(0, 7)
+  const currentYear = Number(today.slice(0, 4))
+  const [periodType, setPeriodType] = useState('monthly')
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth)
+  const [selectedYear, setSelectedYear] = useState(currentYear)
   const [statusFilter, setStatusFilter] = useState('all')
   const [editSale, setEditSale] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [saleError, setSaleError] = useState('')
 
-  const today = todayTZ()
-  const currentMonth = today.slice(0, 7)
   const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0
+  const yearOptions = useMemo(() => collectYears(data.sales, currentYear), [data.sales, currentYear])
+
+  function handlePeriodTypeChange(next) {
+    setPeriodType(next)
+    if (next === 'yearly') setSelectedYear(Number(selectedMonth.slice(0, 4)) || currentYear)
+  }
+  function handleYearChange(y) {
+    setSelectedYear(Number(y))
+    if (periodType === 'monthly') setSelectedMonth(`${String(y)}-${selectedMonth.slice(5, 7)}`)
+  }
+
   const filtered = visibleSales(data.sales, data.deletedSaleIds).filter(s => {
-    const inPeriod = tab === 'today' ? s.date === today
-      : tab === 'all' ? true
-      : s.date.startsWith(currentMonth)
-    if (!inPeriod) return false
+    if (!inPeriod(s.date, periodType, selectedMonth, selectedYear)) return false
     if (statusFilter === 'all') return true
     return salePaymentStatus(s).toLowerCase() === statusFilter
   })
@@ -130,31 +162,44 @@ export default function Sales() {
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {[['today', t('today')], ['thisMonth', t('thisMonth')], ['all', t('all')]].map(([key, label]) => (
-            <button key={key} type="button" onClick={() => setTab(key)} style={{
-              padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
-              background: tab === key ? 'var(--accent)' : 'transparent',
-              color: tab === key ? 'white' : 'var(--text-500)',
-              border: tab === key ? 'none' : '1.5px solid var(--outline)',
+        <div className="reports-period">
+          <span className="reports-period-label">{t('reportPeriod')}</span>
+          <div className="reports-period-controls">
+            <select className="form-select form-select--inline reports-period-type" value={periodType} onChange={e => handlePeriodTypeChange(e.target.value)} aria-label={t('reportPeriod')}>
+              <option value="monthly">{t('periodMonthly')}</option>
+              <option value="yearly">{t('periodYearly')}</option>
+            </select>
+            <select className="form-select form-select--inline reports-period-year" value={periodType === 'monthly' ? selectedMonth.slice(0, 4) : String(selectedYear)} onChange={e => handleYearChange(e.target.value)} aria-label={t('selectYear')}>
+              {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <select
+              className={`form-select form-select--inline reports-period-month${periodType !== 'monthly' ? ' reports-period-month--hidden' : ''}`}
+              value={selectedMonth.slice(5, 7)}
+              onChange={e => setSelectedMonth(`${selectedMonth.slice(0, 4)}-${e.target.value}`)}
+              aria-label={t('selectMonth')}
+              disabled={periodType !== 'monthly'}
+              tabIndex={periodType === 'monthly' ? 0 : -1}
+            >
+              {MONTH_NUMS.map(m => <option key={m} value={m}>{formatMonthName(m, locale)}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-500)', marginRight: 2 }}>{t('status')}:</span>
+          {[['all', t('all')], ['paid', t('statusPaid')], ['partial', t('statusPartial')], ['unpaid', t('statusUnpaid')]].map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setStatusFilter(key)} style={{
+              padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
+              background: statusFilter === key ? 'var(--primary)' : 'transparent',
+              color: statusFilter === key ? 'white' : 'var(--text-500)',
+              border: statusFilter === key ? 'none' : '1.5px solid var(--outline)',
             }}>{label}</button>
           ))}
         </div>
+
         <div style={{ fontSize: 13, fontWeight: 700 }}>
           {t('totalLabel')}: <span style={{ color: 'var(--primary)' }}>{fmt(total)}</span>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-500)', marginRight: 2 }}>{t('status')}:</span>
-        {[['all', t('all')], ['paid', t('statusPaid')], ['partial', t('statusPartial')], ['unpaid', t('statusUnpaid')]].map(([key, label]) => (
-          <button key={key} type="button" onClick={() => setStatusFilter(key)} style={{
-            padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
-            background: statusFilter === key ? 'var(--primary)' : 'transparent',
-            color: statusFilter === key ? 'white' : 'var(--text-500)',
-            border: statusFilter === key ? 'none' : '1.5px solid var(--outline)',
-          }}>{label}</button>
-        ))}
       </div>
 
       <div className="r-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)', maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
