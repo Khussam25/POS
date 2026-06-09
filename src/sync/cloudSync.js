@@ -1,6 +1,7 @@
 import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { app } from '../firebase'
 import { getStore, saveStore, normalizeSettings } from '../store'
+import { visibleSales } from '../utils/salesOps'
 
 const STORE_REF = ['stores', 'main']
 const SYNC_KEYS = ['products', 'sales', 'customers', 'expenses', 'employees', 'deletedSaleIds']
@@ -161,10 +162,11 @@ export function mergeRemoteStore(local, remote) {
 }
 
 function packPayload(store) {
+  const deletedSaleIds = store.deletedSaleIds ?? []
   return {
     products: store.products ?? [],
-    sales: store.sales ?? [],
-    deletedSaleIds: store.deletedSaleIds ?? [],
+    sales: visibleSales(store.sales, deletedSaleIds),
+    deletedSaleIds,
     customers: store.customers ?? [],
     expenses: store.expenses ?? [],
     employees: store.employees ?? [],
@@ -219,13 +221,12 @@ function storeSignature(store) {
 let applyingRemote = false
 let pushInFlight = false
 let pendingPartial = null
+let inFlightPartial = null
 let pendingAfterRemote = null
 let lastAppliedSig = ''
 let lastRemoteStore = null
 let onSyncErrorHandler = null
 let onSyncOkHandler = null
-let onRemoteUpdateHandler = null
-
 function applyPartial(store, partial) {
   if (!partial) return store
   const merged = { ...store, ...partial }
@@ -252,11 +253,15 @@ async function prepareMergedStore(partialUpdates = {}) {
   return withUpdates
 }
 
-function notifyLocalStore(store) {
-  persistLocal(store)
-  lastRemoteStore = store
-  lastAppliedSig = storeSignature(store)
-  onRemoteUpdateHandler?.(store)
+function persistMergedToDisk(store) {
+  const cleaned = {
+    ...store,
+    sales: visibleSales(store.sales, store.deletedSaleIds),
+  }
+  persistLocal(cleaned)
+  lastRemoteStore = cleaned
+  lastAppliedSig = storeSignature(cleaned)
+  return cleaned
 }
 
 export function cancelPendingCloudPush() {
@@ -269,10 +274,15 @@ export function isApplyingCloudRemote() {
 
 function applyRemoteStore(remoteStore, onRemoteUpdate) {
   let local = getStore()
-  if (pendingPartial) {
-    local = applyPartial(local, pendingPartial)
+  const pending = inFlightPartial || pendingPartial
+  if (pending) {
+    local = applyPartial(local, pending)
   }
-  const store = mergeRemoteStore(local, remoteStore)
+  const merged = mergeRemoteStore(local, remoteStore)
+  const store = {
+    ...merged,
+    sales: visibleSales(merged.sales, merged.deletedSaleIds),
+  }
   const sig = storeSignature(store)
   if (sig === lastAppliedSig) return false
   applyingRemote = true
@@ -310,7 +320,6 @@ export async function pullCloudStore() {
 export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
   onSyncErrorHandler = onSyncError ?? null
   onSyncOkHandler = onSyncOk ?? null
-  onRemoteUpdateHandler = onRemoteUpdate ?? null
   const db = getFirestore(app)
   const ref = doc(db, ...STORE_REF)
 
@@ -351,7 +360,6 @@ export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
     cancelPendingCloudPush()
     onSyncErrorHandler = null
     onSyncOkHandler = null
-    onRemoteUpdateHandler = null
     lastRemoteStore = null
   }
 }
@@ -360,18 +368,19 @@ async function flushPush() {
   if (!pendingPartial || applyingRemote || pushInFlight) return
   const partial = pendingPartial
   pendingPartial = null
+  inFlightPartial = partial
   pushInFlight = true
   const db = getFirestore(app)
   const ref = doc(db, ...STORE_REF)
   try {
-    const merged = await prepareMergedStore(partial)
-    notifyLocalStore(merged)
+    const merged = persistMergedToDisk(await prepareMergedStore(partial))
     await setDoc(ref, packPayload(merged), { merge: true })
     onSyncOkHandler?.()
   } catch (err) {
     pendingPartial = { ...partial, ...(pendingPartial || {}) }
     onSyncErrorHandler?.(friendlySyncError(err))
   } finally {
+    inFlightPartial = null
     pushInFlight = false
     if (pendingPartial) flushPush()
   }
@@ -387,19 +396,23 @@ export function hasPendingCloudPush() {
  * remote data (e.g. navigating right after linking a sale to a customer).
  */
 export async function flushPendingCloudPush() {
-  if (!pendingPartial || applyingRemote) return
+  if (!pendingPartial || applyingRemote || pushInFlight) return
   const partial = pendingPartial
   pendingPartial = null
+  inFlightPartial = partial
+  pushInFlight = true
   const db = getFirestore(app)
   const ref = doc(db, ...STORE_REF)
   try {
-    const merged = await prepareMergedStore(partial)
-    notifyLocalStore(merged)
+    const merged = persistMergedToDisk(await prepareMergedStore(partial))
     await setDoc(ref, packPayload(merged), { merge: true })
     onSyncOkHandler?.()
   } catch (err) {
     pendingPartial = { ...partial, ...(pendingPartial || {}) }
     onSyncErrorHandler?.(friendlySyncError(err))
+  } finally {
+    inFlightPartial = null
+    pushInFlight = false
   }
 }
 

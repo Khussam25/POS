@@ -12,6 +12,12 @@ export function nextReceiptNo(sales) {
   return 'S-' + String(max + 1).padStart(4, '0')
 }
 
+/** Sales list with tombstoned (deleted) records removed. */
+export function visibleSales(sales, deletedSaleIds) {
+  const deleted = new Set(deletedSaleIds || [])
+  return (sales || []).filter(s => s?.id && !deleted.has(s.id))
+}
+
 /** Display reference for a sale: its receipt number, or a stable id fallback. */
 export function saleRef(sale) {
   return sale.receiptNo || ('#' + String(sale.id || '').slice(-5).toUpperCase())

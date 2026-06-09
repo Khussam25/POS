@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth'
 import { auth, googleProvider } from './firebase'
 import { getStore, saveStore, saveStoreBatch, ensureRequiredEmployees, normalizeSettings } from './store'
+import { visibleSales } from './utils/salesOps'
 import { backfillCustomerIds } from './utils/customers'
 import {
   startCloudSync, pushStoreNow,
@@ -100,12 +101,14 @@ export default function App() {
 
   const applyStoreFromRemote = useCallback((store) => {
     const customers = store.customers ?? []
-    const { sales: linkedSales, changed } = backfillCustomerIds(customers, store.sales ?? [])
+    const deletedSaleIds = store.deletedSaleIds ?? []
+    const rawSales = visibleSales(store.sales ?? [], deletedSaleIds)
+    const { sales: linkedSales, changed } = backfillCustomerIds(customers, rawSales)
     if (changed) saveStore('sales', linkedSales)
     setData({
       products: store.products ?? [],
       sales: linkedSales,
-      deletedSaleIds: store.deletedSaleIds ?? [],
+      deletedSaleIds,
       customers: store.customers ?? [],
       expenses: store.expenses ?? [],
       employees: store.employees ?? [],
@@ -278,6 +281,10 @@ export default function App() {
   }
 
   function batchUpdateData(updates) {
+    if (updates.sales != null) {
+      const deletedSaleIds = updates.deletedSaleIds ?? getStore().deletedSaleIds ?? []
+      updates = { ...updates, sales: visibleSales(updates.sales, deletedSaleIds) }
+    }
     if (updates.sales != null || updates.customers != null) {
       const merged = { ...getStore(), ...updates }
       const { sales: linkedSales, changed } = backfillCustomerIds(merged.customers ?? [], merged.sales ?? [])

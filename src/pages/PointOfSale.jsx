@@ -8,7 +8,7 @@ import OrderCheckout from '../components/pos/OrderCheckout'
 import { loadPosDraft, savePosDraft, clearPosDraft, reconcileCartWithProducts } from '../utils/posCart'
 import { calcOrderTotals, fmtMoney } from '../utils/money'
 import { findCustomerByName, makeCustomer } from '../utils/customers'
-import { nextReceiptNo } from '../utils/salesOps'
+import { nextReceiptNo, visibleSales } from '../utils/salesOps'
 import { nowTZParts } from '../utils/time'
 import { Search, Plus, Minus, ShoppingCart, CheckCircle2, X, Package } from 'lucide-react'
 
@@ -154,9 +154,10 @@ export default function PointOfSale() {
     }
 
     const { date, time } = nowTZParts()
+    const activeSales = visibleSales(data.sales, data.deletedSaleIds)
     const sale = {
       id: 's' + Date.now(),
-      receiptNo: nextReceiptNo(data.sales),
+      receiptNo: nextReceiptNo(activeSales),
       date,
       time,
       customer: name || 'Walk-in Customer',
@@ -180,12 +181,13 @@ export default function PointOfSale() {
       const item = cart.find(i => i.productId === p.id)
       return item ? { ...p, qty: p.qty - item.qty } : p
     })
-    const updates = { sales: [sale, ...data.sales], products: newProducts }
+    const updates = { sales: [sale, ...activeSales], products: newProducts }
     if (nextCustomers !== data.customers) updates.customers = nextCustomers
     if (!batchUpdateData(updates)) {
       setCheckoutError(t('saveFailed'))
       return
     }
+    setCheckoutError(null)
     setSuccess(sale)
     clearPosDraft(userId)
     setCart([])
@@ -200,12 +202,16 @@ export default function PointOfSale() {
 
   if (success) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg)' }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="pos-sale-success-title" style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(26,35,50,0.45)', padding: 24,
+      }}>
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '44px 36px', textAlign: 'center', maxWidth: 380, width: '100%', boxShadow: 'var(--shadow)' }}>
           <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
             <CheckCircle2 size={34} color="var(--success)" />
           </div>
-          <h2 style={{ fontSize: 21, fontWeight: 800, marginBottom: 8 }}>{t('saleCompleted')}</h2>
+          <h2 id="pos-sale-success-title" style={{ fontSize: 21, fontWeight: 800, marginBottom: 8 }}>{t('saleCompleted')}</h2>
           <p style={{ color: 'var(--text-500)', marginBottom: 6, fontSize: 14 }}>{success.customer}</p>
           <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 6 }}>{fmt(success.total)}</p>
           <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: success.total - (success.amountPaid ?? success.total) > 0 ? 12 : 28 }}>{success.paymentMethod}</p>

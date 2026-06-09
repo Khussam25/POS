@@ -3,6 +3,7 @@ import { useApp, canAccess } from '../App'
 import { useT, useLang } from '../i18n/LangContext'
 import { ShoppingBag, Plus, ShoppingCart, BarChart2, AlertTriangle, AlertCircle, ArrowRight, Circle } from 'lucide-react'
 import { fmtMoney, collectPaymentEvents } from '../utils/money'
+import { visibleSales } from '../utils/salesOps'
 import { todayTZ, dateLabelTZ, greetingPeriodTZ, monthYearLabelTZ } from '../utils/time'
 
 const fmt = fmtMoney
@@ -38,11 +39,12 @@ export default function Dashboard() {
   // Cash basis: revenue/profit are recognized when payment is received (by
   // payment date), so unpaid credit is excluded until the customer pays.
   const currentMonth = today.slice(0, 7)
-  const events = collectPaymentEvents(data.sales, data.products)
+  const sales = visibleSales(data.sales, data.deletedSaleIds)
+  const events = collectPaymentEvents(sales, data.products)
   const todayEvents = events.filter(e => e.date === today)
   const monthEvents = events.filter(e => e.date?.startsWith(currentMonth))
 
-  const todaySales = data.sales.filter(s => s.date === today)
+  const todaySales = sales.filter(s => s.date === today)
   const todayRevenue = todayEvents.reduce((a, e) => a + e.collected, 0)
 
   const monthRevenue = monthEvents.reduce((a, e) => a + e.collected, 0)

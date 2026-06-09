@@ -3,7 +3,8 @@ import { useApp, canEditSales } from '../App'
 import { useT } from '../i18n/LangContext'
 import { fmtMoney } from '../utils/money'
 import { saleBalance, salePaymentStatus, resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
-import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, saleRef, itemsSummary, validateAndApplyAmountPaid } from '../utils/salesOps'
+import { getStore } from '../store'
+import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, saleRef, itemsSummary, validateAndApplyAmountPaid, visibleSales } from '../utils/salesOps'
 import { todayTZ } from '../utils/time'
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 
@@ -22,9 +23,7 @@ export default function Sales() {
   const today = todayTZ()
   const currentMonth = today.slice(0, 7)
   const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0
-  const deletedIds = new Set(data.deletedSaleIds || [])
-
-  const filtered = data.sales.filter(s => !deletedIds.has(s.id)).filter(s => {
+  const filtered = visibleSales(data.sales, data.deletedSaleIds).filter(s => {
     const inPeriod = tab === 'today' ? s.date === today
       : tab === 'all' ? true
       : s.date.startsWith(currentMonth)
@@ -102,13 +101,15 @@ export default function Sales() {
 
   function confirmDelete() {
     if (!deleteTarget) return
-    const result = deleteSaleRecord(data.products, data.sales, deleteTarget.id)
+    const store = getStore()
+    const activeSales = visibleSales(store.sales, store.deletedSaleIds)
+    const result = deleteSaleRecord(store.products, activeSales, deleteTarget.id)
     if (!result.ok) {
       setSaleError(t('saveFailed'))
       setDeleteTarget(null)
       return
     }
-    const deletedSaleIds = [...new Set([...(data.deletedSaleIds || []), deleteTarget.id])]
+    const deletedSaleIds = [...new Set([...(store.deletedSaleIds || []), deleteTarget.id])]
     if (!batchUpdateData({ products: result.products, sales: result.sales, deletedSaleIds })) {
       setSaleError(t('saveFailed'))
       return
