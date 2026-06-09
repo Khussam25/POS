@@ -1,8 +1,14 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Covers the main store document AND its subcollections (e.g. the
+    // per-sale `sales` subcollection) via the recursive {document=**} wildcard.
     match /stores/{storeId} {
       allow read, write: if request.auth != null;
+
+      match /{document=**} {
+        allow read, write: if request.auth != null;
+      }
     }
   }
 }

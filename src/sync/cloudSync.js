@@ -1,9 +1,17 @@
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import {
+  getFirestore, doc, getDoc, setDoc, serverTimestamp,
+  collection, getDocs, writeBatch, deleteField,
+} from 'firebase/firestore'
 import { app } from '../firebase'
 import { getStore, saveStore, normalizeSettings } from '../store'
 import { visibleSales } from '../utils/salesOps'
 
 const STORE_REF = ['stores', 'main']
+/** Sales live in a subcollection (one doc per sale) so the store never hits
+ *  Firestore's 1 MB per-document ceiling as the sale history grows. */
+const SALES_COL = ['stores', 'main', 'sales']
+/** Max writes per Firestore batch is 500; stay under it. */
+const BATCH_LIMIT = 450
 const SYNC_KEYS = ['products', 'sales', 'customers', 'expenses', 'employees', 'deletedSaleIds']
 /** Ignore cloud pulls briefly after a local save. */
 const LOCAL_GRACE_MS = 8000
@@ -182,18 +190,121 @@ export function mergeRemoteStore(local, remote) {
   }
 }
 
-function packPayload(store) {
+/** Lightweight summary of the sales set, stored on the main doc so a poll can
+ *  tell whether the (potentially large) sales subcollection needs re-reading. */
+function salesArrayFp(sales) {
+  const visible = sales || []
+  return { count: visible.length, fp: salesFingerprint(visible) }
+}
+
+/** Per-sale content hash — used to push only the sales that actually changed. */
+function saleSig(s) {
+  const paid = s?.amountPaid == null ? '' : s.amountPaid
+  const payN = Array.isArray(s?.payments) ? s.payments.length : 0
+  const itemsN = Array.isArray(s?.items) ? s.items.length : 0
+  return hashStr(`${s?.total}|${paid}|${payN}|${itemsN}|${s?.customerId ?? ''}|${s?.customer ?? ''}|${s?.date}|${s?.time ?? ''}|${s?.paymentMethod ?? ''}|${s?.discountAmount ?? ''}|${JSON.stringify(s?.items ?? [])}`)
+}
+
+/** The main store document — everything except the sales history. */
+function packMainPayload(store) {
   const deletedSaleIds = store.deletedSaleIds ?? []
   return {
     products: store.products ?? [],
-    sales: visibleSales(store.sales, deletedSaleIds),
     deletedSaleIds,
     customers: store.customers ?? [],
     expenses: store.expenses ?? [],
     employees: store.employees ?? [],
     settings: settingsForCloud(store.settings ?? {}),
+    salesMeta: salesArrayFp(visibleSales(store.sales, deletedSaleIds)),
     updatedAt: serverTimestamp(),
   }
+}
+
+/** Apply a list of {set} / {del} sale ops to the subcollection, batched. */
+async function commitSaleOps(db, ops) {
+  let batch = writeBatch(db)
+  let n = 0
+  for (const op of ops) {
+    if (op.set) batch.set(doc(db, ...SALES_COL, op.set.id), op.set)
+    else if (op.del) batch.delete(doc(db, ...SALES_COL, op.del))
+    if (++n >= BATCH_LIMIT) {
+      await batch.commit()
+      batch = writeBatch(db)
+      n = 0
+    }
+  }
+  if (n > 0) await batch.commit()
+}
+
+/** Map of sale id → content sig for what we believe is in the cloud
+ *  subcollection. Decoupled from lastRemoteStore so a push never assumes a
+ *  local-only sale (e.g. one queued during migration) is already uploaded. */
+let cloudSaleSigs = null
+
+function sigsOf(sales) {
+  const m = new Map()
+  for (const s of sales || []) if (s?.id) m.set(s.id, saleSig(s))
+  return m
+}
+
+/** Upsert every sale into the subcollection (idempotent; used for migration). */
+async function writeAllSales(db, sales) {
+  await commitSaleOps(db, (sales || []).filter(s => s?.id).map(s => ({ set: s })))
+  cloudSaleSigs = sigsOf(sales)
+}
+
+/** Push only the sales that changed vs what the cloud holds, plus deletions. */
+async function pushSalesDiff(db, store) {
+  const visible = visibleSales(store.sales, store.deletedSaleIds)
+  const known = cloudSaleSigs || new Map()
+  const ops = []
+  const nextSigs = new Map()
+  for (const s of visible) {
+    if (!s?.id) continue
+    const sig = saleSig(s)
+    nextSigs.set(s.id, sig)
+    if (known.get(s.id) !== sig) ops.push({ set: s })
+  }
+  for (const id of new Set(store.deletedSaleIds || [])) {
+    if (known.has(id)) ops.push({ del: id })
+  }
+  if (ops.length) await commitSaleOps(db, ops)
+  cloudSaleSigs = nextSigs // cloud subcollection now holds exactly the visible set
+}
+
+/** One-time migration: lift sales out of the oversized main doc field into the
+ *  subcollection, then drop the embedded field so the main doc shrinks. */
+async function migrateLegacySalesIfNeeded(db, ref, data) {
+  if (!Array.isArray(data.sales) || data.sales.length === 0) return
+  await writeAllSales(db, data.sales)
+  await setDoc(ref, { sales: deleteField(), salesMeta: salesArrayFp(data.sales) }, { merge: true })
+}
+
+/** Read the sales subcollection only when the main doc shows it changed. */
+async function pullSales(db, mainData) {
+  const local = getStore()
+  const tombstones = mergeTombstones(local.deletedSaleIds, mainData.deletedSaleIds)
+  const localVisible = visibleSales(local.sales, tombstones)
+  const localFp = `${localVisible.length}:${salesFingerprint(localVisible)}`
+  const meta = mainData.salesMeta
+  if (meta && `${meta.count}:${meta.fp}` === localFp) {
+    // Remote sales identical to local — skip the read. Cloud holds these ids.
+    cloudSaleSigs = sigsOf(localVisible)
+    return localVisible
+  }
+  const snap = await getDocs(collection(db, ...SALES_COL))
+  if (!snap.empty) {
+    const arr = snap.docs.map(d => d.data())
+    cloudSaleSigs = sigsOf(arr)
+    return arr
+  }
+  // Legacy doc not migrated yet: fall back to the embedded array.
+  if (Array.isArray(mainData.sales)) {
+    cloudSaleSigs = sigsOf(mainData.sales)
+    return mainData.sales
+  }
+  cloudSaleSigs = new Map()
+  return []
 }
 
 function estimatePayloadBytes(payload) {
@@ -338,7 +449,9 @@ export async function pullCloudStore() {
   try {
     const snap = await getDoc(ref)
     if (!snap.exists()) return { store: null, missing: true, error: null }
-    return { store: unpackPayload(snap.data()), missing: false, error: null }
+    const data = snap.data()
+    const sales = await pullSales(db, data)
+    return { store: unpackPayload({ ...data, sales }), missing: false, error: null }
   } catch (err) {
     const error = friendlySyncError(err)
     onSyncErrorHandler?.(error)
@@ -360,17 +473,21 @@ export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
     try {
       const snap = await getDoc(ref)
       if (snap.exists()) {
-        const store = unpackPayload(snap.data())
+        // Move any legacy embedded sales into the subcollection first, then pull.
+        await migrateLegacySalesIfNeeded(db, ref, snap.data())
+        const { store } = await pullCloudStore()
         if (store) applyRemoteStore(store, onRemoteUpdate)
+        reconcileLocalAheadSales()
       } else {
-        const local = getStore()
-        const payload = packPayload(local)
+        const local = cleanStore(getStore())
+        const payload = packMainPayload(local)
         const bytes = estimatePayloadBytes(payload)
         if (bytes > FIRESTORE_SOFT_LIMIT) {
           onSyncError?.('Cloud sync: initial upload too large for Firebase (1 MB). Data is saved on this device.')
           return
         }
         await setDoc(ref, payload)
+        await writeAllSales(db, visibleSales(local.sales, local.deletedSaleIds))
         lastRemoteStore = local
         lastAppliedSig = storeSignature(local)
         onSyncOkHandler?.()
@@ -387,7 +504,19 @@ export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
     onSyncErrorHandler = null
     onSyncOkHandler = null
     lastRemoteStore = null
+    cloudSaleSigs = null
   }
+}
+
+/** After login, push any sale that exists locally but isn't yet in the cloud
+ *  subcollection (e.g. sales made while the store was over the 1 MB limit). */
+function reconcileLocalAheadSales() {
+  const local = cleanStore(getStore())
+  const known = cloudSaleSigs || new Map()
+  const visible = visibleSales(local.sales, local.deletedSaleIds)
+  const ahead = visible.some(s => s?.id && known.get(s.id) !== saleSig(s))
+  const pendingDeletes = (local.deletedSaleIds || []).some(id => known.has(id))
+  if (ahead || pendingDeletes) pushStoreNow({ sales: local.sales })
 }
 
 async function flushPush() {
@@ -399,7 +528,10 @@ async function flushPush() {
   const ref = doc(db, ...STORE_REF)
   try {
     const merged = await buildCloudStore(partial)
-    const payload = packPayload(merged)
+    // Push the sales subcollection first so a failure there can't leave the
+    // main doc's salesMeta claiming sales that never got written.
+    await pushSalesDiff(db, merged)
+    const payload = packMainPayload(merged)
     const bytes = estimatePayloadBytes(payload)
     if (bytes > FIRESTORE_SOFT_LIMIT) {
       throw new Error('Document too large for Firestore (1 MB limit)')
