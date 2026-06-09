@@ -58,23 +58,39 @@ function productRevision(p) {
   return p?.updatedAt ? (Date.parse(p.updatedAt) || 0) : 0
 }
 
+/** First strictly-positive number among the args, else undefined. */
+function firstPositive(...vals) {
+  for (const v of vals) {
+    const n = Number(v)
+    if (Number.isFinite(n) && n > 0) return n
+  }
+  return undefined
+}
+
+/**
+ * Field-aware product merge. Stock (qty) follows the newer record so a sale
+ * propagates, but prices are merged so a real (> 0) price is never overwritten
+ * by a 0/blank one. This stops a sale made on a device with stale/missing
+ * buying prices from wiping the correct prices — and lets price edits reach a
+ * device even after it has sold (and thus "touched") the product.
+ */
 function mergeProduct(local, remote) {
   if (!remote) return local
   if (!local) return remote
-  const lr = productRevision(local)
   const rr = productRevision(remote)
-  if (lr > rr) return local
-  if (rr > lr) return remote
+  const lr = productRevision(local)
+  const newer = rr > lr ? remote : local   // ties → local
+  const older = rr > lr ? local : remote
   return {
-    ...remote,
-    ...local,
-    buyingPriceUSD: (local.buyingPriceUSD || remote.buyingPriceUSD) ?? 0,
-    buyingPriceTZS: (local.buyingPriceTZS || remote.buyingPriceTZS) ?? 0,
-    sellingPriceTZS: local.sellingPriceTZS || remote.sellingPriceTZS,
-    qty: local.qty ?? remote.qty ?? 0,
-    name: local.name || remote.name,
-    lowStockThreshold: local.lowStockThreshold ?? remote.lowStockThreshold ?? 10,
-    updatedAt: local.updatedAt || remote.updatedAt,
+    ...older,
+    ...newer,
+    buyingPriceUSD: firstPositive(newer.buyingPriceUSD, older.buyingPriceUSD) ?? 0,
+    buyingPriceTZS: firstPositive(newer.buyingPriceTZS, older.buyingPriceTZS) ?? 0,
+    sellingPriceTZS: firstPositive(newer.sellingPriceTZS, older.sellingPriceTZS) ?? (newer.sellingPriceTZS ?? older.sellingPriceTZS ?? 0),
+    qty: newer.qty ?? older.qty ?? 0,
+    name: newer.name || older.name,
+    lowStockThreshold: newer.lowStockThreshold ?? older.lowStockThreshold ?? 10,
+    updatedAt: newer.updatedAt || older.updatedAt,
   }
 }
 
