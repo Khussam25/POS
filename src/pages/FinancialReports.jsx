@@ -186,6 +186,9 @@ export default function FinancialReports() {
     if (!el || pdfLoading) return
     setPdfLoading(true)
     const hidden = [...el.querySelectorAll('.no-print')]
+    // Remember each node's own inline display so we can restore it exactly —
+    // forcing '' would wipe inline display:flex (e.g. the Print/PDF button row).
+    const prevDisplay = hidden.map(node => node.style.display)
     hidden.forEach(node => { node.style.display = 'none' })
     try {
       const canvas = await html2canvas(el, {
@@ -213,7 +216,7 @@ export default function FinancialReports() {
       const filename = `${t(tab).replace(/\s+/g, '-')}-${periodKey}.pdf`
       pdf.save(filename)
     } finally {
-      hidden.forEach(node => { node.style.display = '' })
+      hidden.forEach((node, i) => { node.style.display = prevDisplay[i] })
       setPdfLoading(false)
     }
   }
