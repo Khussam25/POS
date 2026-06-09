@@ -43,17 +43,55 @@ export function saleNetRevenue(sale) {
   return roundTz((sale.total || 0) - (sale.vat || 0))
 }
 
-export function itemUnitCost(item, products) {
-  if (item.buyingPriceTZS != null) return item.buyingPriceTZS
+/**
+ * Unit cost for a sale line.
+ * - `locked` (sale.costsLocked): the cost is frozen — use the stored snapshot
+ *   verbatim so later price changes never alter a past report.
+ * - otherwise: use the stored snapshot when it's a real (> 0) cost, else fall
+ *   back to the product's CURRENT buying price. This is what lets COGS self-heal
+ *   for older sales whose product had no buying price recorded at the time.
+ */
+export function itemUnitCost(item, products, locked = false) {
+  const stored = Number(item?.buyingPriceTZS)
+  if (locked) return Number.isFinite(stored) ? stored : 0
+  if (Number.isFinite(stored) && stored > 0) return stored
   const prod = products?.find(p => p.id === item.productId)
   return prod?.buyingPriceTZS ?? 0
 }
 
 export function saleCogs(sale, products) {
   const items = Array.isArray(sale.items) ? sale.items : []
+  const locked = !!sale.costsLocked
   return roundTz(
-    items.reduce((sum, item) => sum + itemUnitCost(item, products) * (item.qty || 0), 0)
+    items.reduce((sum, item) => sum + itemUnitCost(item, products, locked) * (item.qty || 0), 0)
   )
+}
+
+/**
+ * Freeze the cost of each sale: write the currently-resolved unit cost into
+ * every line and mark the sale `costsLocked`, so future buying-price edits can
+ * no longer change its COGS. Returns the new sales array (only unlocked sales
+ * are touched) and how many were locked.
+ */
+export function saleNeedsCostLock(sale) {
+  if (sale?.costsLocked) return false
+  return (sale?.items || []).some(it => !(Number(it?.buyingPriceTZS) > 0))
+}
+
+export function lockSaleCosts(sales, products) {
+  let lockedCount = 0
+  const next = (sales || []).map(sale => {
+    // Only sales whose COGS still depends on a live product price need freezing;
+    // already-costed sales use their stored snapshot regardless.
+    if (!saleNeedsCostLock(sale)) return sale
+    lockedCount++
+    const items = (sale.items || []).map(item => ({
+      ...item,
+      buyingPriceTZS: itemUnitCost(item, products, false),
+    }))
+    return { ...sale, items, costsLocked: true }
+  })
+  return { sales: next, lockedCount }
 }
 
 /**

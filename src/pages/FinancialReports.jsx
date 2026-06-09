@@ -5,7 +5,7 @@ import { Printer, Download, DollarSign, TrendingDown, TrendingUp } from 'lucide-
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
-import { fmtMoney, saleNetRevenue, collectPaymentEvents } from '../utils/money'
+import { fmtMoney, saleNetRevenue, collectPaymentEvents, lockSaleCosts, saleNeedsCostLock } from '../utils/money'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, validateAndApplyAmountPaid, visibleSales } from '../utils/salesOps'
 import { resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
 import { todayTZ } from '../utils/time'
@@ -52,6 +52,8 @@ export default function FinancialReports() {
   const [editSale, setEditSale] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [saleError, setSaleError] = useState('')
+  const [lockConfirm, setLockConfirm] = useState(false)
+  const [lockNotice, setLockNotice] = useState('')
   const reportRef = useRef(null)
   const todayStr = todayTZ()
   const currentMonth = todayStr.slice(0, 7)
@@ -104,6 +106,21 @@ export default function FinancialReports() {
     const owedFrac = total > 0 ? (total - paid) / total : 0
     return a + net * owedFrac
   }, 0)
+
+  // Sales whose COGS is still live (a missing cost filled from current prices).
+  const lockableCount = useMemo(() => data.sales.filter(saleNeedsCostLock).length, [data.sales])
+
+  function lockHistoricalCosts() {
+    const { sales: next, lockedCount } = lockSaleCosts(data.sales, data.products)
+    if (lockedCount === 0) { setLockConfirm(false); return }
+    if (!batchUpdateData({ sales: next })) {
+      setSaleError(t('saveFailed'))
+      setLockConfirm(false)
+      return
+    }
+    setLockConfirm(false)
+    setLockNotice(t('lockCostsDone'))
+  }
 
   const expenseByCat = useMemo(() => {
     const byCat = {}
@@ -322,6 +339,22 @@ export default function FinancialReports() {
         </div>
       </div>
 
+      {/* COGS lock controls (admin maintenance — never printed) */}
+      {lockNotice && (
+        <div className="no-print" style={{ background: 'var(--success-light)', color: 'var(--success)', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <span>{lockNotice}</span>
+          <button type="button" onClick={() => setLockNotice('')} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
+        </div>
+      )}
+      {lockableCount > 0 && (
+        <div className="no-print" style={{ background: 'var(--warning-light)', borderRadius: 8, padding: '12px 16px', fontSize: 13, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <span style={{ color: 'var(--text-900)', flex: 1, minWidth: 240, lineHeight: 1.5 }}>{t('lockCostsNotice').replace('{n}', lockableCount)}</span>
+          <button type="button" onClick={() => setLockConfirm(true)} style={{ background: 'var(--warning)', color: 'white', fontWeight: 700, fontSize: 13, padding: '9px 18px', borderRadius: 8, whiteSpace: 'nowrap' }}>
+            {t('lockCostsButton')}
+          </button>
+        </div>
+      )}
+
       {/* Report body */}
       <div ref={reportRef} className="financial-report-print" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '28px 32px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--outline)' }}>
         <div className="report-pdf-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingBottom: 16, borderBottom: '2px solid var(--outline)' }}>
@@ -481,6 +514,18 @@ export default function FinancialReports() {
           onConfirm={confirmDeleteSale}
           onClose={() => setDeleteTarget(null)}
         />
+        {lockConfirm && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '28px', width: '100%', maxWidth: 420, boxShadow: 'var(--shadow)' }}>
+              <h2 style={{ fontSize: 17, fontWeight: 800, marginBottom: 12 }}>{t('lockCostsTitle')}</h2>
+              <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>{t('lockCostsConfirm').replace('{n}', lockableCount)}</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button type="button" onClick={() => setLockConfirm(false)} style={{ flex: 1, padding: '11px', border: '1.5px solid var(--outline)', borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13 }}>{t('cancel')}</button>
+                <button type="button" onClick={lockHistoricalCosts} style={{ flex: 1, padding: '11px', background: 'var(--warning)', color: 'white', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 13 }}>{t('lockCostsButton')}</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
