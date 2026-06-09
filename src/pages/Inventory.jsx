@@ -141,6 +141,20 @@ export default function Inventory() {
     [filtered]
   )
 
+  // Stock value = qty × buying cost; expected profit = qty × (selling − buying).
+  const { stockValue, expectedProfit } = useMemo(() => {
+    let stockValue = 0
+    let expectedProfit = 0
+    for (const p of filtered) {
+      const qty = Number(p.qty) || 0
+      const buy = Number(p.buyingPriceTZS) || 0
+      const sell = Number(p.sellingPriceTZS) || 0
+      stockValue += qty * buy
+      expectedProfit += qty * (sell - buy)
+    }
+    return { stockValue: roundTz(stockValue), expectedProfit: roundTz(expectedProfit) }
+  }, [filtered])
+
   const sortLabels = {
     nameAsc: t('sortNameAZ'),
     nameDesc: t('sortNameZA'),
@@ -174,6 +188,28 @@ export default function Inventory() {
               </div>
               <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-900)' }}>{totalQty.toLocaleString()}</div>
             </div>
+            {isAdmin && (
+              <div style={{
+                background: 'var(--surface)', border: '1.5px solid var(--outline)', borderRadius: 10,
+                padding: '10px 16px', minWidth: 140, boxShadow: 'var(--shadow-sm)',
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                  {t('stockValueLabel')}
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-900)' }}>{fmt(stockValue)}</div>
+              </div>
+            )}
+            {isAdmin && (
+              <div style={{
+                background: 'var(--surface)', border: '1.5px solid var(--outline)', borderRadius: 10,
+                padding: '10px 16px', minWidth: 140, boxShadow: 'var(--shadow-sm)',
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                  {t('expectedProfitLabel')}
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: expectedProfit >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmt(expectedProfit)}</div>
+              </div>
+            )}
           </div>
         </div>
         {isAdmin && (
