@@ -12,7 +12,7 @@ const STORE_REF = ['stores', 'main']
 const SALES_COL = ['stores', 'main', 'sales']
 /** Max writes per Firestore batch is 500; stay under it. */
 const BATCH_LIMIT = 450
-const SYNC_KEYS = ['products', 'sales', 'customers', 'expenses', 'employees', 'deletedSaleIds']
+const SYNC_KEYS = ['products', 'sales', 'customers', 'expenses', 'employees', 'deletedSaleIds', 'deletedCustomerIds']
 /** Ignore cloud pulls briefly after a local save. */
 const LOCAL_GRACE_MS = 8000
 /** Firestore document limit is 1 MiB — warn before write fails. */
@@ -102,6 +102,19 @@ function mergeTombstones(local = [], remote = []) {
   return [...new Set([...(local || []), ...(remote || [])])]
 }
 
+/** Merge customers by id, dropping any whose id is tombstoned (deleted). */
+function mergeCustomers(local = [], remote = [], tombstones = []) {
+  const deleted = new Set(tombstones || [])
+  const byId = new Map()
+  for (const r of remote) if (!deleted.has(r.id)) byId.set(r.id, r)
+  for (const l of local) {
+    if (deleted.has(l.id)) { byId.delete(l.id); continue }
+    const existing = byId.get(l.id)
+    byId.set(l.id, existing && existing.updatedAt && l.updatedAt && existing.updatedAt > l.updatedAt ? existing : l)
+  }
+  return Array.from(byId.values())
+}
+
 function mergeSales(local = [], remote = [], tombstones = []) {
   const deleted = new Set(tombstones || [])
   const byId = new Map()
@@ -183,13 +196,13 @@ function mergeEmployees(local = [], remote = []) {
 export function mergeRemoteStore(local, remote) {
   if (!remote) return local
   const deletedSaleIds = mergeTombstones(local.deletedSaleIds, remote.deletedSaleIds)
+  const deletedCustomerIds = mergeTombstones(local.deletedCustomerIds, remote.deletedCustomerIds)
   return {
     products: mergeProducts(local.products ?? [], remote.products ?? []),
     sales: mergeSales(local.sales ?? [], remote.sales ?? [], deletedSaleIds),
     deletedSaleIds,
-    customers: mergeRecordsById(local.customers ?? [], remote.customers ?? [], (a, b) => (
-      (b.updatedAt && a.updatedAt && b.updatedAt > a.updatedAt) ? b : a
-    )),
+    customers: mergeCustomers(local.customers ?? [], remote.customers ?? [], deletedCustomerIds),
+    deletedCustomerIds,
     expenses: mergeRecordsById(local.expenses ?? [], remote.expenses ?? [], (_, b) => b),
     employees: mergeEmployees(local.employees ?? [], remote.employees ?? []),
     settings: mergeSettings(local.settings, remote.settings ?? {}),
@@ -214,10 +227,13 @@ function saleSig(s) {
 /** The main store document — everything except the sales history. */
 function packMainPayload(store) {
   const deletedSaleIds = store.deletedSaleIds ?? []
+  const deletedCustomerIds = store.deletedCustomerIds ?? []
+  const deletedCust = new Set(deletedCustomerIds)
   return {
     products: store.products ?? [],
     deletedSaleIds,
-    customers: store.customers ?? [],
+    deletedCustomerIds,
+    customers: (store.customers ?? []).filter(c => !deletedCust.has(c.id)),
     expenses: store.expenses ?? [],
     employees: store.employees ?? [],
     settings: settingsForCloud(store.settings ?? {}),
@@ -328,6 +344,7 @@ export function unpackPayload(data) {
     products: Array.isArray(data.products) ? data.products : local.products,
     sales: Array.isArray(data.sales) ? data.sales : local.sales,
     deletedSaleIds: Array.isArray(data.deletedSaleIds) ? data.deletedSaleIds : (local.deletedSaleIds ?? []),
+    deletedCustomerIds: Array.isArray(data.deletedCustomerIds) ? data.deletedCustomerIds : (local.deletedCustomerIds ?? []),
     customers: Array.isArray(data.customers) ? data.customers : local.customers,
     expenses: Array.isArray(data.expenses) ? data.expenses : local.expenses,
     employees: Array.isArray(data.employees) ? data.employees : local.employees,
@@ -355,6 +372,7 @@ function storeSignature(store) {
     salesN: (store.sales || []).length,
     salesFp: salesFingerprint(store.sales),
     deletedSalesN: (store.deletedSaleIds || []).length,
+    deletedCustomersN: (store.deletedCustomerIds || []).length,
     customersN: (store.customers || []).length,
     customersFp: listFingerprint(store.customers, ['id', 'name', 'phone', 'note', 'code', 'updatedAt']),
     expensesN: (store.expenses || []).length,

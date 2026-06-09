@@ -100,8 +100,10 @@ export default function App() {
   }
 
   const applyStoreFromRemote = useCallback((store) => {
-    const customers = store.customers ?? []
     const deletedSaleIds = store.deletedSaleIds ?? []
+    const deletedCustomerIds = store.deletedCustomerIds ?? []
+    const delCust = new Set(deletedCustomerIds)
+    const customers = (store.customers ?? []).filter(c => !delCust.has(c.id))
     const rawSales = visibleSales(store.sales ?? [], deletedSaleIds)
     const { sales: linkedSales, changed } = backfillCustomerIds(customers, rawSales)
     if (changed) saveStore('sales', linkedSales)
@@ -109,7 +111,8 @@ export default function App() {
       products: store.products ?? [],
       sales: linkedSales,
       deletedSaleIds,
-      customers: store.customers ?? [],
+      deletedCustomerIds,
+      customers,
       expenses: store.expenses ?? [],
       employees: store.employees ?? [],
       settings: normalizeSettings(store.settings),
@@ -279,6 +282,11 @@ export default function App() {
     if (updates.sales != null) {
       const deletedSaleIds = updates.deletedSaleIds ?? getStore().deletedSaleIds ?? []
       updates = { ...updates, sales: visibleSales(updates.sales, deletedSaleIds) }
+    }
+    if (updates.customers != null) {
+      const deletedCustomerIds = updates.deletedCustomerIds ?? getStore().deletedCustomerIds ?? []
+      const del = new Set(deletedCustomerIds)
+      updates = { ...updates, customers: updates.customers.filter(c => !del.has(c.id)) }
     }
     if (updates.sales != null || updates.customers != null) {
       const merged = { ...getStore(), ...updates }

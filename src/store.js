@@ -116,6 +116,7 @@ function getStore() {
     products: load('products') ?? [],
     sales,
     deletedSaleIds: load('deletedSaleIds') ?? [],
+    deletedCustomerIds: load('deletedCustomerIds') ?? [],
     customers,
     expenses: load('expenses') ?? SEED.expenses,
     employees,

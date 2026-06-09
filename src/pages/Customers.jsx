@@ -9,7 +9,7 @@ import { formatPhoneDisplay } from '../utils/phone'
 import {
   makeCustomer, customerStats, customerSales, totalReceivables,
   saleBalance, salePaid, salePaymentStatus, applyPayment,
-  linkSalesToCustomer, backfillCustomerIds,
+  linkSalesToCustomer, backfillCustomerIds, saleBelongsToCustomer,
 } from '../utils/customers'
 import { saleRef, itemsSummary } from '../utils/salesOps'
 import { Plus, Pencil, Trash2, X, Search, Wallet, Users, HandCoins, Link2 } from 'lucide-react'
@@ -245,9 +245,17 @@ export default function Customers() {
 
   function confirmDelete() {
     if (!deleteTarget) return
-    updateData('customers', customers.filter(c => c.id !== deleteTarget.id))
+    const id = deleteTarget.id
+    const nextCustomers = customers.filter(c => c.id !== id)
+    // Detach this customer's sales → Walk-in (keeps the sale, drops the link).
+    const nextSales = sales.map(s => saleBelongsToCustomer(s, deleteTarget)
+      ? { ...s, customerId: null, customer: 'Walk-in Customer' }
+      : s)
+    // Tombstone the id so cloud sync can't resurrect the customer on refresh.
+    const deletedCustomerIds = [...new Set([...(data.deletedCustomerIds || []), id])]
+    batchUpdateData({ customers: nextCustomers, sales: nextSales, deletedCustomerIds })
     setDeleteTarget(null)
-    if (detail === deleteTarget.id) setDetail(null)
+    if (detail === id) setDetail(null)
   }
 
   const detailCustomer = detail ? customers.find(c => c.id === detail) : null
