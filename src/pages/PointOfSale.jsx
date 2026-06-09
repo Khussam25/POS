@@ -10,7 +10,7 @@ import { loadPosDraft, savePosDraft, clearPosDraft, reconcileCartWithProducts } 
 import { calcOrderTotals, fmtMoney } from '../utils/money'
 import { findCustomerByName, makeCustomer } from '../utils/customers'
 import { nextReceiptNo, visibleSales } from '../utils/salesOps'
-import { nowTZParts } from '../utils/time'
+import { nowTZParts, nowISO } from '../utils/time'
 import { Search, Plus, Minus, ShoppingCart, CheckCircle2, X, Package } from 'lucide-react'
 
 const fmt = fmtMoney
@@ -185,9 +185,12 @@ export default function PointOfSale() {
       payments: settledPaid > 0 ? [{ amount: settledPaid, date, by: currentUser.name }] : [],
       soldBy: currentUser.name
     }
+    // Stamp updatedAt so the cloud merge treats the new stock level as the
+    // newer revision — otherwise other devices keep their stale qty.
+    const stockTs = nowISO()
     const newProducts = data.products.map(p => {
       const item = cart.find(i => i.productId === p.id)
-      return item ? { ...p, qty: p.qty - item.qty } : p
+      return item ? { ...p, qty: p.qty - item.qty, updatedAt: stockTs } : p
     })
     const updates = { sales: [sale, ...activeSales], products: newProducts }
     if (nextCustomers !== data.customers) updates.customers = nextCustomers
