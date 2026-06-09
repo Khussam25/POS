@@ -184,51 +184,67 @@ function storeSignature(store) {
 }
 
 let applyingRemote = false
-let pushTimer = null
-let pendingPush = null
+let pushInFlight = false
+let pendingPartial = null
 let pendingAfterRemote = null
 let lastAppliedSig = ''
+let lastRemoteStore = null
 let onSyncErrorHandler = null
 let onSyncOkHandler = null
+let onRemoteUpdateHandler = null
+
+function applyPartial(store, partial) {
+  if (!partial) return store
+  const merged = { ...store, ...partial }
+  if (partial.settings) {
+    merged.settings = { ...store.settings, ...partial.settings }
+  }
+  return merged
+}
+
+/** Merge unsaved local edits with the latest cloud snapshot so pushes never wipe another user's sales. */
+async function prepareMergedStore(partialUpdates = {}) {
+  const local = getStore()
+  let withUpdates = applyPartial(local, partialUpdates)
+
+  let remote = lastRemoteStore
+  if (!remote) {
+    const { store } = await pullCloudStore()
+    if (store) {
+      remote = store
+      lastRemoteStore = store
+    }
+  }
+  if (remote) withUpdates = mergeRemoteStore(withUpdates, remote)
+  return withUpdates
+}
+
+function notifyLocalStore(store) {
+  persistLocal(store)
+  lastRemoteStore = store
+  lastAppliedSig = storeSignature(store)
+  onRemoteUpdateHandler?.(store)
+}
 
 export function cancelPendingCloudPush() {
-  if (pushTimer) clearTimeout(pushTimer)
-  pushTimer = null
-  pendingPush = null
+  pendingPartial = null
 }
 
 export function isApplyingCloudRemote() {
   return applyingRemote
 }
 
-function pendingPushToStore(payload) {
-  if (!payload) return null
-  const local = getStore()
-  return {
-    products: Array.isArray(payload.products) ? payload.products : local.products,
-    sales: Array.isArray(payload.sales) ? payload.sales : local.sales,
-    customers: Array.isArray(payload.customers) ? payload.customers : local.customers,
-    expenses: Array.isArray(payload.expenses) ? payload.expenses : local.expenses,
-    employees: Array.isArray(payload.employees) ? payload.employees : local.employees,
-    settings: payload.settings
-      ? mergeSettings(local.settings, payload.settings)
-      : local.settings,
-  }
-}
-
 function applyRemoteStore(remoteStore, onRemoteUpdate) {
   let local = getStore()
-  if (pendingPush) {
-    const pending = pendingPushToStore(pendingPush)
-    if (pending) local = mergeRemoteStore(local, pending)
+  if (pendingPartial) {
+    local = applyPartial(local, pendingPartial)
   }
-  cancelPendingCloudPush()
   const store = mergeRemoteStore(local, remoteStore)
   const sig = storeSignature(store)
   if (sig === lastAppliedSig) return false
   applyingRemote = true
-  cancelPendingCloudPush()
   persistLocal(store)
+  lastRemoteStore = store
   onRemoteUpdate(store)
   lastAppliedSig = sig
   applyingRemote = false
@@ -261,6 +277,7 @@ export async function pullCloudStore() {
 export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
   onSyncErrorHandler = onSyncError ?? null
   onSyncOkHandler = onSyncOk ?? null
+  onRemoteUpdateHandler = onRemoteUpdate ?? null
   const db = getFirestore(app)
   const ref = doc(db, ...STORE_REF)
 
@@ -273,6 +290,7 @@ export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
       } else {
         const local = getStore()
         await setDoc(ref, packPayload(local))
+        lastRemoteStore = local
         lastAppliedSig = storeSignature(local)
         onSyncOkHandler?.()
       }
@@ -300,26 +318,34 @@ export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
     cancelPendingCloudPush()
     onSyncErrorHandler = null
     onSyncOkHandler = null
+    onRemoteUpdateHandler = null
+    lastRemoteStore = null
   }
 }
 
-function flushPush() {
-  pushTimer = null
-  if (!pendingPush || applyingRemote) return
+async function flushPush() {
+  if (!pendingPartial || applyingRemote || pushInFlight) return
+  const partial = pendingPartial
+  pendingPartial = null
+  pushInFlight = true
   const db = getFirestore(app)
   const ref = doc(db, ...STORE_REF)
-  const payload = pendingPush
-  pendingPush = null
-  setDoc(ref, payload, { merge: true })
-    .then(() => {
-      lastAppliedSig = storeSignature(getStore())
-      onSyncOkHandler?.()
-    })
-    .catch(err => onSyncErrorHandler?.(friendlySyncError(err)))
+  try {
+    const merged = await prepareMergedStore(partial)
+    notifyLocalStore(merged)
+    await setDoc(ref, packPayload(merged), { merge: true })
+    onSyncOkHandler?.()
+  } catch (err) {
+    pendingPartial = { ...partial, ...(pendingPartial || {}) }
+    onSyncErrorHandler?.(friendlySyncError(err))
+  } finally {
+    pushInFlight = false
+    if (pendingPartial) flushPush()
+  }
 }
 
 export function hasPendingCloudPush() {
-  return !!pendingPush
+  return !!pendingPartial || pushInFlight
 }
 
 /**
@@ -328,17 +354,18 @@ export function hasPendingCloudPush() {
  * remote data (e.g. navigating right after linking a sale to a customer).
  */
 export async function flushPendingCloudPush() {
-  if (pushTimer) { clearTimeout(pushTimer); pushTimer = null }
-  if (!pendingPush || applyingRemote) return
+  if (!pendingPartial || applyingRemote) return
+  const partial = pendingPartial
+  pendingPartial = null
   const db = getFirestore(app)
   const ref = doc(db, ...STORE_REF)
-  const payload = pendingPush
-  pendingPush = null
   try {
-    await setDoc(ref, payload, { merge: true })
-    lastAppliedSig = storeSignature(getStore())
+    const merged = await prepareMergedStore(partial)
+    notifyLocalStore(merged)
+    await setDoc(ref, packPayload(merged), { merge: true })
     onSyncOkHandler?.()
   } catch (err) {
+    pendingPartial = { ...partial, ...(pendingPartial || {}) }
     onSyncErrorHandler?.(friendlySyncError(err))
   }
 }
@@ -355,13 +382,13 @@ export function pushStoreNow(updates) {
     }
     return
   }
-  const local = getStore()
-  const merged = { ...local, ...updates }
+  pendingPartial = { ...(pendingPartial || {}), ...updates }
   if (updates.settings) {
-    merged.settings = { ...local.settings, ...updates.settings }
+    pendingPartial.settings = {
+      ...(pendingPartial.settings || getStore().settings),
+      ...updates.settings,
+    }
   }
-  pendingPush = packPayload(merged)
-  if (pushTimer) { clearTimeout(pushTimer); pushTimer = null }
   flushPush()
 }
 
