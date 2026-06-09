@@ -105,6 +105,7 @@ export default function App() {
     setData({
       products: store.products ?? [],
       sales: linkedSales,
+      deletedSaleIds: store.deletedSaleIds ?? [],
       customers: store.customers ?? [],
       expenses: store.expenses ?? [],
       employees: store.employees ?? [],

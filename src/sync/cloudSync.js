@@ -3,7 +3,7 @@ import { app } from '../firebase'
 import { getStore, saveStore, normalizeSettings } from '../store'
 
 const STORE_REF = ['stores', 'main']
-const SYNC_KEYS = ['products', 'sales', 'customers', 'expenses', 'employees']
+const SYNC_KEYS = ['products', 'sales', 'customers', 'expenses', 'employees', 'deletedSaleIds']
 
 const SETTINGS_CLOUD_FIELDS = [
   'storeName', 'address', 'phone', 'email', 'currency', 'exchangeRate',
@@ -79,6 +79,39 @@ function mergeRecordsById(local = [], remote = [], mergeFn) {
   return Array.from(byId.values())
 }
 
+function mergeTombstones(local = [], remote = []) {
+  return [...new Set([...(local || []), ...(remote || [])])]
+}
+
+/** Union sales from both sides, but honour deletions recorded in deletedSaleIds. */
+function mergeSales(local = [], remote = [], tombstones = []) {
+  const deleted = new Set(tombstones || [])
+  const byId = new Map()
+  for (const r of remote) {
+    if (!deleted.has(r.id)) byId.set(r.id, r)
+  }
+  for (const l of local) {
+    if (deleted.has(l.id)) {
+      byId.delete(l.id)
+      continue
+    }
+    const existing = byId.get(l.id)
+    if (existing) {
+      const ap = l.payments?.length ?? 0
+      const bp = existing.payments?.length ?? 0
+      if (ap !== bp) {
+        byId.set(l.id, ap > bp ? l : existing)
+      } else {
+        const keepLocal = (l.date + (l.time || '')).localeCompare(existing.date + (existing.time || '')) >= 0
+        byId.set(l.id, keepLocal ? l : existing)
+      }
+    } else {
+      byId.set(l.id, l)
+    }
+  }
+  return Array.from(byId.values())
+}
+
 function mergeSettings(local, remote) {
   const remoteLogo = remote?.storeLogo
   const useRemoteLogo = remoteLogo && !String(remoteLogo).startsWith('data:')
@@ -113,14 +146,11 @@ function mergeEmployees(local = [], remote = []) {
  */
 export function mergeRemoteStore(local, remote) {
   if (!remote) return local
+  const deletedSaleIds = mergeTombstones(local.deletedSaleIds, remote.deletedSaleIds)
   return {
     products: mergeProducts(local.products ?? [], remote.products ?? []),
-    sales: mergeRecordsById(local.sales ?? [], remote.sales ?? [], (a, b) => {
-      const ap = a.payments?.length ?? 0
-      const bp = b.payments?.length ?? 0
-      if (ap !== bp) return ap > bp ? a : b
-      return (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')) >= 0 ? b : a
-    }),
+    sales: mergeSales(local.sales ?? [], remote.sales ?? [], deletedSaleIds),
+    deletedSaleIds,
     customers: mergeRecordsById(local.customers ?? [], remote.customers ?? [], (a, b) => (
       (b.updatedAt && a.updatedAt && b.updatedAt > a.updatedAt) ? b : a
     )),
@@ -134,6 +164,7 @@ function packPayload(store) {
   return {
     products: store.products ?? [],
     sales: store.sales ?? [],
+    deletedSaleIds: store.deletedSaleIds ?? [],
     customers: store.customers ?? [],
     expenses: store.expenses ?? [],
     employees: store.employees ?? [],
@@ -148,6 +179,7 @@ export function unpackPayload(data) {
   return {
     products: Array.isArray(data.products) ? data.products : local.products,
     sales: Array.isArray(data.sales) ? data.sales : local.sales,
+    deletedSaleIds: Array.isArray(data.deletedSaleIds) ? data.deletedSaleIds : (local.deletedSaleIds ?? []),
     customers: Array.isArray(data.customers) ? data.customers : local.customers,
     expenses: Array.isArray(data.expenses) ? data.expenses : local.expenses,
     employees: Array.isArray(data.employees) ? data.employees : local.employees,
@@ -175,6 +207,7 @@ function storeSignature(store) {
   return JSON.stringify({
     settings: settingsFingerprint(store.settings),
     salesN: (store.sales || []).length,
+    deletedSalesN: (store.deletedSaleIds || []).length,
     salesLinked: linked,
     customersN: (store.customers || []).length,
     employeesN: (store.employees || []).length,

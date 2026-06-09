@@ -187,9 +187,18 @@ export default function FinancialReports() {
   function confirmDeleteSale() {
     if (!deleteTarget) return
     const result = deleteSaleRecord(data.products, data.sales, deleteTarget.id)
-    if (!result.ok) return
-    batchUpdateData({ products: result.products, sales: result.sales })
+    if (!result.ok) {
+      setSaleError(t('saveFailed'))
+      setDeleteTarget(null)
+      return
+    }
+    const deletedSaleIds = [...new Set([...(data.deletedSaleIds || []), deleteTarget.id])]
+    if (!batchUpdateData({ products: result.products, sales: result.sales, deletedSaleIds })) {
+      setSaleError(t('saveFailed'))
+      return
+    }
     setDeleteTarget(null)
+    setSaleError('')
   }
 
   function handlePrint() { window.print() }

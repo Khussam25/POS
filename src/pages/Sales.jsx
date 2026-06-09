@@ -22,8 +22,9 @@ export default function Sales() {
   const today = todayTZ()
   const currentMonth = today.slice(0, 7)
   const vatRate = data.settings.vatEnabled ? (data.settings.vatRate / 100) : 0
+  const deletedIds = new Set(data.deletedSaleIds || [])
 
-  const filtered = data.sales.filter(s => {
+  const filtered = data.sales.filter(s => !deletedIds.has(s.id)).filter(s => {
     const inPeriod = tab === 'today' ? s.date === today
       : tab === 'all' ? true
       : s.date.startsWith(currentMonth)
@@ -102,9 +103,18 @@ export default function Sales() {
   function confirmDelete() {
     if (!deleteTarget) return
     const result = deleteSaleRecord(data.products, data.sales, deleteTarget.id)
-    if (!result.ok) return
-    batchUpdateData({ products: result.products, sales: result.sales })
+    if (!result.ok) {
+      setSaleError(t('saveFailed'))
+      setDeleteTarget(null)
+      return
+    }
+    const deletedSaleIds = [...new Set([...(data.deletedSaleIds || []), deleteTarget.id])]
+    if (!batchUpdateData({ products: result.products, sales: result.sales, deletedSaleIds })) {
+      setSaleError(t('saveFailed'))
+      return
+    }
     setDeleteTarget(null)
+    setSaleError('')
   }
 
   return (
@@ -113,6 +123,13 @@ export default function Sales() {
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>{t('salesHistory')}</h1>
         <p style={{ color: 'var(--text-500)', fontSize: 13 }}>{t('salesHistorySub')}</p>
       </div>
+
+      {saleError && !editSale && (
+        <div style={{ background: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <span>{saleError}</span>
+          <button type="button" onClick={() => setSaleError('')} style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
