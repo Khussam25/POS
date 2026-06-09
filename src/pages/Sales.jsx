@@ -3,7 +3,6 @@ import { useApp, canEditSales } from '../App'
 import { useT } from '../i18n/LangContext'
 import { fmtMoney } from '../utils/money'
 import { saleBalance, salePaymentStatus, resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
-import { getStore } from '../store'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, saleRef, itemsSummary, validateAndApplyAmountPaid, visibleSales } from '../utils/salesOps'
 import { todayTZ } from '../utils/time'
 import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/SaleEditModals'
@@ -101,15 +100,13 @@ export default function Sales() {
 
   function confirmDelete() {
     if (!deleteTarget) return
-    const store = getStore()
-    const activeSales = visibleSales(store.sales, store.deletedSaleIds)
-    const result = deleteSaleRecord(store.products, activeSales, deleteTarget.id)
+    const activeSales = visibleSales(data.sales, data.deletedSaleIds)
+    const result = deleteSaleRecord(data.products, activeSales, deleteTarget.id)
     if (!result.ok) {
       setSaleError(t('saveFailed'))
-      setDeleteTarget(null)
       return
     }
-    const deletedSaleIds = [...new Set([...(store.deletedSaleIds || []), deleteTarget.id])]
+    const deletedSaleIds = [...new Set([...(data.deletedSaleIds || []), deleteTarget.id])]
     if (!batchUpdateData({ products: result.products, sales: result.sales, deletedSaleIds })) {
       setSaleError(t('saveFailed'))
       return

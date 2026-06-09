@@ -5,6 +5,8 @@ import { visibleSales } from '../utils/salesOps'
 
 const STORE_REF = ['stores', 'main']
 const SYNC_KEYS = ['products', 'sales', 'customers', 'expenses', 'employees', 'deletedSaleIds']
+/** Ignore cloud snapshots briefly after a local save so they cannot undo POS / delete. */
+const LOCAL_GRACE_MS = 4000
 
 const SETTINGS_CLOUD_FIELDS = [
   'storeName', 'address', 'phone', 'email', 'currency', 'exchangeRate',
@@ -37,16 +39,13 @@ function productRevision(p) {
   return p?.updatedAt ? (Date.parse(p.updatedAt) || 0) : 0
 }
 
-/** Combine two product records — keeps the newest edit and non-empty buying prices. */
 function mergeProduct(local, remote) {
   if (!remote) return local
   if (!local) return remote
-
   const lr = productRevision(local)
   const rr = productRevision(remote)
   if (lr > rr) return local
   if (rr > lr) return remote
-
   return {
     ...remote,
     ...local,
@@ -84,7 +83,6 @@ function mergeTombstones(local = [], remote = []) {
   return [...new Set([...(local || []), ...(remote || [])])]
 }
 
-/** Union sales from both sides, but honour deletions recorded in deletedSaleIds. */
 function mergeSales(local = [], remote = [], tombstones = []) {
   const deleted = new Set(tombstones || [])
   const byId = new Map()
@@ -100,9 +98,8 @@ function mergeSales(local = [], remote = [], tombstones = []) {
     if (existing) {
       const ap = l.payments?.length ?? 0
       const bp = existing.payments?.length ?? 0
-      if (ap !== bp) {
-        byId.set(l.id, ap > bp ? l : existing)
-      } else {
+      if (ap !== bp) byId.set(l.id, ap > bp ? l : existing)
+      else {
         const keepLocal = (l.date + (l.time || '')).localeCompare(existing.date + (existing.time || '')) >= 0
         byId.set(l.id, keepLocal ? l : existing)
       }
@@ -141,10 +138,6 @@ function mergeEmployees(local = [], remote = []) {
   return Array.from(byEmail.values())
 }
 
-/**
- * Merge cloud data into local — products are merged per item so inventory edits
- * are not wiped when sales or other data sync from another session.
- */
 export function mergeRemoteStore(local, remote) {
   if (!remote) return local
   const deletedSaleIds = mergeTombstones(local.deletedSaleIds, remote.deletedSaleIds)
@@ -221,47 +214,54 @@ function storeSignature(store) {
 let applyingRemote = false
 let pushInFlight = false
 let pendingPartial = null
-let inFlightPartial = null
 let pendingAfterRemote = null
 let lastAppliedSig = ''
 let lastRemoteStore = null
+let lastLocalMutationAt = 0
 let onSyncErrorHandler = null
 let onSyncOkHandler = null
+
+/** Call after every local save so cloud snapshots cannot immediately undo it. */
+export function markLocalMutation() {
+  lastLocalMutationAt = Date.now()
+}
+
+export function shouldSkipRemoteApply() {
+  return shouldIgnoreRemoteSnapshot()
+}
+
+function shouldIgnoreRemoteSnapshot() {
+  if (pushInFlight || pendingPartial) return true
+  return Date.now() - lastLocalMutationAt < LOCAL_GRACE_MS
+}
+
 function applyPartial(store, partial) {
   if (!partial) return store
   const merged = { ...store, ...partial }
-  if (partial.settings) {
-    merged.settings = { ...store.settings, ...partial.settings }
-  }
+  if (partial.settings) merged.settings = { ...store.settings, ...partial.settings }
   return merged
 }
 
-/** Merge unsaved local edits with the latest cloud snapshot so pushes never wipe another user's sales. */
-async function prepareMergedStore(partialUpdates = {}) {
-  const local = getStore()
-  let withUpdates = applyPartial(local, partialUpdates)
-
-  let remote = lastRemoteStore
-  if (!remote) {
-    const { store } = await pullCloudStore()
-    if (store) {
-      remote = store
-      lastRemoteStore = store
-    }
-  }
-  if (remote) withUpdates = mergeRemoteStore(withUpdates, remote)
-  return withUpdates
-}
-
-function persistMergedToDisk(store) {
-  const cleaned = {
+function cleanStore(store) {
+  return {
     ...store,
     sales: visibleSales(store.sales, store.deletedSaleIds),
   }
-  persistLocal(cleaned)
-  lastRemoteStore = cleaned
-  lastAppliedSig = storeSignature(cleaned)
-  return cleaned
+}
+
+/** Build cloud payload from disk + pending edits, merged with last known remote. */
+async function buildCloudStore(partialUpdates = {}) {
+  let store = cleanStore(applyPartial(getStore(), partialUpdates))
+  let remote = lastRemoteStore
+  if (!remote) {
+    const { store: pulled } = await pullCloudStore()
+    if (pulled) {
+      remote = pulled
+      lastRemoteStore = pulled
+    }
+  }
+  if (remote) store = cleanStore(mergeRemoteStore(store, remote))
+  return store
 }
 
 export function cancelPendingCloudPush() {
@@ -273,18 +273,12 @@ export function isApplyingCloudRemote() {
 }
 
 function applyRemoteStore(remoteStore, onRemoteUpdate) {
-  let local = getStore()
-  const pending = inFlightPartial || pendingPartial
-  if (pending) {
-    local = applyPartial(local, pending)
-  }
-  const merged = mergeRemoteStore(local, remoteStore)
-  const store = {
-    ...merged,
-    sales: visibleSales(merged.sales, merged.deletedSaleIds),
-  }
+  if (shouldIgnoreRemoteSnapshot()) return false
+
+  const store = cleanStore(mergeRemoteStore(getStore(), remoteStore))
   const sig = storeSignature(store)
   if (sig === lastAppliedSig) return false
+
   applyingRemote = true
   persistLocal(store)
   lastRemoteStore = store
@@ -292,6 +286,7 @@ function applyRemoteStore(remoteStore, onRemoteUpdate) {
   lastAppliedSig = sig
   applyingRemote = false
   onSyncOkHandler?.()
+
   if (pendingAfterRemote) {
     const deferred = pendingAfterRemote
     pendingAfterRemote = null
@@ -300,15 +295,12 @@ function applyRemoteStore(remoteStore, onRemoteUpdate) {
   return true
 }
 
-/** Fetch latest store document from Firestore. */
 export async function pullCloudStore() {
   const db = getFirestore(app)
   const ref = doc(db, ...STORE_REF)
   try {
     const snap = await getDoc(ref)
-    if (!snap.exists()) {
-      return { store: null, missing: true, error: null }
-    }
+    if (!snap.exists()) return { store: null, missing: true, error: null }
     return { store: unpackPayload(snap.data()), missing: false, error: null }
   } catch (err) {
     const error = friendlySyncError(err)
@@ -352,7 +344,7 @@ export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
       if (!store) return
       applyRemoteStore(store, onRemoteUpdate)
     },
-    err => onSyncError?.(friendlySyncError(err))
+    err => onSyncError?.(friendlySyncError(err)),
   )
 
   return () => {
@@ -365,22 +357,22 @@ export function startCloudSync({ onRemoteUpdate, onSyncError, onSyncOk }) {
 }
 
 async function flushPush() {
-  if (!pendingPartial || applyingRemote || pushInFlight) return
+  if (!pendingPartial || pushInFlight) return
   const partial = pendingPartial
   pendingPartial = null
-  inFlightPartial = partial
   pushInFlight = true
   const db = getFirestore(app)
   const ref = doc(db, ...STORE_REF)
   try {
-    const merged = persistMergedToDisk(await prepareMergedStore(partial))
+    const merged = await buildCloudStore(partial)
     await setDoc(ref, packPayload(merged), { merge: true })
+    lastRemoteStore = merged
+    lastAppliedSig = storeSignature(merged)
     onSyncOkHandler?.()
   } catch (err) {
     pendingPartial = { ...partial, ...(pendingPartial || {}) }
     onSyncErrorHandler?.(friendlySyncError(err))
   } finally {
-    inFlightPartial = null
     pushInFlight = false
     if (pendingPartial) flushPush()
   }
@@ -390,34 +382,13 @@ export function hasPendingCloudPush() {
   return !!pendingPartial || pushInFlight
 }
 
-/**
- * Write any queued local change to the cloud immediately and wait for it.
- * Call this before pulling so an in-flight edit isn't overwritten by stale
- * remote data (e.g. navigating right after linking a sale to a customer).
- */
 export async function flushPendingCloudPush() {
-  if (!pendingPartial || applyingRemote || pushInFlight) return
-  const partial = pendingPartial
-  pendingPartial = null
-  inFlightPartial = partial
-  pushInFlight = true
-  const db = getFirestore(app)
-  const ref = doc(db, ...STORE_REF)
-  try {
-    const merged = persistMergedToDisk(await prepareMergedStore(partial))
-    await setDoc(ref, packPayload(merged), { merge: true })
-    onSyncOkHandler?.()
-  } catch (err) {
-    pendingPartial = { ...partial, ...(pendingPartial || {}) }
-    onSyncErrorHandler?.(friendlySyncError(err))
-  } finally {
-    inFlightPartial = null
-    pushInFlight = false
-  }
+  if (!pendingPartial || pushInFlight) return
+  await flushPush()
 }
 
-/** Push local changes to the cloud immediately (no debounce). */
 export function pushStoreNow(updates) {
+  markLocalMutation()
   if (applyingRemote) {
     pendingAfterRemote = { ...(pendingAfterRemote || {}), ...updates }
     if (updates.settings) {
@@ -442,7 +413,6 @@ export function scheduleCloudPush(partialStore) {
   pushStoreNow(partialStore)
 }
 
-/** @deprecated use pushStoreNow */
 export function pushProductsNow(products) {
   pushStoreNow({ products })
 }

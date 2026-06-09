@@ -36,6 +36,7 @@ export default function OrderCheckout({
   setAmountPaid,
   onCompleteSale,
   compact = false,
+  checkoutBusy = false,
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false)
 
@@ -177,12 +178,12 @@ export default function OrderCheckout({
       }}>
         <FileText size={compact ? 14 : 15} /> {!compact && t('receipt')}
       </button>
-      <button type="button" onClick={onCompleteSale} disabled={cart.length === 0} style={{
+      <button type="button" onClick={onCompleteSale} disabled={cart.length === 0 || checkoutBusy} style={{
         flex: 1, padding: compact ? '10px' : '10px', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: compact ? 13 : 13,
-        background: cart.length === 0 ? 'var(--outline)' : (isCredit ? 'var(--accent)' : 'var(--primary)'),
-        color: cart.length === 0 ? 'var(--text-500)' : 'white',
+        background: (cart.length === 0 || checkoutBusy) ? 'var(--outline)' : (isCredit ? 'var(--accent)' : 'var(--primary)'),
+        color: (cart.length === 0 || checkoutBusy) ? 'var(--text-500)' : 'white',
       }}>
-        {isCredit ? t('completeCredit') : t('completeSale')}
+        {checkoutBusy ? 'Processing…' : (isCredit ? t('completeCredit') : t('completeSale'))}
       </button>
     </div>
   )

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useApp, canAccess } from '../App'
 import { useIsCompact } from '../hooks/useIsCompact'
@@ -43,9 +44,11 @@ export default function PointOfSale() {
   const [discountValue, setDiscountValue] = useState(posDraft.discountValue)
   const [amountPaid, setAmountPaid] = useState(posDraft.amountPaid)
   const [success, setSuccess] = useState(null)
+  const [completing, setCompleting] = useState(false)
+  const checkoutLock = useRef(false)
 
   useEffect(() => {
-    if (!userId) return
+    if (!userId || success || completing) return
     const draft = readDraftState(userId, data.products)
     setCart(draft.cart)
     setCustomer(draft.customer)
@@ -53,18 +56,19 @@ export default function PointOfSale() {
     setPayment(draft.payment)
     setDiscountValue(draft.discountValue)
     setAmountPaid(draft.amountPaid)
-  }, [userId])
+  }, [userId, success, completing])
 
   useEffect(() => {
+    if (success || completing) return
     setCart(prev => {
       const next = reconcileCartWithProducts(prev, data.products)
       if (next.length === 0 && prev.length > 0) clearPosDraft(userId)
       return next
     })
-  }, [data.products, userId])
+  }, [data.products, userId, success, completing])
 
   useEffect(() => {
-    if (!userId) return
+    if (!userId || success || completing) return
     savePosDraft(userId, { cart, customer, phone, payment, discountValue, amountPaid })
   }, [userId, cart, customer, phone, payment, discountValue, amountPaid])
 
@@ -109,8 +113,15 @@ export default function PointOfSale() {
     discountValue,
   })
 
+  function finishCheckoutAttempt() {
+    checkoutLock.current = false
+    setCompleting(false)
+  }
+
   function completeSale() {
-    if (cart.length === 0) return
+    if (cart.length === 0 || completing || checkoutLock.current) return
+    checkoutLock.current = true
+    setCompleting(true)
     setCheckoutError(null)
 
     for (const item of cart) {
@@ -118,6 +129,7 @@ export default function PointOfSale() {
       if (!product || product.qty < item.qty) {
         setCart(prev => reconcileCartWithProducts(prev, data.products))
         setCheckoutError(t('stockChanged'))
+        finishCheckoutAttempt()
         return
       }
     }
@@ -128,21 +140,18 @@ export default function PointOfSale() {
     const balance = total - settledPaid
     const isCredit = balance > 0
 
-    // A credit sale must be tied to a named customer.
     if (isCredit && !name) {
       setCheckoutError(t('creditNeedsCustomer'))
+      finishCheckoutAttempt()
       return
     }
 
-    // Any named sale (paid or credit) is linked to a customer so it shows on
-    // their account — creating the customer the first time we see the name.
     const existing = findCustomerByName(data.customers, name)
     let customerId = existing?.id ?? null
     let nextCustomers = data.customers
 
     if (name) {
       if (existing) {
-        // Backfill a phone number if we now have one.
         if (!existing.phone && phone.trim()) {
           nextCustomers = data.customers.map(c => c.id === existing.id ? { ...c, phone: phone.trim() } : c)
         }
@@ -185,10 +194,10 @@ export default function PointOfSale() {
     if (nextCustomers !== data.customers) updates.customers = nextCustomers
     if (!batchUpdateData(updates)) {
       setCheckoutError(t('saveFailed'))
+      finishCheckoutAttempt()
       return
     }
-    setCheckoutError(null)
-    setSuccess(sale)
+
     clearPosDraft(userId)
     setCart([])
     setCustomer('')
@@ -198,42 +207,45 @@ export default function PointOfSale() {
     setAmountPaid('')
     setSearch('')
     setMobileTab('products')
+    setCheckoutError(null)
+    setSuccess(sale)
+    finishCheckoutAttempt()
   }
 
-  if (success) {
-    return (
-      <div role="dialog" aria-modal="true" aria-labelledby="pos-sale-success-title" style={{
-        position: 'fixed', inset: 0, zIndex: 200,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(26,35,50,0.45)', padding: 24,
-      }}>
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '44px 36px', textAlign: 'center', maxWidth: 380, width: '100%', boxShadow: 'var(--shadow)' }}>
-          <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <CheckCircle2 size={34} color="var(--success)" />
-          </div>
-          <h2 id="pos-sale-success-title" style={{ fontSize: 21, fontWeight: 800, marginBottom: 8 }}>{t('saleCompleted')}</h2>
-          <p style={{ color: 'var(--text-500)', marginBottom: 6, fontSize: 14 }}>{success.customer}</p>
-          <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 6 }}>{fmt(success.total)}</p>
-          <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: success.total - (success.amountPaid ?? success.total) > 0 ? 12 : 28 }}>{success.paymentMethod}</p>
-          {success.total - (success.amountPaid ?? success.total) > 0 && (
-            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--danger)', marginBottom: 28 }}>
-              {t('balanceDue')}: {fmt(success.total - (success.amountPaid ?? success.total))}
-            </p>
-          )}
-          <button onClick={() => setSuccess(null)} style={{
-            background: 'var(--primary)', color: 'white', fontWeight: 700,
-            padding: '12px 32px', borderRadius: 'var(--radius-sm)', fontSize: 14
-          }}>{t('newSale')}</button>
+  const successOverlay = success ? createPortal(
+    <div role="dialog" aria-modal="true" aria-labelledby="pos-sale-success-title" style={{
+      position: 'fixed', inset: 0, zIndex: 10000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(26,35,50,0.5)', padding: 24,
+    }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '44px 36px', textAlign: 'center', maxWidth: 380, width: '100%', boxShadow: 'var(--shadow)' }}>
+        <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <CheckCircle2 size={34} color="var(--success)" />
         </div>
+        <h2 id="pos-sale-success-title" style={{ fontSize: 21, fontWeight: 800, marginBottom: 8 }}>{t('saleCompleted')}</h2>
+        <p style={{ color: 'var(--text-500)', marginBottom: 6, fontSize: 14 }}>{success.customer}</p>
+        <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 6 }}>{fmt(success.total)}</p>
+        <p style={{ color: 'var(--text-500)', fontSize: 13, marginBottom: success.total - (success.amountPaid ?? success.total) > 0 ? 12 : 28 }}>{success.paymentMethod}</p>
+        {success.total - (success.amountPaid ?? success.total) > 0 && (
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--danger)', marginBottom: 28 }}>
+            {t('balanceDue')}: {fmt(success.total - (success.amountPaid ?? success.total))}
+          </p>
+        )}
+        <button type="button" onClick={() => setSuccess(null)} style={{
+          background: 'var(--primary)', color: 'white', fontWeight: 700,
+          padding: '12px 32px', borderRadius: 'var(--radius-sm)', fontSize: 14,
+        }}>{t('newSale')}</button>
       </div>
-    )
-  }
+    </div>,
+    document.body,
+  ) : null
 
   const cartCount = cart.reduce((a, i) => a + i.qty, 0)
 
   // ── Phone & tablet: tab-based layout (products | order) ───────────────────
   if (isCompact) {
     return (
+      <>
       <div className="pos-page-compact">
         {/* Tab bar */}
         <div style={{ display: 'flex', background: 'var(--surface)', borderBottom: '1px solid var(--outline)', flexShrink: 0 }}>
@@ -353,15 +365,19 @@ export default function PointOfSale() {
               amountPaid={amountPaid}
               setAmountPaid={setAmountPaid}
               onCompleteSale={completeSale}
+              checkoutBusy={completing}
             />
           </div>
         )}
       </div>
+      {successOverlay}
+      </>
     )
   }
 
   // ── Desktop layout ─────────────────────────────────────────────────────────
   return (
+    <>
     <div className="pos-page-desktop">
 
       {/* ── Left: Product list ── */}
@@ -529,9 +545,12 @@ export default function PointOfSale() {
             amountPaid={amountPaid}
             setAmountPaid={setAmountPaid}
             onCompleteSale={completeSale}
+            checkoutBusy={completing}
           />
         </div>
       </div>
     </div>
+    {successOverlay}
+    </>
   )
 }

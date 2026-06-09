@@ -13,8 +13,8 @@ import { getStore, saveStore, saveStoreBatch, ensureRequiredEmployees, normalize
 import { visibleSales } from './utils/salesOps'
 import { backfillCustomerIds } from './utils/customers'
 import {
-  startCloudSync, pushStoreNow,
-  pullCloudStore, persistLocal, flushPendingCloudPush, mergeRemoteStore,
+  startCloudSync, pushStoreNow, markLocalMutation,
+  pullCloudStore, persistLocal, flushPendingCloudPush, mergeRemoteStore, shouldSkipRemoteApply,
 } from './sync/cloudSync'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -134,10 +134,15 @@ export default function App() {
         return false
       }
       setSyncError(null)
-      if (store) {
+      if (store && !shouldSkipRemoteApply()) {
         const merged = mergeRemoteStore(getStore(), store)
         persistLocal(merged)
         applyStoreFromRemote(merged)
+        setLastSyncedAt(Date.now())
+        return true
+      }
+      if (store) {
+        reloadLocalStore()
         setLastSyncedAt(Date.now())
         return true
       }
@@ -275,6 +280,7 @@ export default function App() {
       return false
     }
     setSaveError(null)
+    markLocalMutation()
     setData(prev => ({ ...prev, [key]: value }))
     pushStoreNow({ [key]: value })
     return true
@@ -295,6 +301,7 @@ export default function App() {
       return false
     }
     setSaveError(null)
+    markLocalMutation()
     setData(prev => ({ ...prev, ...updates }))
     pushStoreNow(updates)
     return true

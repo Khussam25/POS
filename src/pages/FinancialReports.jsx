@@ -6,7 +6,6 @@ import { SaleEditModal, SaleDeleteModal, SaleRowActions } from '../components/Sa
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { fmtMoney, saleNetRevenue, collectPaymentEvents } from '../utils/money'
-import { getStore } from '../store'
 import { cloneSaleForEdit, deleteSaleRecord, updateSaleRecord, recalculateSale, saleItemsChanged, validateAndApplyAmountPaid, visibleSales } from '../utils/salesOps'
 import { resolveCustomerForSale, backfillCustomerIds } from '../utils/customers'
 import { todayTZ } from '../utils/time'
@@ -187,15 +186,13 @@ export default function FinancialReports() {
 
   function confirmDeleteSale() {
     if (!deleteTarget) return
-    const store = getStore()
-    const activeSales = visibleSales(store.sales, store.deletedSaleIds)
-    const result = deleteSaleRecord(store.products, activeSales, deleteTarget.id)
+    const activeSales = visibleSales(data.sales, data.deletedSaleIds)
+    const result = deleteSaleRecord(data.products, activeSales, deleteTarget.id)
     if (!result.ok) {
       setSaleError(t('saveFailed'))
-      setDeleteTarget(null)
       return
     }
-    const deletedSaleIds = [...new Set([...(store.deletedSaleIds || []), deleteTarget.id])]
+    const deletedSaleIds = [...new Set([...(data.deletedSaleIds || []), deleteTarget.id])]
     if (!batchUpdateData({ products: result.products, sales: result.sales, deletedSaleIds })) {
       setSaleError(t('saveFailed'))
       return
