@@ -89,7 +89,9 @@ export default function Inventory() {
 
   function openAdd() { setForm(EMPTY); setErrors({}); setModal('add') }
   function openEdit(p) {
-    const usd = p.buyingPriceUSD != null
+    // Show the USD cost when set; otherwise derive it from the stored TZS so a
+    // product priced only in TZS (USD 0/blank) doesn't show "0" in the form.
+    const usd = Number(p.buyingPriceUSD) > 0
       ? p.buyingPriceUSD
       : (p.buyingPriceTZS ? String(Math.round(buyingTzsToUsd(p.buyingPriceTZS, exchangeRate) * 100) / 100) : '')
     setForm({ ...p, buyingPriceUSD: usd === '' ? '' : String(usd), sellingPriceTZS: String(p.sellingPriceTZS), qty: String(p.qty), lowStockThreshold: String(p.lowStockThreshold) })
